@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.28)
+project(graph3D)
+include_directories(include)
+add_executable(graph3D src/glad.c src/main.cpp)
+target_link_libraries(graph3D GL glfw)
