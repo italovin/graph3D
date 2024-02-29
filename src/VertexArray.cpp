@@ -1,13 +1,13 @@
-#include <glad/glad.h>
+#include "VertexArray.hpp"
 
-class VertexArray {
-private:
-    unsigned int handle;
-public:
-    VertexArray(){
-        glGenVertexArrays(1, &handle);
-    }
-    void Bind(){
-        glBindVertexArray(handle);
-    }
-};
+VertexArray::VertexArray(){
+    glGenVertexArrays(1, &handle);
+}
+unsigned int VertexArray::GetHandle()
+{
+    return handle;
+}
+void VertexArray::Bind()
+{
+    glBindVertexArray(handle);
+}

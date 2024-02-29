@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <iostream>
+#include "SceneObject.hpp"
+#include <string>
+#include <set>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -30,60 +33,64 @@ int main(void)
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
+    std::cout << glGetString(GL_VERSION) << std::endl;
 
+    GLint no_of_extensions = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
+
+    std::set<std::string> ogl_extensions;
+    for (int i = 0; i < no_of_extensions; ++i)
+        ogl_extensions.insert((const char*)glGetStringi(GL_EXTENSIONS, i));
+    bool directAccessSuported = ogl_extensions.find("GL_ARB_direct_state_access") != ogl_extensions.end();    
+    std::cout << "Direct access suported: " << directAccessSuported << std::endl;
+    
     float vertices[] = {
         -1.0f, -1.0f, 0.0f,
         1.0f, -1.0f, 0.0f,
         0.0, 1.0f, 0.0f
     };
-    unsigned int vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    unsigned int vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-
+    unsigned int indices[] = { 0, 1, 2};
     const char *vertexShaderSource = "#version 330\n"
     "layout (location = 0) in vec3 aPos;\n"
     "void main(){\n"
     "gl_Position = vec4(aPos, 1.0);\n"
     "}\0";
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
     const char *fragmentShaderSource = "#version 330\n"
     "out vec4 FragColor;\n"
     "void main(){\n"
     "FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
     "}\0";
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
+    SceneObject triangle = SceneObject(1);
+    triangle.SetBufferData(0, GL_ARRAY_BUFFER, vertices, sizeof(vertices));
+    triangle.SetElementBufferData(indices, sizeof(indices));
+    triangle.SetAttribute(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+    ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER);
+    triangleVertexShader.CompileShaderObject(vertexShaderSource);
+    ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER);
+    triangleFragmentShader.CompileShaderObject(fragmentShaderSource);
+    ShaderProgram shader = ShaderProgram();
+    shader.AttachShaderObject(triangleVertexShader);
+    shader.AttachShaderObject(triangleFragmentShader);
+    shader.Link();
+
 
     glClearColor(0, 0, 0, 1);
     double time = 0;
+    double lastTime = 0;
+    double deltaTime = 0;
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         time = glfwGetTime();
+        deltaTime = time - lastTime;
+        lastTime = time;
+
+        std::cout << "FPS: " << 1/deltaTime << std::endl;
+
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
-        glUseProgram(shaderProgram);
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        triangle.Draw();
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
