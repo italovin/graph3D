@@ -59,8 +59,8 @@ int main(void)
     "FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
     "}\0";
     SceneObject triangle = SceneObject(1);
-    triangle.SetBufferData(0, GL_ARRAY_BUFFER, vertices, sizeof(vertices));
-    triangle.SetElementBufferData(indices, sizeof(indices));
+    triangle.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
+    triangle.StartElementBufferStorage(indices, sizeof(indices));
     triangle.AttachVertexBuffer(0, 0, 0, 3*sizeof(float));
     triangle.AttachElementBuffer();
     triangle.SetAttribute(0, 0, 3, GL_FLOAT, GL_FALSE, 0);

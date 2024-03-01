@@ -19,16 +19,25 @@ void SceneObject::Startup(unsigned int n_vbo)
     glCreateBuffers(1, &ibo);
 }
 
-void SceneObject::SetBufferData(unsigned int vbo_index, GLenum bufferType, float data[], unsigned int dataSize){
+void SceneObject::StartImmutableBufferStorage(unsigned int vbo_index, float data[], unsigned int dataSize){
+    glNamedBufferStorage(vbo[vbo_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::StartMutableBufferStorage(unsigned int vbo_index, GLenum bufferType, float data[], unsigned int dataSize)
+{
     if(bufferType == GL_ARRAY_BUFFER){
-        glNamedBufferStorage(vbo[vbo_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+        glNamedBufferData(vbo[vbo_index], dataSize, data, GL_STATIC_DRAW);
     }
 }
 
-void SceneObject::SetElementBufferData(unsigned int data[], unsigned int dataSize)
+void SceneObject::StartElementBufferStorage(unsigned int data[], unsigned int dataSize)
 {
     glNamedBufferStorage(ibo, dataSize, data, GL_DYNAMIC_STORAGE_BIT);
     indicesCount = dataSize / sizeof(unsigned int);
+}
+
+void SceneObject::UpdateBufferData(unsigned int vbo_index, int offset, float data[], unsigned int dataSize){
+    glNamedBufferSubData(vbo[vbo_index], offset, dataSize, data);
 }
 
 void SceneObject::AttachVertexBuffer(unsigned int vbo_index, unsigned int bindingPoint, int offset, int stride)
