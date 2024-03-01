@@ -1,7 +1,7 @@
 #include "VertexArray.hpp"
 
 VertexArray::VertexArray(){
-    glGenVertexArrays(1, &handle);
+    glCreateVertexArrays(1, &handle);
 }
 unsigned int VertexArray::GetHandle()
 {

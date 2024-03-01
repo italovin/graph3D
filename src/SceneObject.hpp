@@ -1,5 +1,4 @@
 #include "VertexArray.hpp"
-#include "VertexBuffer.hpp"
 #include "ShaderProgram.hpp"
 
 class SceneObject{
@@ -15,7 +14,9 @@ public:
     void Startup(unsigned int n_vbo);
     void SetBufferData(unsigned int vbo_index, GLenum bufferType, float data[], unsigned int dataSize);
     void SetElementBufferData(unsigned int data[], unsigned int dataSize);
-    void SetAttribute(unsigned int attrib, int size, GLenum type, GLboolean normalized, int stride, unsigned int vbo_index);
+    void AttachVertexBuffer(unsigned int vbo_index, unsigned int bindingPoint, int offset, int stride);
+    void AttachElementBuffer();
+    void SetAttribute(unsigned int attrib, unsigned int bindingPoint, int size, GLenum type, GLboolean normalized, int offset);
     void SetShader(ShaderProgram shaderProgram);
     void Bind();
     void Draw();

@@ -1,5 +1,6 @@
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <cstddef>
+#include <iostream>
 
 class ShaderObject {
 private:

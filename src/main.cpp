@@ -1,4 +1,4 @@
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -28,22 +28,30 @@ int main(void)
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    /*if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
-    }
+    }*/
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     GLint no_of_extensions = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
 
-    std::set<std::string> ogl_extensions;
-    for (int i = 0; i < no_of_extensions; ++i)
-        ogl_extensions.insert((const char*)glGetStringi(GL_EXTENSIONS, i));
-    bool directAccessSuported = ogl_extensions.find("GL_ARB_direct_state_access") != ogl_extensions.end();    
-    std::cout << "Direct access suported: " << directAccessSuported << std::endl;
-    
+    /*std::set<std::string> ogl_extensions;
+    for (int i = 0; i < no_of_extensions; ++i){
+        const char * extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
+        std::cout << extension << std::endl;
+        ogl_extensions.insert(extension);
+    }*/
+        
+    //bool directAccessSuported = ogl_extensions.find("GL_ARB_direct_state_access") != ogl_extensions.end();    
+    //std::cout << "Direct access suported: " << directAccessSuported << std::endl;
+
+    GLenum err=glewInit();
+    if(GLEW_ARB_direct_state_access)
+        std::cout << "Direct access suported: " << std::endl;
+
     float vertices[] = {
         -1.0f, -1.0f, 0.0f,
         1.0f, -1.0f, 0.0f,
@@ -63,7 +71,9 @@ int main(void)
     SceneObject triangle = SceneObject(1);
     triangle.SetBufferData(0, GL_ARRAY_BUFFER, vertices, sizeof(vertices));
     triangle.SetElementBufferData(indices, sizeof(indices));
-    triangle.SetAttribute(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    triangle.AttachVertexBuffer(0, 0, 0, 3*sizeof(float));
+    triangle.AttachElementBuffer();
+    triangle.SetAttribute(0, 0, 3, GL_FLOAT, GL_FALSE, 0);
 
     ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER);
     triangleVertexShader.CompileShaderObject(vertexShaderSource);
@@ -73,8 +83,8 @@ int main(void)
     shader.AttachShaderObject(triangleVertexShader);
     shader.AttachShaderObject(triangleFragmentShader);
     shader.Link();
-
-
+    triangle.SetShader(shader);
+    
     glClearColor(0, 0, 0, 1);
     double time = 0;
     double lastTime = 0;
@@ -86,10 +96,11 @@ int main(void)
         deltaTime = time - lastTime;
         lastTime = time;
 
-        std::cout << "FPS: " << 1/deltaTime << std::endl;
+        //std::cout << "FPS: " << 1/deltaTime << std::endl;
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
+        
         triangle.Draw();
 
         /* Swap front and back buffers */
