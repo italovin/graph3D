@@ -35,9 +35,12 @@ void ShaderObject::CompileShaderObject(const char *source, bool compileDebug)
     
     
 }
-const char * LoadShaderSource(const char * shaderPath){
+
+const char *ShaderObject::LoadShaderSource(const char *shaderPath)
+{
     std::ifstream shaderFile;
     std::string shaderCodeString;
+    shaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
     try{
         shaderFile.open(shaderPath);
         std::stringstream shaderStream;
@@ -45,7 +48,7 @@ const char * LoadShaderSource(const char * shaderPath){
         shaderFile.close();
         shaderCodeString = shaderStream.str();
     } catch (std::ifstream::failure e){
-        std::cout << "READ NOT SUCCESSFUL" << std::endl;
+        std::cout << "FILE READ NOT SUCCESSFUL" << std::endl;
     }
     return shaderCodeString.c_str();
 }

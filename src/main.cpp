@@ -48,16 +48,7 @@ int main(void)
         0.0, 1.0f, 0.0f
     };
     unsigned int indices[] = { 0, 1, 2};
-    const char *vertexShaderSource = "#version 330\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main(){\n"
-    "gl_Position = vec4(aPos, 1.0);\n"
-    "}\0";
-    const char *fragmentShaderSource = "#version 330\n"
-    "out vec4 FragColor;\n"
-    "void main(){\n"
-    "FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-    "}\0";
+    
     SceneObject triangle = SceneObject(1);
     triangle.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
     triangle.StartElementBufferStorage(indices, sizeof(indices));
@@ -66,9 +57,11 @@ int main(void)
     triangle.SetAttribute(0, 0, 3, GL_FLOAT, GL_FALSE, 0);
 
     ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER);
-    triangleVertexShader.CompileShaderObject(vertexShaderSource, true);
+    const char * vShader = triangleVertexShader.LoadShaderSource("../resources/basic.vert");
+    triangleVertexShader.CompileShaderObject(vShader, true);
     ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER);
-    triangleFragmentShader.CompileShaderObject(fragmentShaderSource, true);
+    const char * fShader = triangleVertexShader.LoadShaderSource("../resources/basic.frag");
+    triangleFragmentShader.CompileShaderObject(fShader, true);
     ShaderProgram shader = ShaderProgram();
     shader.AttachShaderObject(triangleVertexShader);
     shader.AttachShaderObject(triangleFragmentShader);
