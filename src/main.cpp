@@ -75,10 +75,12 @@ int main(void)
     shader.Link();
     triangle.SetShader(shader);
     
+
     glClearColor(0, 0, 0, 1);
     double time = 0;
     double lastTime = 0;
     double deltaTime = 0;
+    
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -86,7 +88,7 @@ int main(void)
         deltaTime = time - lastTime;
         lastTime = time;
 
-        //std::cout << "FPS: " << 1/deltaTime << std::endl;
+        std::cout << "FPS: " << 1/deltaTime << std::endl;
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */

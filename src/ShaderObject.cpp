@@ -35,7 +35,20 @@ void ShaderObject::CompileShaderObject(const char *source, bool compileDebug)
     
     
 }
-
+const char * LoadShaderSource(const char * shaderPath){
+    std::ifstream shaderFile;
+    std::string shaderCodeString;
+    try{
+        shaderFile.open(shaderPath);
+        std::stringstream shaderStream;
+        shaderStream << shaderFile.rdbuf();
+        shaderFile.close();
+        shaderCodeString = shaderStream.str();
+    } catch (std::ifstream::failure e){
+        std::cout << "READ NOT SUCCESSFUL" << std::endl;
+    }
+    return shaderCodeString.c_str();
+}
 unsigned int ShaderObject::GetHandle(){
     return handle;
 }
