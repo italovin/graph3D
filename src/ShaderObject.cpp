@@ -29,7 +29,7 @@ void ShaderObject::CompileShaderObject(const char *source, bool compileDebug)
             glGetShaderInfoLog(handle, 512, NULL, infoLog);
             std::cout << shaderTypeString << ": COMPILATION_FAILED\n" << infoLog << std::endl;
         } else {
-            std::cout << shaderTypeString << ": COMPILATION_SUCCESSFUL\n" << std::endl;
+            std::cout << shaderTypeString << ": COMPILATION_SUCCESSFUL" << std::endl;
         }
     }
     

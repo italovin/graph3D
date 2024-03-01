@@ -28,29 +28,19 @@ int main(void)
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    /*if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }*/
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     GLint no_of_extensions = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
 
-    /*std::set<std::string> ogl_extensions;
-    for (int i = 0; i < no_of_extensions; ++i){
-        const char * extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
-        std::cout << extension << std::endl;
-        ogl_extensions.insert(extension);
-    }*/
-        
-    //bool directAccessSuported = ogl_extensions.find("GL_ARB_direct_state_access") != ogl_extensions.end();    
-    //std::cout << "Direct access suported: " << directAccessSuported << std::endl;
-
     GLenum err=glewInit();
+    if(err != GLEW_OK){
+        std::cout << "Failed to start GLEW" << std::endl;
+        return -1;
+    }
+       
     if(GLEW_ARB_direct_state_access)
-        std::cout << "Direct access suported: " << std::endl;
+        std::cout << "Direct access extension suported" << std::endl;
 
     float vertices[] = {
         -1.0f, -1.0f, 0.0f,
