@@ -76,9 +76,9 @@ int main(void)
     triangle.SetAttribute(0, 0, 3, GL_FLOAT, GL_FALSE, 0);
 
     ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER);
-    triangleVertexShader.CompileShaderObject(vertexShaderSource);
+    triangleVertexShader.CompileShaderObject(vertexShaderSource, true);
     ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER);
-    triangleFragmentShader.CompileShaderObject(fragmentShaderSource);
+    triangleFragmentShader.CompileShaderObject(fragmentShaderSource, true);
     ShaderProgram shader = ShaderProgram();
     shader.AttachShaderObject(triangleVertexShader);
     shader.AttachShaderObject(triangleFragmentShader);
