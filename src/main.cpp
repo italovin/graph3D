@@ -40,7 +40,7 @@ int main(void)
     }
        
     if(GLEW_ARB_direct_state_access)
-        std::cout << "Direct access extension suported" << std::endl;
+        std::cout << "Direct access extension suported\n\n";
 
     float vertices[] = {
         -1.0f, -1.0f, 0.0f,
@@ -58,8 +58,8 @@ int main(void)
 
     std::string triangleVertexShaderPath = "../resources/basic.vert";
     std::string triangleFragmentShaderPath = "../resources/basic.frag";
-    ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER, triangleVertexShaderPath);
-    ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, triangleFragmentShaderPath);
+    ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER, triangleVertexShaderPath, true);
+    ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, triangleFragmentShaderPath, true);
     ShaderProgram shader = ShaderProgram();
     shader.AttachShaderObject(triangleVertexShader);
     shader.AttachShaderObject(triangleFragmentShader);
@@ -82,7 +82,7 @@ int main(void)
         deltaTime = time - lastTime;
         lastTime = time;
 
-        std::cout << "FPS: " << 1/deltaTime << "\n";
+        //std::cout << "FPS: " << 1/deltaTime << "\n";
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
