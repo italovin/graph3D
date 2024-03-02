@@ -64,8 +64,8 @@ int main(void)
     shader.AttachShaderObject(triangleVertexShader);
     shader.AttachShaderObject(triangleFragmentShader);
     shader.Link();
-    shader.RemoveShaderObject(triangleVertexShader);
-    shader.RemoveShaderObject(triangleFragmentShader);
+    shader.DetachShaderObject(triangleVertexShader);
+    shader.DetachShaderObject(triangleFragmentShader);
 
     triangle.SetShader(shader);
     
@@ -86,8 +86,9 @@ int main(void)
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
-        
+
         triangle.Draw();
+
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
