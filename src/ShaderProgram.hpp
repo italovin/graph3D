@@ -10,4 +10,6 @@ public:
     void AttachShaderObject(ShaderObject shaderObject);
     void Link();
     void Use();
+    void DetachShaderObject(ShaderObject shaderObject);
+    void RemoveShaderObject(ShaderObject shaderObject);
 };

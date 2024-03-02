@@ -1,11 +1,12 @@
 #include "VertexArray.hpp"
 #include "ShaderProgram.hpp"
+#include <vector>
 
 class SceneObject{
 private:
     ShaderProgram shader;
     VertexArray vao;
-    unsigned int * vbo;
+    std::vector<unsigned int> vbo;
     unsigned int ibo;
     unsigned int indicesCount;
 public:

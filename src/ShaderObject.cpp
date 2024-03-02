@@ -5,15 +5,24 @@ ShaderObject::ShaderObject(GLenum shaderType){
     handle = glCreateShader(shaderType);
 }
 
-void ShaderObject::CompileShaderObject(const char *source)
-{
+ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath){
+    this->shaderType = shaderType;
+    handle = glCreateShader(shaderType);
+    SetupShaderObject(shaderPath);
+}
+
+ShaderObject::ShaderObject(GLenum shaderType, std::string shaderPath){
+    this->shaderType = shaderType;
+    handle = glCreateShader(shaderType);
+    SetupShaderObject(shaderPath);
+}
+void ShaderObject::CompileShaderObject(const char *source){
     glShaderSource(handle, 1, &source, NULL);
     glCompileShader(handle);
     
 }
 
-void ShaderObject::CompileShaderObject(const char *source, bool compileDebug)
-{
+void ShaderObject::CompileShaderObject(const char *source, bool compileDebug){
     glShaderSource(handle, 1, &source, NULL);
     glCompileShader(handle);
     if(compileDebug){
@@ -25,6 +34,8 @@ void ShaderObject::CompileShaderObject(const char *source, bool compileDebug)
             shaderTypeString = "VERTEX_SHADER";
         else if(shaderType == GL_FRAGMENT_SHADER)
             shaderTypeString = "FRAGMENT_SHADER";
+        else
+            shaderTypeString = "UNDEFINED_SHADER_TYPE";
         if(!success){
             glGetShaderInfoLog(handle, 512, NULL, infoLog);
             std::cout << shaderTypeString << ": COMPILATION_FAILED\n" << infoLog << std::endl;
@@ -36,8 +47,7 @@ void ShaderObject::CompileShaderObject(const char *source, bool compileDebug)
     
 }
 
-const char *ShaderObject::LoadShaderSource(const char *shaderPath)
-{
+const char *ShaderObject::LoadShaderSourceCore(const char *shaderPath){
     std::ifstream shaderFile;
     std::string shaderCodeString;
     shaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
@@ -52,6 +62,26 @@ const char *ShaderObject::LoadShaderSource(const char *shaderPath)
     }
     return shaderCodeString.c_str();
 }
+
+const char *ShaderObject::LoadShaderSource(const char *shaderPath){
+    return LoadShaderSourceCore(shaderPath);
+}
+const char *ShaderObject::LoadShaderSource(std::string shaderPath){
+    return LoadShaderSourceCore(shaderPath.c_str());
+}
+void ShaderObject::SetupShaderObject(const char *shaderPath){
+    const char * source = LoadShaderSource(shaderPath);
+    CompileShaderObject(source);
+}
+void ShaderObject::SetupShaderObject(std::string shaderPath){
+    const char * source = LoadShaderSource(shaderPath);
+    CompileShaderObject(source);
+}
+
 unsigned int ShaderObject::GetHandle(){
     return handle;
+}
+
+void ShaderObject::Delete(){
+    glDeleteShader(handle);
 }

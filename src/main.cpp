@@ -56,16 +56,17 @@ int main(void)
     triangle.AttachElementBuffer();
     triangle.SetAttribute(0, 0, 3, GL_FLOAT, GL_FALSE, 0);
 
-    ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER);
-    const char * vShader = triangleVertexShader.LoadShaderSource("../resources/basic.vert");
-    triangleVertexShader.CompileShaderObject(vShader, true);
-    ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER);
-    const char * fShader = triangleVertexShader.LoadShaderSource("../resources/basic.frag");
-    triangleFragmentShader.CompileShaderObject(fShader, true);
+    std::string triangleVertexShaderPath = "../resources/basic.vert";
+    std::string triangleFragmentShaderPath = "../resources/basic.frag";
+    ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER, triangleVertexShaderPath);
+    ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, triangleFragmentShaderPath);
     ShaderProgram shader = ShaderProgram();
     shader.AttachShaderObject(triangleVertexShader);
     shader.AttachShaderObject(triangleFragmentShader);
     shader.Link();
+    shader.RemoveShaderObject(triangleVertexShader);
+    shader.RemoveShaderObject(triangleFragmentShader);
+
     triangle.SetShader(shader);
     
 
@@ -81,7 +82,7 @@ int main(void)
         deltaTime = time - lastTime;
         lastTime = time;
 
-        std::cout << "FPS: " << 1/deltaTime << std::endl;
+        std::cout << "FPS: " << 1/deltaTime << "\n";
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */

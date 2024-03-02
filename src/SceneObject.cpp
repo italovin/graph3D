@@ -14,8 +14,8 @@ SceneObject::SceneObject(unsigned int n_vbo){
 
 void SceneObject::Startup(unsigned int n_vbo)
 {
-    vbo = new unsigned int[n_vbo];
-    glCreateBuffers(n_vbo, vbo);
+    vbo = std::vector<unsigned int>(n_vbo);
+    glCreateBuffers(n_vbo, vbo.data());
     glCreateBuffers(1, &ibo);
 }
 
