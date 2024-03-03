@@ -14,7 +14,20 @@ void ShaderProgram::Link(){
 void ShaderProgram::Use(){
     glUseProgram(handle);
 }
-void ShaderProgram::DetachShaderObject(ShaderObject shaderObject){
+void ShaderProgram::SetBool(const std::string &name, bool value) const {
+    glProgramUniform1i(handle, glGetUniformLocation(handle, name.c_str()), (int)value);
+}
+void ShaderProgram::SetInt(const std::string &name, int value) const{ 
+    glProgramUniform1i(handle, glGetUniformLocation(handle, name.c_str()), value); 
+}
+void ShaderProgram::SetFloat(const std::string &name, float value) const{
+    glProgramUniform1f(handle, glGetUniformLocation(handle, name.c_str()), value); 
+}
+void ShaderProgram::SetDouble(const std::string &name, double value) const{
+    glProgramUniform1d(handle, glGetUniformLocation(handle, name.c_str()), value);
+}
+void ShaderProgram::DetachShaderObject(ShaderObject shaderObject)
+{
     glDetachShader(handle, shaderObject.GetHandle());
 }
 void ShaderProgram::RemoveShaderObject(ShaderObject shaderObject){

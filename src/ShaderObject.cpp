@@ -16,7 +16,7 @@ ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath){
     debugInfo = false;
 }
 
-ShaderObject::ShaderObject(GLenum shaderType, std::string shaderPath){
+ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath){
     ConstructCore(shaderType);
     SetupShaderObject(shaderPath);
     debugInfo = false;
@@ -33,7 +33,7 @@ ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath, bool debug
     this->debugInfo = debugInfo;
 }
 
-ShaderObject::ShaderObject(GLenum shaderType, std::string shaderPath, bool debugInfo){
+ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath, bool debugInfo){
     ConstructCore(shaderType);
     SetupShaderObject(shaderPath);
     this->debugInfo = debugInfo;
@@ -94,7 +94,7 @@ void ShaderObject::SetupShaderObject(const char *shaderPath){
     std::string source = LoadShaderSource(shaderPath);
     CompileShaderObject(source);
 }
-void ShaderObject::SetupShaderObject(const std::string shaderPath){
+void ShaderObject::SetupShaderObject(const std::string &shaderPath){
     std::string source = LoadShaderSource(shaderPath);
     CompileShaderObject(source);
 }

@@ -17,13 +17,13 @@ private:
 public:
     ShaderObject(GLenum shaderType);
     ShaderObject(GLenum shaderType, const char* shaderPath);
-    ShaderObject(GLenum shaderType, const std::string shaderPath);
+    ShaderObject(GLenum shaderType, const std::string &shaderPath);
     ShaderObject(GLenum shaderType, bool debugInfo);
     ShaderObject(GLenum shaderType, const char* shaderPath, bool debugInfo);
-    ShaderObject(GLenum shaderType, const std::string shaderPath, bool debugInfo);
+    ShaderObject(GLenum shaderType, const std::string &shaderPath, bool debugInfo);
     void CompileShaderObject(const std::string source);
     void SetupShaderObject(const char *shaderPath);
-    void SetupShaderObject(const std::string shaderPath);
+    void SetupShaderObject(const std::string &shaderPath);
     unsigned int GetHandle();
     void Delete();
 };

@@ -74,7 +74,7 @@ int main(void)
     double time = 0;
     double lastTime = 0;
     double deltaTime = 0;
-    
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -86,7 +86,7 @@ int main(void)
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
-
+        shader.SetFloat("red", 0.5f);
         triangle.Draw();
 
 
