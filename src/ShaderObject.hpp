@@ -1,9 +1,9 @@
 #include <GL/glew.h>
-#include <cstddef>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 class ShaderObject {
 private:

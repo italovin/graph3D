@@ -45,9 +45,8 @@ void ShaderObject::CompileShaderObject(const std::string source){
     glCompileShader(handle);
     if(debugInfo){
         int  success;
-        char infoLog[512];
         glGetShaderiv(handle, GL_COMPILE_STATUS, &success);
-        const char * shaderTypeString;
+        std::string shaderTypeString;
         if(shaderType == GL_VERTEX_SHADER)
             shaderTypeString = "VERTEX_SHADER";
         else if(shaderType == GL_FRAGMENT_SHADER)
@@ -55,8 +54,11 @@ void ShaderObject::CompileShaderObject(const std::string source){
         else
             shaderTypeString = "UNDEFINED_SHADER_TYPE";
         if(!success){
-            glGetShaderInfoLog(handle, 512, NULL, infoLog);
-            std::cout << shaderTypeString << ": COMPILATION_FAILED\n" << infoLog << std::endl;
+            int infoMaxLength = 0;
+            glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &infoMaxLength);
+            std::vector<char> infoLog(infoMaxLength);
+            glGetShaderInfoLog(handle, infoMaxLength, nullptr, infoLog.data());
+            std::cout << shaderTypeString << ": COMPILATION_FAILED\n" << infoLog.data() << std::endl;
         } else {
             std::cout << shaderTypeString << ": COMPILATION_SUCCESSFUL" << std::endl;
         }
