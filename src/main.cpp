@@ -8,6 +8,9 @@
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
+const unsigned int WIDTH = 800; 
+const unsigned int HEIGHT = 600;
+
 int main(void)
 {
     GLFWwindow* window;
@@ -17,7 +20,7 @@ int main(void)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(800, 600, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(WIDTH, HEIGHT, "Hello World", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -68,7 +71,7 @@ int main(void)
     shader.DetachShaderObject(triangleFragmentShader);
 
     triangle.SetShader(shader);
-    
+    triangle.UpdateProjection("projection", WIDTH, HEIGHT);
 
     glClearColor(0, 0, 0, 1);
     double time = 0;
@@ -87,6 +90,8 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
         shader.SetFloat("red", 0.5f);
+        triangle.UpdateModel("model");
+        triangle.UpdateView("view", glm::vec3(0, 0, -5));
         triangle.Draw();
 
 

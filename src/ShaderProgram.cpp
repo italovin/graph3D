@@ -26,6 +26,9 @@ void ShaderProgram::SetFloat(const std::string &name, float value) const{
 void ShaderProgram::SetDouble(const std::string &name, double value) const{
     glProgramUniform1d(handle, glGetUniformLocation(handle, name.c_str()), value);
 }
+void ShaderProgram::SetMat4Float(const std::string &name, const glm::mat4 &matrix) const{
+    glProgramUniformMatrix4fv(handle, glGetUniformLocation(handle, name.c_str()), 1, GL_FALSE, glm::value_ptr(matrix));
+}
 void ShaderProgram::DetachShaderObject(ShaderObject shaderObject)
 {
     glDetachShader(handle, shaderObject.GetHandle());

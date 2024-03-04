@@ -1,6 +1,8 @@
 #include "VertexArray.hpp"
 #include "ShaderProgram.hpp"
 #include <vector>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 class SceneObject{
 private:
@@ -9,6 +11,9 @@ private:
     std::vector<unsigned int> vbo;
     unsigned int ibo;
     unsigned int indicesCount;
+    glm::vec3 position;
+    glm::vec3 rotation;
+    glm::vec3 scale;
 public:
     SceneObject();
     SceneObject(unsigned int n_vbo);
@@ -21,6 +26,9 @@ public:
     void AttachElementBuffer();
     void SetAttribute(unsigned int attrib, unsigned int bindingPoint, int size, GLenum type, GLboolean normalized, int offset);
     void SetShader(ShaderProgram shaderProgram);
+    void UpdateModel(const std::string &modelName);
+    void UpdateView(const std::string &viewName, const glm::vec3 &cameraPos);
+    void UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height);
     void Bind();
     void Draw();
 };

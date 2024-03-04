@@ -10,6 +10,9 @@ SceneObject::SceneObject(unsigned int n_vbo){
     vao = VertexArray();
     Bind();
     Startup(n_vbo);
+    position = glm::vec3(0, 0, 0);
+    rotation = glm::vec3(0, 0, 0);
+    scale = glm::vec3(1, 1, 1);
 }
 
 void SceneObject::Startup(unsigned int n_vbo)
@@ -59,6 +62,24 @@ void SceneObject::SetShader(ShaderProgram shaderProgram){
     shader = shaderProgram;
 }
 
+void SceneObject::UpdateModel(const std::string &modelName){
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 rot = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1, 0, 0));
+    glm::mat4 scl = glm::scale(model, scale);
+    glm::mat4 trn = glm::translate(model, position);
+    model = trn*scl*rot;
+    shader.SetMat4Float(modelName, model);
+}
+void SceneObject::UpdateView(const std::string &viewName, const glm::vec3 &cameraPos){
+    glm::mat4 view = glm::mat4(1.0f);
+    view = glm::translate(view, cameraPos);
+    shader.SetMat4Float(viewName, view);
+}
+void SceneObject::UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height){
+    glm::mat4 projection = glm::mat4(1.0f);
+    projection = glm::perspective(glm::radians(45.0f), (float)width/height, 0.1f, 100.0f);
+    shader.SetMat4Float(projectionName, projection);
+}
 void SceneObject::Bind()
 {
     vao.Bind();
