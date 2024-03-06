@@ -70,8 +70,8 @@ void SceneObject::UpdateModel(const std::string &modelName){
     model = trn*scl*rot;
     shader.SetMat4Float(modelName, model);
 }
-void SceneObject::UpdateView(const std::string &viewName, const glm::vec3 &cameraPos, const glm::vec3 &cameraFront, const glm::vec3 &cameraUp){
-    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+void SceneObject::UpdateView(const std::string &viewName, Camera camera){
+    glm::mat4 view = glm::lookAt(camera.transform.position, camera.transform.position + camera.front, camera.up);
     shader.SetMat4Float(viewName, view);
 }
 void SceneObject::UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height){
@@ -88,4 +88,10 @@ void SceneObject::Draw(){
     shader.Use();
     Bind();
     glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, 0);
+}
+
+void SceneObject::DrawLines(){
+    shader.Use();
+    Bind();
+    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_SHORT, 0);
 }

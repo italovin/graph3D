@@ -1,5 +1,6 @@
 #include "VertexArray.hpp"
 #include "ShaderProgram.hpp"
+#include "Camera.hpp"
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -27,8 +28,9 @@ public:
     void SetAttribute(unsigned int attrib, unsigned int bindingPoint, int size, GLenum type, GLboolean normalized, int offset);
     void SetShader(ShaderProgram shaderProgram);
     void UpdateModel(const std::string &modelName);
-    void UpdateView(const std::string &viewName, const glm::vec3 &cameraPos, const glm::vec3 &cameraFront, const glm::vec3 &cameraUp);
+    void UpdateView(const std::string &viewName, Camera camera);
     void UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height);
     void Bind();
     void Draw();
+    void DrawLines();
 };

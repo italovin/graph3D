@@ -12,12 +12,10 @@ void processInput(GLFWwindow* window, float deltaTime);
 const unsigned int WIDTH = 800; 
 const unsigned int HEIGHT = 600;
 
-glm::vec3 cameraPos = glm::vec3(0, 0, -3);
-glm::vec3 cameraFront = glm::vec3(0, 0, 1);
-glm::vec3 cameraUp = glm::vec3(0, 1, 0);
+
 
 int main(void)
-{
+{   
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -66,6 +64,7 @@ int main(void)
 
     std::string triangleVertexShaderPath = "../resources/basic.vert";
     std::string triangleFragmentShaderPath = "../resources/basic.frag";
+    ShaderObject test = ShaderObject(GL_VERTEX_SHADER);
     ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER, triangleVertexShaderPath, true);
     ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, triangleFragmentShaderPath, true);
     ShaderProgram shader = ShaderProgram();
@@ -82,6 +81,14 @@ int main(void)
     double time = 0;
     double lastTime = 0;
     double deltaTime = 0;
+    glm::vec3 cameraPos = glm::vec3(0, 0, -3);
+    glm::vec3 cameraFront = glm::vec3(0, 0, 1);
+    glm::vec3 cameraUp = glm::vec3(0, 1, 0);
+
+    Camera mainCamera = Camera();
+    mainCamera.transform.position = cameraPos;
+    mainCamera.front = cameraFront;
+    mainCamera.up = cameraUp;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -90,14 +97,25 @@ int main(void)
         deltaTime = time - lastTime;
         lastTime = time;
 
-        processInput(window, deltaTime);
+        //processInput(window, deltaTime);
         //std::cout << "FPS: " << 1/deltaTime << "\n";
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, true);
 
+        float cameraSpeed = static_cast<float>(2.5 * deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            mainCamera.transform.position += cameraSpeed * cameraFront;
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            mainCamera.transform.position -= cameraSpeed * cameraFront;
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            mainCamera.transform.position -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            mainCamera.transform.position += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
         shader.SetFloat("red", 0.5f);
         triangle.UpdateModel("model");
-        triangle.UpdateView("view", cameraPos, cameraFront, cameraUp);
+        triangle.UpdateView("view", mainCamera);
         triangle.Draw();
 
 
@@ -115,16 +133,6 @@ void processInput(GLFWwindow *window, float deltaTime)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
-    float cameraSpeed = static_cast<float>(2.5 * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
