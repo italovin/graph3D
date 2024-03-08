@@ -6,37 +6,37 @@ void ShaderObject::ConstructCore(GLenum shaderType){
 }
 
 ShaderObject::ShaderObject(GLenum shaderType){
-    ConstructCore(shaderType);
     debugInfo = false;
+    ConstructCore(shaderType);
 }
 
 ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath){
+    debugInfo = false;
     ConstructCore(shaderType);
     SetupShaderObject(shaderPath);
-    debugInfo = false;
 }
 
 ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath){
+    debugInfo = false;
     ConstructCore(shaderType);
     SetupShaderObject(shaderPath);
-    debugInfo = false;
 }
 
 ShaderObject::ShaderObject(GLenum shaderType, bool debugInfo){
-    ConstructCore(shaderType);
     this->debugInfo = debugInfo;
+    ConstructCore(shaderType);
 }
 
 ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath, bool debugInfo){
+    this->debugInfo = debugInfo;
     ConstructCore(shaderType);
     SetupShaderObject(shaderPath);
-    this->debugInfo = debugInfo;
 }
 
 ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath, bool debugInfo){
+    this->debugInfo = debugInfo;
     ConstructCore(shaderType);
     SetupShaderObject(shaderPath);
-    this->debugInfo = debugInfo;
 }
 
 void ShaderObject::CompileShaderObject(const std::string source){
@@ -53,6 +53,7 @@ void ShaderObject::CompileShaderObject(const std::string source){
             shaderTypeString = "FRAGMENT_SHADER";
         else
             shaderTypeString = "UNDEFINED_SHADER_TYPE";
+            
         if(!success){
             int infoMaxLength = 0;
             glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &infoMaxLength);

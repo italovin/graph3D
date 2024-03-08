@@ -64,7 +64,6 @@ int main(void)
 
     std::string triangleVertexShaderPath = "../resources/basic.vert";
     std::string triangleFragmentShaderPath = "../resources/basic.frag";
-    ShaderObject test = ShaderObject(GL_VERTEX_SHADER);
     ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER, triangleVertexShaderPath, true);
     ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, triangleFragmentShaderPath, true);
     ShaderProgram shader = ShaderProgram();
