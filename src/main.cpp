@@ -47,20 +47,42 @@ int main(void)
        
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
-
-    float vertices[] = {
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f,
-        0.0, 1.0f, 0.0f
-    };
-    unsigned int indices[] = { 0, 1, 2};
     
+    int N = 64;
+    float graphSemiWidth = 5;
+    
+    float vertices[2*(N+1)*(N+1)];
+    
+    for(int i = 0; i < N+1; i++) {
+        for(int j = 0; j < N+1; j++) {
+            float x = (2*graphSemiWidth*(j - (N/2))) / N;
+            float y = (2*graphSemiWidth*(i - (N/2))) / N;
+            vertices[2*i*(N+1)+2*j] = x;
+            vertices[2*i*(N+1)+2*j+1] = y;
+        }
+    }
+    GLushort indices[2*N*(N+1)*2];
+    int i = 0;
+    for(int y = 0; y < N+1; y++) {
+        for(int x = 0; x < N; x++) {
+            indices[i++] = y * (N+1) + x;
+            indices[i++] = y * (N+1) + x + 1;
+        }
+    }
+
+    // Vertical grid lines
+    for(int x = 0; x < N+1; x++) {
+        for(int y = 0; y < N; y++) {
+            indices[i++] = y * (N+1) + x;
+            indices[i++] = (y + 1) * (N+1) + x;
+        }
+    }
     SceneObject triangle = SceneObject(1);
     triangle.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
     triangle.StartElementBufferStorage(indices, sizeof(indices));
-    triangle.AttachVertexBuffer(0, 0, 0, 3*sizeof(float));
+    triangle.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
     triangle.AttachElementBuffer();
-    triangle.SetAttribute(0, 0, 3, GL_FLOAT, GL_FALSE, 0);
+    triangle.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
     std::string triangleVertexShaderPath = "../resources/basic.vert";
     std::string triangleFragmentShaderPath = "../resources/basic.frag";
@@ -72,6 +94,7 @@ int main(void)
     shader.Link();
     shader.DetachShaderObject(triangleVertexShader);
     shader.DetachShaderObject(triangleFragmentShader);
+    shader.SetFloat("red", 0.5f);
 
     triangle.SetShader(shader);
     triangle.UpdateProjection("projection", WIDTH, HEIGHT);
@@ -112,10 +135,9 @@ int main(void)
             mainCamera.transform.position += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
-        shader.SetFloat("red", 0.5f);
         triangle.UpdateModel("model");
         triangle.UpdateView("view", mainCamera);
-        triangle.Draw();
+        triangle.DrawLines();
 
 
         /* Swap front and back buffers */

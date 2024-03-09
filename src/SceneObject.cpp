@@ -39,6 +39,12 @@ void SceneObject::StartElementBufferStorage(unsigned int data[], unsigned int da
     indicesCount = dataSize / sizeof(unsigned int);
 }
 
+void SceneObject::StartElementBufferStorage(unsigned short data[], unsigned int dataSize)
+{
+    glNamedBufferStorage(ibo, dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+    indicesCount = dataSize / sizeof(unsigned short);
+}
+
 void SceneObject::UpdateBufferData(unsigned int vbo_index, int offset, float data[], unsigned int dataSize){
     glNamedBufferSubData(vbo[vbo_index], offset, dataSize, data);
 }
