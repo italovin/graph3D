@@ -7,12 +7,17 @@
 #include <set>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow* window, float deltaTime);
 
 const unsigned int WIDTH = 800; 
 const unsigned int HEIGHT = 600;
 
+bool firstMouse = true;
+float lastX = WIDTH/2;
+float lastY = HEIGHT/2;
 
+Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
 
 int main(void)
 {   
@@ -33,6 +38,7 @@ int main(void)
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     std::cout << glGetString(GL_VERSION) << std::endl;
 
@@ -103,14 +109,6 @@ int main(void)
     double time = 0;
     double lastTime = 0;
     double deltaTime = 0;
-    glm::vec3 cameraPos = glm::vec3(0, 0, -3);
-    glm::vec3 cameraFront = glm::vec3(0, 0, 1);
-    glm::vec3 cameraUp = glm::vec3(0, 1, 0);
-
-    Camera mainCamera = Camera();
-    mainCamera.transform.position = cameraPos;
-    mainCamera.front = cameraFront;
-    mainCamera.up = cameraUp;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -126,19 +124,21 @@ int main(void)
 
         float cameraSpeed = static_cast<float>(2.5 * deltaTime);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            mainCamera.transform.position += cameraSpeed * cameraFront;
+            mainCamera.transform.position += cameraSpeed * mainCamera.front;
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            mainCamera.transform.position -= cameraSpeed * cameraFront;
+            mainCamera.transform.position -= cameraSpeed * mainCamera.front;
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            mainCamera.transform.position -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+            mainCamera.transform.position -= glm::normalize(glm::cross(mainCamera.front, mainCamera.up)) * cameraSpeed;
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            mainCamera.transform.position += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+            mainCamera.transform.position += glm::normalize(glm::cross(mainCamera.front, mainCamera.up)) * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+            mainCamera.transform.position += cameraSpeed * mainCamera.up;
+        
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
         triangle.UpdateModel("model");
         triangle.UpdateView("view", mainCamera);
         triangle.DrawLines();
-
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -160,4 +160,23 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+}
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    lastX = xpos;
+    lastY = ypos;
+
+    mainCamera.ProcessMouseMovement(xoffset, yoffset);
 }

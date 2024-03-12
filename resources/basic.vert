@@ -6,6 +6,6 @@ uniform mat4 projection;
 void main(){
 float x = aPos.x;
 float y = aPos.y;
-float z = x*x + y*y;
+float z = x;
 gl_Position = projection*view*model*vec4(x, z, y, 1.0);
 }
