@@ -6,9 +6,12 @@ uniform mat4 projection;
 
 uniform float time;
 
+out float graphZ;
+
 void main(){
 float x = aPos.x;
 float y = aPos.y;
-float z = cos(x - time)*sin(y - time);
+float z = cos(x - 2*time)*sin(y - 2*time);
+graphZ = z;
 gl_Position = projection*view*model*vec4(x, z, y, 1.0);
 }

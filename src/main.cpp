@@ -55,7 +55,7 @@ int main(void)
         std::cout << "Direct access extension suported\n\n";
     
     int N = 128;
-    float graphSemiWidth = 5;
+    float graphSemiWidth = 10;
     
     float vertices[2*(N+1)*(N+1)];
     
