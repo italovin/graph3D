@@ -54,7 +54,7 @@ int main(void)
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
     
-    int N = 64;
+    int N = 128;
     float graphSemiWidth = 5;
     
     float vertices[2*(N+1)*(N+1)];
@@ -109,6 +109,9 @@ int main(void)
     double time = 0;
     double lastTime = 0;
     double deltaTime = 0;
+    double maxDeltaTime = 0;
+    double minDeltaTime = 0;
+    unsigned long ticks = 0;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -117,10 +120,24 @@ int main(void)
         deltaTime = time - lastTime;
         lastTime = time;
 
+        if(minDeltaTime == 0){
+            minDeltaTime = deltaTime;
+        }
+        if(deltaTime < minDeltaTime){
+            minDeltaTime = deltaTime;
+        }
+        if(deltaTime > maxDeltaTime){
+            maxDeltaTime = deltaTime;
+        }
+        ticks++;
         //processInput(window, deltaTime);
         //std::cout << "FPS: " << 1/deltaTime << "\n";
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
+            std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
+            std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
+            std::cout << "Ticks: " << ticks << " Ticks/Sec: " << ticks/time << "\n";
             glfwSetWindowShouldClose(window, true);
+        }
 
         float cameraSpeed = static_cast<float>(2.5 * deltaTime);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -136,6 +153,7 @@ int main(void)
         
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
+        shader.SetFloat("time", time);
         triangle.UpdateModel("model");
         triangle.UpdateView("view", mainCamera);
         triangle.DrawLines();
