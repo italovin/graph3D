@@ -55,7 +55,7 @@ int main(void)
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
     
-    int N = 128;
+    int N = 128; // Max Limit N is 588 for current stack variables, but is recommended below 400
     float graphSemiWidth = 10;
     
     float vertices[2*(N+1)*(N+1)];
@@ -68,7 +68,7 @@ int main(void)
             vertices[2*i*(N+1)+2*j+1] = y;
         }
     }
-    GLushort indices[2*N*(N+1)*2];
+    GLuint indices[2*N*(N+1)*2];
     int i = 0;
     for(int y = 0; y < N+1; y++) {
         for(int x = 0; x < N; x++) {
@@ -84,6 +84,8 @@ int main(void)
             indices[i++] = (y + 1) * (N+1) + x;
         }
     }
+    std::cout << "Graph data size in kylobytes " << (sizeof(vertices) + sizeof(indices))/1024 << "(kB)\n";
+
     SceneObject graph = SceneObject(1);
     graph.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
     graph.StartElementBufferStorage(indices, sizeof(indices));
@@ -102,9 +104,10 @@ int main(void)
     .AddUniform(MAT4, "model")
     .AddUniform(MAT4, "view")
     .AddUniform(MAT4, "projection")
+    .AddUniform(FLOAT, "time")
     .CreateMain("float x = aPos.x;\n"
     "float y = aPos.y;\n"
-    "float z = x*x + y*y;\n"
+    "float z = cos(x - 2*time)*sin(y - 2*time);\n"
     "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = shaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)

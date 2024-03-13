@@ -99,5 +99,11 @@ void SceneObject::Draw(){
 void SceneObject::DrawLines(){
     shader.Use();
     Bind();
-    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_SHORT, 0);
+    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_INT, 0);
+}
+
+void SceneObject::DrawLines(GLenum type){
+    shader.Use();
+    Bind();
+    glDrawElements(GL_LINES, indicesCount, type, 0);
 }

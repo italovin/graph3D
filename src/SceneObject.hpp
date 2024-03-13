@@ -34,4 +34,5 @@ public:
     void Bind();
     void Draw();
     void DrawLines();
+    void DrawLines(GLenum type);
 };
