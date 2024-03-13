@@ -1,3 +1,5 @@
+#ifndef SHADER_OBJECT_H
+#define SHADER_OBJECT_H
 #include <GL/glew.h>
 #include <fstream>
 #include <sstream>
@@ -16,14 +18,16 @@ private:
     bool debugInfo;
 public:
     ShaderObject(GLenum shaderType);
-    ShaderObject(GLenum shaderType, const char* shaderPath);
+    ShaderObject(GLenum shaderType, const char *shaderPath);
     ShaderObject(GLenum shaderType, const std::string &shaderPath);
     ShaderObject(GLenum shaderType, bool debugInfo);
-    ShaderObject(GLenum shaderType, const char* shaderPath, bool debugInfo);
+    ShaderObject(GLenum shaderType, const char *shaderPath, bool debugInfo);
     ShaderObject(GLenum shaderType, const std::string &shaderPath, bool debugInfo);
-    void CompileShaderObject(const std::string source);
+    void CompileShaderObject(const std::string &source);
     void SetupShaderObject(const char *shaderPath);
     void SetupShaderObject(const std::string &shaderPath);
     unsigned int GetHandle();
+    GLenum GetType();
     void Delete();
 };
+#endif

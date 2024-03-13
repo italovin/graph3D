@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <iostream>
 #include "SceneObject.hpp"
+#include "ShaderBuilder.hpp"
 #include <string>
 #include <set>
 
@@ -48,7 +49,7 @@ int main(void)
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
     
-    int N = 64;
+    int N = 128;
     float graphSemiWidth = 5;
     
     float vertices[2*(N+1)*(N+1)];
@@ -77,27 +78,43 @@ int main(void)
             indices[i++] = (y + 1) * (N+1) + x;
         }
     }
-    SceneObject triangle = SceneObject(1);
-    triangle.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
-    triangle.StartElementBufferStorage(indices, sizeof(indices));
-    triangle.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
-    triangle.AttachElementBuffer();
-    triangle.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
+    SceneObject graph = SceneObject(1);
+    graph.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
+    graph.StartElementBufferStorage(indices, sizeof(indices));
+    graph.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
+    graph.AttachElementBuffer();
+    graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
-    std::string triangleVertexShaderPath = "../resources/basic.vert";
-    std::string triangleFragmentShaderPath = "../resources/basic.frag";
-    ShaderObject triangleVertexShader = ShaderObject(GL_VERTEX_SHADER, triangleVertexShaderPath, true);
-    ShaderObject triangleFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, triangleFragmentShaderPath, true);
+    /*std::string graphVertexShaderPath = "../resources/basic.vert";
+    std::string graphFragmentShaderPath = "../resources/basic.frag";
+    ShaderObject graphVertexShader = ShaderObject(GL_VERTEX_SHADER, graphVertexShaderPath, true);
+    ShaderObject graphFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, graphFragmentShaderPath, true);*/
+    ShaderBuilder shaderBuilder = ShaderBuilder(true);
+    ShaderObject graphVertexShader = shaderBuilder.SetShaderType(GL_VERTEX_SHADER)
+    .SetVersion(330)
+    .AddInput(0, VEC2, "aPos")
+    .AddUniform(MAT4, "model")
+    .AddUniform(MAT4, "view")
+    .AddUniform(MAT4, "projection")
+    .CreateMain("float x = aPos.x;\n"
+    "float y = aPos.y;\n"
+    "float z = x*x + y*y;\n"
+    "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
+    ShaderObject graphFragmentShader = shaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
+    .SetVersion(330)
+    .AddOutput(VEC4, "FragColor")
+    .AddUniform(FLOAT, "red")
+    .CreateMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
     ShaderProgram shader = ShaderProgram();
-    shader.AttachShaderObject(triangleVertexShader);
-    shader.AttachShaderObject(triangleFragmentShader);
+    shader.AttachShaderObject(graphVertexShader);
+    shader.AttachShaderObject(graphFragmentShader);
     shader.Link();
-    shader.DetachShaderObject(triangleVertexShader);
-    shader.DetachShaderObject(triangleFragmentShader);
+    shader.DetachShaderObject(graphVertexShader);
+    shader.DetachShaderObject(graphFragmentShader);
     shader.SetFloat("red", 0.5f);
 
-    triangle.SetShader(shader);
-    triangle.UpdateProjection("projection", WIDTH, HEIGHT);
+    graph.SetShader(shader);
+    graph.UpdateProjection("projection", WIDTH, HEIGHT);
 
     glClearColor(0, 0, 0, 1);
     double time = 0;
@@ -111,7 +128,7 @@ int main(void)
     mainCamera.transform.position = cameraPos;
     mainCamera.front = cameraFront;
     mainCamera.up = cameraUp;
-
+    
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -126,18 +143,21 @@ int main(void)
 
         float cameraSpeed = static_cast<float>(2.5 * deltaTime);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            mainCamera.transform.position += cameraSpeed * cameraFront;
+            mainCamera.transform.position += cameraSpeed * mainCamera.front;
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            mainCamera.transform.position -= cameraSpeed * cameraFront;
+            mainCamera.transform.position -= cameraSpeed * mainCamera.front;
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            mainCamera.transform.position -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+            mainCamera.transform.position -= glm::normalize(glm::cross(mainCamera.front, mainCamera.up)) * cameraSpeed;
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            mainCamera.transform.position += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+            mainCamera.transform.position += glm::normalize(glm::cross(mainCamera.front, mainCamera.up)) * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+            mainCamera.transform.position += cameraSpeed * mainCamera.up;
+
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
-        triangle.UpdateModel("model");
-        triangle.UpdateView("view", mainCamera);
-        triangle.DrawLines();
+        graph.UpdateModel("model");
+        graph.UpdateView("view", mainCamera);
+        graph.DrawLines();
 
 
         /* Swap front and back buffers */

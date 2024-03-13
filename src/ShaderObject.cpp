@@ -39,7 +39,7 @@ ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath, boo
     SetupShaderObject(shaderPath);
 }
 
-void ShaderObject::CompileShaderObject(const std::string source){
+void ShaderObject::CompileShaderObject(const std::string &source){
     const char * sourceData = source.data();
     glShaderSource(handle, 1, &sourceData, NULL);
     glCompileShader(handle);
@@ -104,6 +104,10 @@ void ShaderObject::SetupShaderObject(const std::string &shaderPath){
 
 unsigned int ShaderObject::GetHandle(){
     return handle;
+}
+
+GLenum ShaderObject::GetType(){
+    return shaderType;
 }
 
 void ShaderObject::Delete(){
