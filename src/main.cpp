@@ -19,6 +19,8 @@ float lastX = WIDTH/2;
 float lastY = HEIGHT/2;
 
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
+Camera freeCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, -90, 0));
+Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, 0, 0));
 
 int main(void)
 {   
@@ -133,6 +135,9 @@ int main(void)
     double minDeltaTime = 0;
     unsigned long ticks = 0;
 
+    mainCamera = freeCamera;
+    bool isFreeCamera = true;
+    bool holdingCameraSwitchKey = false;
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -155,22 +160,36 @@ int main(void)
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
             std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
             std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
-            std::cout << "Ticks: " << ticks << " Ticks/Sec: " << ticks/time << "\n";
+            std::cout << "Ticks: " << ticks << "; Ticks/Sec: " << ticks/time << "\n";
             glfwSetWindowShouldClose(window, true);
         }
 
         float cameraSpeed = static_cast<float>(2.5 * deltaTime);
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            mainCamera.transform.position += cameraSpeed * mainCamera.front;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            mainCamera.transform.position -= cameraSpeed * mainCamera.front;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            mainCamera.transform.position -= glm::normalize(glm::cross(mainCamera.front, mainCamera.up)) * cameraSpeed;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            mainCamera.transform.position += glm::normalize(glm::cross(mainCamera.front, mainCamera.up)) * cameraSpeed;
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-            mainCamera.transform.position += cameraSpeed * mainCamera.up;
+        if(isFreeCamera){
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+                freeCamera.transform.position += cameraSpeed * freeCamera.front;
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+                freeCamera.transform.position -= cameraSpeed * freeCamera.front;
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+                freeCamera.transform.position -= glm::normalize(glm::cross(freeCamera.front, freeCamera.up)) * cameraSpeed;
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+                freeCamera.transform.position += glm::normalize(glm::cross(freeCamera.front, freeCamera.up)) * cameraSpeed;
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+                freeCamera.transform.position += cameraSpeed * freeCamera.up;
+
+            mainCamera = freeCamera;
+        } else {
+            mainCamera = topDownCamera;
+        }
         
+        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !holdingCameraSwitchKey){
+            holdingCameraSwitchKey = true;
+            isFreeCamera = !isFreeCamera;
+        }
+        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE){
+            holdingCameraSwitchKey = false;
+        }
+
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
         shader.SetFloat("time", time);
@@ -216,5 +235,5 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    mainCamera.ProcessMouseMovement(xoffset, yoffset);
+    freeCamera.ProcessMouseMovement(xoffset, yoffset);
 }
