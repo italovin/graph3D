@@ -1,6 +1,12 @@
 #include "ShaderProgram.hpp"
 
 ShaderProgram::ShaderProgram(){
+    debugInfo = false;
+    handle = glCreateProgram();
+}
+
+ShaderProgram::ShaderProgram(bool debugInfo){
+    this->debugInfo = debugInfo;
     handle = glCreateProgram();
 }
 
@@ -8,11 +14,31 @@ void ShaderProgram::AttachShaderObject(ShaderObject shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());
 }
+void ShaderProgram::Create(){
+    handle = glCreateProgram();
+}
 void ShaderProgram::Link(){
     glLinkProgram(handle);
+    if(debugInfo){
+        int  success;
+        glGetShaderiv(handle, GL_LINK_STATUS, &success);
+
+        if(!success){
+            GLint maxLength = 0;
+            glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &maxLength);
+            std::vector<GLchar> infoLog(maxLength);
+            glGetProgramInfoLog(handle, maxLength, nullptr, infoLog.data());
+            std::cout << "LINK_FAILED:\n" << infoLog.data() << std::endl;
+        } else {
+            std::cout << "LINK_SUCCESSFUL" << std::endl;
+        }
+    }
 }
 void ShaderProgram::Use(){
     glUseProgram(handle);
+}
+unsigned int ShaderProgram::GetHandle(){
+    return handle;
 }
 void ShaderProgram::SetBool(const std::string &name, bool value) const {
     glProgramUniform1i(handle, glGetUniformLocation(handle, name.c_str()), (int)value);

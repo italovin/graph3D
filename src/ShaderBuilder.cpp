@@ -99,8 +99,8 @@ ShaderBuilder& ShaderBuilder::AddOutput(GLSL_TYPE type, const std::string & outp
     return *this;
 }
 
-ShaderBuilder& ShaderBuilder::CreateMain(const std::string &body){
-    mainStream << "void main(){\n" << body << "}\n";
+ShaderBuilder& ShaderBuilder::SetMain(const std::string &body){
+    mainStream = std::stringstream("void main(){\n" + body + "}\n");
     return *this;
 }
 

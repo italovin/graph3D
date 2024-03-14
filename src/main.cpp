@@ -95,27 +95,24 @@ int main(void)
     graph.AttachElementBuffer();
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
-    /*std::string graphVertexShaderPath = "../resources/basic.vert";
-    std::string graphFragmentShaderPath = "../resources/basic.frag";
-    ShaderObject graphVertexShader = ShaderObject(GL_VERTEX_SHADER, graphVertexShaderPath, true);
-    ShaderObject graphFragmentShader = ShaderObject(GL_FRAGMENT_SHADER, graphFragmentShaderPath, true);*/
-    ShaderBuilder shaderBuilder = ShaderBuilder(true);
-    ShaderObject graphVertexShader = shaderBuilder.SetShaderType(GL_VERTEX_SHADER)
+    ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
+    ShaderBuilder fragmentShaderBuilder = ShaderBuilder(true);
+    ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(330)
     .AddInput(0, VEC2, "aPos")
     .AddUniform(MAT4, "model")
     .AddUniform(MAT4, "view")
     .AddUniform(MAT4, "projection")
     .AddUniform(FLOAT, "time")
-    .CreateMain("float x = aPos.x;\n"
+    .SetMain("float x = aPos.x;\n"
     "float y = aPos.y;\n"
     "float z = cos(x - 2*time)*sin(y - 2*time);\n"
     "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
-    ShaderObject graphFragmentShader = shaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
+    ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)
     .AddOutput(VEC4, "FragColor")
     .AddUniform(FLOAT, "red")
-    .CreateMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
+    .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
     ShaderProgram shader = ShaderProgram();
     shader.AttachShaderObject(graphVertexShader);
     shader.AttachShaderObject(graphFragmentShader);
@@ -138,6 +135,8 @@ int main(void)
     mainCamera = freeCamera;
     bool isFreeCamera = true;
     bool holdingCameraSwitchKey = false;
+    bool compiled = false;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -186,8 +185,37 @@ int main(void)
             holdingCameraSwitchKey = true;
             isFreeCamera = !isFreeCamera;
         }
-        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE){
+        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && holdingCameraSwitchKey){
             holdingCameraSwitchKey = false;
+        }
+        
+        if (time > 3 && !compiled){
+            compiled = true;
+            
+            ShaderBuilder sh1Builder = ShaderBuilder(false);
+            ShaderObject sh1 = sh1Builder.SetShaderType(GL_VERTEX_SHADER)
+            .SetVersion(330)
+            .AddInput(0, VEC2, "aPos")
+            .AddUniform(MAT4, "model")
+            .AddUniform(MAT4, "view")
+            .AddUniform(MAT4, "projection")
+            .AddUniform(FLOAT, "time")
+            .AddOutput(FLOAT, "graphZ")
+            .SetMain("float x = aPos.x;\n"
+            "float y = aPos.y;\n"
+            "float z = cos(x + 2*time)*sin(y + 2*time);\n"
+            "graphZ = z;\n"
+            "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
+            ShaderBuilder sh2Builder = ShaderBuilder(false);
+            ShaderObject sh2 = sh2Builder.SetShaderType(GL_FRAGMENT_SHADER)
+            .SetVersion(330)
+            .AddInput(FLOAT, "graphZ")
+            .AddOutput(VEC4, "FragColor")
+            .SetMain("FragColor = vec4(graphZ/1.5, graphZ/1.5, 1.0, 1.0);").Build();
+            shader.AttachShaderObject(sh1);
+            shader.AttachShaderObject(sh2);
+            shader.Link();
+            graph.UpdateProjection("projection", WIDTH, HEIGHT);
         }
 
         glClear(GL_COLOR_BUFFER_BIT);

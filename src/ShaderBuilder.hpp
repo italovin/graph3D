@@ -27,7 +27,7 @@ enum GLSL_TYPE {
 class ShaderBuilder {
 private:
     bool clearOnBuild = false;
-    int version;
+    int version = 330;
     GLenum shaderType;
     std::stringstream attributesStream;
     std::stringstream mainStream;
@@ -40,7 +40,7 @@ public:
     ShaderBuilder& AddInput(int location, GLSL_TYPE type, const std::string &inputName);
     ShaderBuilder& AddUniform(GLSL_TYPE type, const std::string &uniformName);
     ShaderBuilder& AddOutput(GLSL_TYPE type, const std::string &outputName);
-    ShaderBuilder& CreateMain(const std::string &body);
+    ShaderBuilder& SetMain(const std::string &body);
     ShaderObject Build();
 };
 #endif

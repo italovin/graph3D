@@ -7,12 +7,15 @@
 class ShaderProgram {
 private:
     unsigned int handle;
-
+    bool debugInfo;
 public:
     ShaderProgram();
+    ShaderProgram(bool debugInfo);
     void AttachShaderObject(ShaderObject shaderObject);
+    void Create();
     void Link();
     void Use();
+    unsigned int GetHandle();
     void SetBool(const std::string &name, bool value) const;
     void SetInt(const std::string &name, int value) const;
     void SetFloat(const std::string &name, float value) const;
