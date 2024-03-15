@@ -12,9 +12,7 @@ private:
     std::vector<unsigned int> vbo;
     unsigned int ibo;
     unsigned int indicesCount;
-    glm::vec3 position;
-    glm::vec3 rotation;
-    glm::vec3 scale;
+    Transform transform;
 public:
     SceneObject();
     SceneObject(unsigned int n_vbo);

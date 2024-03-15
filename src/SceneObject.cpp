@@ -10,9 +10,9 @@ SceneObject::SceneObject(unsigned int n_vbo){
     vao = VertexArray();
     Bind();
     Startup(n_vbo);
-    position = glm::vec3(0, 0, 0);
-    rotation = glm::vec3(0, 0, 0);
-    scale = glm::vec3(1, 1, 1);
+    transform.position = glm::vec3(0, 0, 0);
+    transform.rotation = glm::vec3(0, 0, 0);
+    transform.scale = glm::vec3(1, 1, 1);
 }
 
 void SceneObject::Startup(unsigned int n_vbo)
@@ -71,8 +71,8 @@ void SceneObject::SetShader(ShaderProgram shaderProgram){
 void SceneObject::UpdateModel(const std::string &modelName){
     glm::mat4 model = glm::mat4(1.0f);
     glm::mat4 rot = glm::rotate(model, glm::radians(0.0f), glm::vec3(1, 0, 0));
-    glm::mat4 scl = glm::scale(model, scale);
-    glm::mat4 trn = glm::translate(model, position);
+    glm::mat4 scl = glm::scale(model, transform.scale);
+    glm::mat4 trn = glm::translate(model, transform.position);
     model = trn*scl*rot;
     shader.SetMat4Float(modelName, model);
 }
