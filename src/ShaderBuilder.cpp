@@ -4,55 +4,55 @@ std::string ShaderBuilder::GLSLTypeToString(GLSL_TYPE type){
     std::string string;
     switch (type)
     {
-    case BOOL:
+    case SH_BOOL:
         string = "bool";
         break;
-    case INT:
+    case SH_INT:
         string = "int";
         break;
-    case UINT:
+    case SH_UINT:
         string = "uint";
         break;
-    case FLOAT:
+    case SH_FLOAT:
         string = "float";
         break;
-    case DOUBLE:
+    case SH_DOUBLE:
         string = "double";
         break;
-    case BVEC2:
+    case SH_BVEC2:
         string = "bvec2";
         break;
-    case IVEC2:
+    case SH_IVEC2:
         string = "ivec2";
         break;
-    case UVEC2:
+    case SH_UVEC2:
         string = "uvec2";
         break;
-    case VEC2:
+    case SH_VEC2:
         string = "vec2";
         break;
-    case DVEC2:
+    case SH_DVEC2:
         string = "dvec2";
         break;
-    case BVEC3:
+    case SH_BVEC3:
         string = "bvec3";
         break;
-    case IVEC3:
+    case SH_IVEC3:
         string = "ivec3";
         break;
-    case UVEC3:
+    case SH_UVEC3:
         string = "uvec3";
         break;
-    case VEC3:
+    case SH_VEC3:
         string = "vec3";
         break;
-    case DVEC3:
+    case SH_DVEC3:
         string = "dvec3";
         break;
-    case VEC4:
+    case SH_VEC4:
         string = "vec4";
         break;
-    case MAT4:
+    case SH_MAT4:
         string = "mat4";
         break;
     }

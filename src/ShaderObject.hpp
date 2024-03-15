@@ -9,7 +9,7 @@
 
 class ShaderObject {
 private:
-    unsigned int handle;
+    GLuint handle;
     GLenum shaderType;
     std::string LoadShaderSourceCore(const char* shaderPath);
     std::string LoadShaderSource(const char *shaderPath);
@@ -26,7 +26,7 @@ public:
     void CompileShaderObject(const std::string &source);
     void SetupShaderObject(const char *shaderPath);
     void SetupShaderObject(const std::string &shaderPath);
-    unsigned int GetHandle();
+    GLuint GetHandle();
     GLenum GetType();
     void Delete();
 };

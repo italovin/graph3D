@@ -5,23 +5,23 @@
 #include "ShaderObject.hpp"
 
 enum GLSL_TYPE {
-    BOOL,
-    INT,
-    UINT,
-    FLOAT,
-    DOUBLE,
-    BVEC2,
-    IVEC2,
-    UVEC2,
-    VEC2,
-    DVEC2,
-    BVEC3,
-    IVEC3,
-    UVEC3,
-    VEC3,
-    DVEC3,
-    VEC4,
-    MAT4
+    SH_BOOL,
+    SH_INT,
+    SH_UINT,
+    SH_FLOAT,
+    SH_DOUBLE,
+    SH_BVEC2,
+    SH_IVEC2,
+    SH_UVEC2,
+    SH_VEC2,
+    SH_DVEC2,
+    SH_BVEC3,
+    SH_IVEC3,
+    SH_UVEC3,
+    SH_VEC3,
+    SH_DVEC3,
+    SH_VEC4,
+    SH_MAT4
 };
 
 class ShaderBuilder {

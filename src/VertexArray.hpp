@@ -2,9 +2,9 @@
 
 class VertexArray {
 private:
-    unsigned int handle;
+    GLuint handle;
 public:
     VertexArray();
-    unsigned int GetHandle();
+    GLuint GetHandle();
     void Bind();
 };

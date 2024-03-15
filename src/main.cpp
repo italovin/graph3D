@@ -99,19 +99,19 @@ int main(void)
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(true);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(330)
-    .AddInput(0, VEC2, "aPos")
-    .AddUniform(MAT4, "model")
-    .AddUniform(MAT4, "view")
-    .AddUniform(MAT4, "projection")
-    .AddUniform(FLOAT, "time")
+    .AddInput(0, SH_VEC2, "aPos")
+    .AddUniform(SH_MAT4, "model")
+    .AddUniform(SH_MAT4, "view")
+    .AddUniform(SH_MAT4, "projection")
+    .AddUniform(SH_FLOAT, "time")
     .SetMain("float x = aPos.x;\n"
     "float y = aPos.y;\n"
     "float z = cos(x - 2*time)*sin(y - 2*time);\n"
     "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)
-    .AddOutput(VEC4, "FragColor")
-    .AddUniform(FLOAT, "red")
+    .AddOutput(SH_VEC4, "FragColor")
+    .AddUniform(SH_FLOAT, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
     ShaderProgram shader = ShaderProgram();
     shader.AttachShaderObject(graphVertexShader);
@@ -195,12 +195,12 @@ int main(void)
             ShaderBuilder sh1Builder = ShaderBuilder(false);
             ShaderObject sh1 = sh1Builder.SetShaderType(GL_VERTEX_SHADER)
             .SetVersion(330)
-            .AddInput(0, VEC2, "aPos")
-            .AddUniform(MAT4, "model")
-            .AddUniform(MAT4, "view")
-            .AddUniform(MAT4, "projection")
-            .AddUniform(FLOAT, "time")
-            .AddOutput(FLOAT, "graphZ")
+            .AddInput(0, SH_VEC2, "aPos")
+            .AddUniform(SH_MAT4, "model")
+            .AddUniform(SH_MAT4, "view")
+            .AddUniform(SH_MAT4, "projection")
+            .AddUniform(SH_FLOAT, "time")
+            .AddOutput(SH_FLOAT, "graphZ")
             .SetMain("float x = aPos.x;\n"
             "float y = aPos.y;\n"
             "float z = cos(x + 2*time)*sin(y + 2*time);\n"
@@ -209,8 +209,8 @@ int main(void)
             ShaderBuilder sh2Builder = ShaderBuilder(false);
             ShaderObject sh2 = sh2Builder.SetShaderType(GL_FRAGMENT_SHADER)
             .SetVersion(330)
-            .AddInput(FLOAT, "graphZ")
-            .AddOutput(VEC4, "FragColor")
+            .AddInput(SH_FLOAT, "graphZ")
+            .AddOutput(SH_VEC4, "FragColor")
             .SetMain("FragColor = vec4(graphZ/1.5, graphZ/1.5, 1.0, 1.0);").Build();
             shader.AttachShaderObject(sh1);
             shader.AttachShaderObject(sh2);

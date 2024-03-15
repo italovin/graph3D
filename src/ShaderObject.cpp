@@ -102,7 +102,7 @@ void ShaderObject::SetupShaderObject(const std::string &shaderPath){
     CompileShaderObject(source);
 }
 
-unsigned int ShaderObject::GetHandle(){
+GLuint ShaderObject::GetHandle(){
     return handle;
 }
 

@@ -45,11 +45,11 @@ void SceneObject::StartElementBufferStorage(unsigned short data[], unsigned int 
     indicesCount = dataSize / sizeof(unsigned short);
 }
 
-void SceneObject::UpdateBufferData(unsigned int vbo_index, int offset, float data[], unsigned int dataSize){
+void SceneObject::UpdateBufferData(GLuint vbo_index, int offset, float data[], unsigned int dataSize){
     glNamedBufferSubData(vbo[vbo_index], offset, dataSize, data);
 }
 
-void SceneObject::AttachVertexBuffer(unsigned int vbo_index, unsigned int bindingPoint, int offset, int stride)
+void SceneObject::AttachVertexBuffer(GLuint vbo_index, GLuint bindingPoint, int offset, int stride)
 {
     glVertexArrayVertexBuffer(vao.GetHandle(), bindingPoint, vbo[vbo_index], offset, stride);
 }
@@ -57,7 +57,7 @@ void SceneObject::AttachElementBuffer(){
     glVertexArrayElementBuffer(vao.GetHandle(), ibo);
 }
 
-void SceneObject::SetAttribute(unsigned int attrib, unsigned int bindingPoint, int size, GLenum type, GLboolean normalized, int offset)
+void SceneObject::SetAttribute(GLuint attrib, GLuint bindingPoint, int size, GLenum type, GLboolean normalized, int offset)
 {
     glVertexArrayAttribFormat(vao.GetHandle(), attrib, size, type, normalized, offset);
     glEnableVertexAttribArray(attrib);
