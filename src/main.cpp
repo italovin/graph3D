@@ -20,10 +20,28 @@ float lastY = HEIGHT/2;
 
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
 Camera freeCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, -90, 0));
-Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, 0, 0));
+Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, -90, 0));
 
-int main(void)
-{   
+int main(int argc, char *argv[])
+{  
+    std::string graphFunctionString = "cos(x + 2*time)*sin(y + 2*time)";
+    const int maxFunctionSize = 256;
+    if(argc >= 2){
+        if(std::strcmp(argv[1], "-g") == 0){
+            if(argc >= 3){
+                if(std::string(argv[2]).size() <= maxFunctionSize){
+                    graphFunctionString = argv[2];
+                } else {
+                    std::cout << "Graph function size excedeed\n";
+                }
+            }
+        } else if (std::strcmp(argv[1], "-h") == 0){
+            std::cout << "Usage: graph3D [options]\n";
+            std::cout << " -g <function>    Specify function for 3D graph\n";
+            std::cout << " -h               Open help\n";
+        }
+    }
+
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -31,7 +49,7 @@ int main(void)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(WIDTH, HEIGHT, "Graph 3D", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -203,7 +221,7 @@ int main(void)
             .AddOutput(SH_FLOAT, "graphZ")
             .SetMain("float x = aPos.x;\n"
             "float y = aPos.y;\n"
-            "float z = cos(x + 2*time)*sin(y + 2*time);\n"
+            "float z =" + graphFunctionString + ";\n"
             "graphZ = z;\n"
             "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
             ShaderBuilder sh2Builder = ShaderBuilder(false);
