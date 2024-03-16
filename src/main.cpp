@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     int N = 128; // Max Limit N is 588 for current stack variables, but is recommended below 400
     float graphSemiWidth = 10;
     
-    float vertices[2*(N+1)*(N+1)];
+    std::vector<GLfloat> vertices(2*(N+1)*(N+1));
     
     for(int i = 0; i < N+1; i++) {
         for(int j = 0; j < N+1; j++) {
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
             vertices[2*i*(N+1)+2*j+1] = y;
         }
     }
-    GLuint indices[2*N*(N+1)*2];
+    std::vector<GLuint> indices(2*N*(N+1)*2);
     int i = 0;
     for(int y = 0; y < N+1; y++) {
         for(int x = 0; x < N; x++) {
@@ -107,8 +107,8 @@ int main(int argc, char *argv[])
     std::cout << "Graph data size in kylobytes " << (sizeof(vertices) + sizeof(indices))/1024 << "(kB)\n";
 
     SceneObject graph = SceneObject(1);
-    graph.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
-    graph.StartElementBufferStorage(indices, sizeof(indices));
+    graph.StartImmutableBufferStorage(0, vertices);
+    graph.StartElementBufferStorage(indices);
     graph.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
     graph.AttachElementBuffer();
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);

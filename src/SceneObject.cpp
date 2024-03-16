@@ -22,14 +22,28 @@ void SceneObject::Startup(unsigned int n_vbo)
     glCreateBuffers(1, &ibo);
 }
 
-void SceneObject::StartImmutableBufferStorage(unsigned int vbo_index, float data[], unsigned int dataSize){
+void SceneObject::StartImmutableBufferStorage(GLuint vbo_index, float data[], unsigned int dataSize){
     glNamedBufferStorage(vbo[vbo_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
 }
 
-void SceneObject::StartMutableBufferStorage(unsigned int vbo_index, GLenum bufferType, float data[], unsigned int dataSize)
+void SceneObject::StartImmutableBufferStorage(GLuint vbo_index, const std::vector<float> &data)
+{
+    unsigned int dataSize = sizeof(float)*data.size();
+    glNamedBufferStorage(vbo[vbo_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, float data[], unsigned int dataSize)
 {
     if(bufferType == GL_ARRAY_BUFFER){
         glNamedBufferData(vbo[vbo_index], dataSize, data, GL_STATIC_DRAW);
+    }
+}
+
+void SceneObject::StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, const std::vector<float> &data)
+{
+    unsigned int dataSize = sizeof(float)*data.size();
+    if(bufferType == GL_ARRAY_BUFFER){
+        glNamedBufferData(vbo[vbo_index], dataSize, data.data(), GL_STATIC_DRAW);
     }
 }
 
@@ -39,9 +53,23 @@ void SceneObject::StartElementBufferStorage(unsigned int data[], unsigned int da
     indicesCount = dataSize / sizeof(unsigned int);
 }
 
+void SceneObject::StartElementBufferStorage(const std::vector<unsigned int> &data)
+{
+    unsigned int dataSize = sizeof(unsigned int)*data.size();
+    glNamedBufferStorage(ibo, dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
+    indicesCount = dataSize / sizeof(unsigned int);
+}
+
 void SceneObject::StartElementBufferStorage(unsigned short data[], unsigned int dataSize)
 {
     glNamedBufferStorage(ibo, dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+    indicesCount = dataSize / sizeof(unsigned short);
+}
+
+void SceneObject::StartElementBufferStorage(const std::vector<unsigned short> &data)
+{
+    unsigned int dataSize = sizeof(unsigned short)*data.size();
+    glNamedBufferStorage(ibo, dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
     indicesCount = dataSize / sizeof(unsigned short);
 }
 
