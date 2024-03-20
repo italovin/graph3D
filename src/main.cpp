@@ -48,24 +48,76 @@ float randomFloat(int a, int b)
 
 int main(int argc, char *argv[])
 { 
-    std::string equation1 = "sin(phi)*cos(theta)";
-    std::string equation2 = "sin(phi)*sin(theta)";
-    std::string graphFunctionString = "cos(x + 2*time)*sin(y + 2*time)";
-    const int maxFunctionSize = 256;
-    if(argc >= 2){
-        if(std::strcmp(argv[1], "-g") == 0){
-            if(argc >= 3){
-                if(std::string(argv[2]).size() <= maxFunctionSize){
-                    graphFunctionString = argv[2];
-                } else {
-                    std::cout << "Graph function size excedeed\n";
-                }
+    std::string var1 = "s";
+    std::string var2 = "t";
+    std::string equationX = "2*sin(s)*cos(t)";
+    std::string equationY = "2*sin(s)*sin(t)";
+    std::string equationZ = "2*cos(s)";
+    std::string timeString = "time";
+    const int maxEquationSize = 256;
+    int s_steps = 100;
+    int t_steps = 100;
+    float min_s, max_s, min_t, max_t;
+    min_s = min_t = 0;
+    max_s = M_PI;
+    max_t = 2*M_PI;
+
+    for(int i = 1; i < argc; i++){
+        if(std::strcmp(argv[i], "-x") == 0 && i < argc - 1){
+            if(std::string(argv[i+1]).size() <= maxEquationSize){
+                equationX = argv[i+1];
+                continue;
             }
-        } else if (std::strcmp(argv[1], "-h") == 0){
-            std::cout << "Usage: graph3D [options]\n";
-            std::cout << " -g <function>    Specify function for 3D graph\n";
-            std::cout << " -h               Open help\n";
         }
+        if(std::strcmp(argv[i], "-y") == 0 && i < argc - 1){
+            if(std::string(argv[i+1]).size() <= maxEquationSize){
+                equationY = argv[i+1];
+                continue;
+            }
+        }
+        if(std::strcmp(argv[i], "-z") == 0 && i < argc - 1){
+            if(std::string(argv[i+1]).size() <= maxEquationSize){
+                equationZ = argv[i+1];
+                continue;
+            }
+        }
+        if(std::strcmp(argv[i], "-t") == 0 && i < argc - 1){
+            timeString = argv[i+1];
+            continue;
+        }
+        if(std::strcmp(argv[i], "-v1") == 0 && i < argc - 1){
+            var1 = argv[i+1];
+            continue;
+        }
+        if(std::strcmp(argv[i], "-v2") == 0 && i < argc - 1){
+            var2 = argv[i+1];
+            continue;
+        }
+        if(std::strcmp(argv[i], "--min_v1") == 0 && i < argc - 1){
+            min_s = std::stof(argv[i+1]);
+            continue;
+        }
+        if(std::strcmp(argv[i], "--max_v1") == 0 && i < argc - 1){
+            max_s = std::stof(argv[i+1]);
+            continue;
+        }
+        if(std::strcmp(argv[i], "--min_v2") == 0 && i < argc - 1){
+            min_t = std::stof(argv[i+1]);
+            continue;
+        }
+        if(std::strcmp(argv[i], "--max_v2") == 0 && i < argc - 1){
+            max_t = std::stof(argv[i+1]);
+            continue;
+        }
+        if(std::strcmp(argv[i], "--steps_v1") == 0 && i < argc - 1){
+            s_steps = std::stof(argv[i+1]);
+            continue;
+        }
+        if(std::strcmp(argv[i], "--steps_v2") == 0 && i < argc - 1){
+            t_steps = std::stof(argv[i+1]);
+            continue;
+        }
+
     }
 
     GLFWwindow* window;
@@ -101,12 +153,7 @@ int main(int argc, char *argv[])
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
     
-    int s_steps = 100;
-    int t_steps = 100;
-    float min_s, max_s, min_t, max_t;
-    min_s = min_t = 0;
-    max_s = M_PI;
-    max_t = 2*M_PI;
+
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
     GLfloat parameters[2*(s_steps+1)*(t_steps+1)];
@@ -150,13 +197,13 @@ int main(int argc, char *argv[])
     .AddUniform(SH_MAT4, "model")
     .AddUniform(SH_MAT4, "view")
     .AddUniform(SH_MAT4, "projection")
-    .AddUniform(SH_FLOAT, "time")
-    .SetMain("float s = params.x;"
-    "float t = params.y;"
-    "float x = 2*sin(s)*cos(t);"
-    "float y = 2*sin(s)*sin(t);"
-    "float z = 2*cos(x - 2*time)*sin(y - 2*time);"
-    "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
+    .AddUniform(SH_FLOAT, timeString)
+    .SetMain("float " + var1 + "= params.x;"
+    "float " + var2 + "= params.y;"
+    "float x =" + equationX + ";"
+    "float y =" + equationY + ";"
+    "float z =" + equationZ + ";"
+    + "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)
     .AddOutput(SH_VEC4, "FragColor")
