@@ -11,6 +11,7 @@ private:
 public:
     ShaderProgram();
     ShaderProgram(bool debugInfo);
+    ShaderProgram(const std::vector<ShaderObject> &shaderObjects);
     void AttachShaderObject(ShaderObject shaderObject);
     void Create();
     void Link();

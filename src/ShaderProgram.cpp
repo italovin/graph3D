@@ -9,7 +9,19 @@ ShaderProgram::ShaderProgram(bool debugInfo){
     this->debugInfo = debugInfo;
     handle = glCreateProgram();
 }
-
+ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects){
+    debugInfo = false;
+    handle = glCreateProgram();
+    for (auto &&shaderObject : shaderObjects)
+    {
+        AttachShaderObject(shaderObject);
+    }
+    Link();
+    for (auto &&shaderObject : shaderObjects)
+    {
+        DetachShaderObject(shaderObject);
+    }
+}
 void ShaderProgram::AttachShaderObject(ShaderObject shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());

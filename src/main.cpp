@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
-    ShaderBuilder fragmentShaderBuilder = ShaderBuilder(true);
+    ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(330)
     .AddInput(0, SH_VEC2, "params")
@@ -216,13 +216,8 @@ int main(int argc, char *argv[])
     .AddOutput(SH_VEC4, "FragColor")
     .AddUniform(SH_FLOAT, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
-    ShaderProgram shader = ShaderProgram();
-    shader.AttachShaderObject(graphVertexShader);
-    shader.AttachShaderObject(graphFragmentShader);
-    shader.Link();
-    shader.DetachShaderObject(graphVertexShader);
-    shader.DetachShaderObject(graphFragmentShader);
-    shader.SetFloat("red", 0.5f);
+    ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader});
+    shader.SetFloat("red", 1.0f);
 
     graph.SetShader(shader);
     graph.UpdateProjection("projection", WIDTH, HEIGHT);
@@ -298,7 +293,7 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
 
-        graph.transform.rotation.x = 10*time;
+        graph.transform.rotation.x = 30*time;
         shader.SetFloat("time", time);
         graph.UpdateModel("model");
         graph.UpdateView("view", mainCamera);
