@@ -151,12 +151,11 @@ int main(int argc, char *argv[])
     .AddUniform(SH_MAT4, "view")
     .AddUniform(SH_MAT4, "projection")
     .AddUniform(SH_FLOAT, "time")
-    .SetMain("float s = params.x;\n"
-    "float t = params.y;\n"
-    "float radius = abs(sin(time));"
-    "float x = sin(s)*cos(t);"
-    "float y = sin(s)*sin(t);"
-    "float z = cos(s);"
+    .SetMain("float s = params.x;"
+    "float t = params.y;"
+    "float x = 2*sin(s)*cos(t);"
+    "float y = 2*sin(s)*sin(t);"
+    "float z = 2*cos(x - 2*time)*sin(y - 2*time);"
     "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)
@@ -241,7 +240,7 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
 
-        graph.transform.rotation.y = 45*time;
+        graph.transform.rotation.x = 10*time;
         shader.SetFloat("time", time);
         graph.UpdateModel("model");
         graph.UpdateView("view", mainCamera);

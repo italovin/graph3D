@@ -65,7 +65,7 @@ ShaderBuilder& ShaderBuilder::SetVersion(int version){
     if(version == 0)
         version = 330;
     this->version = version;
-    attributesStream << "#version " << version << "\n";
+    versionStream << "#version " << version << "\n";
     return *this;
 }
 
@@ -77,25 +77,25 @@ ShaderBuilder& ShaderBuilder::SetShaderType(GLenum shaderType){
 ShaderBuilder& ShaderBuilder::AddInput(GLSL_TYPE type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "in " << typeString << " " << inputName << ";\n";
+    attributesStream << "in " << typeString << " " << inputName << ";";
     return *this;
 }
 
 ShaderBuilder& ShaderBuilder::AddInput(int location, GLSL_TYPE type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "layout (location = " << location << ") in " << typeString << " " << inputName << ";\n";
+    attributesStream << "layout (location = " << location << ") in " << typeString << " " << inputName << ";";
     return *this;
 }
 ShaderBuilder& ShaderBuilder::AddUniform(GLSL_TYPE type, const std::string &uniformName){
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "uniform " << typeString << " " << uniformName << ";\n";
+    attributesStream << "uniform " << typeString << " " << uniformName << ";";
     return *this;
 }
 ShaderBuilder& ShaderBuilder::AddOutput(GLSL_TYPE type, const std::string & outputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "out " << typeString << " " << outputName << ";\n";
+    attributesStream << "out " << typeString << " " << outputName << ";";
     return *this;
 }
 
@@ -107,9 +107,10 @@ ShaderBuilder& ShaderBuilder::SetMain(const std::string &body){
 
 ShaderObject ShaderBuilder::Build(){
     ShaderObject shaderObject(shaderType);
-    std::string source = attributesStream.str() + mainStream.str();
+    std::string source = versionStream.str() + attributesStream.str() + mainStream.str();
     shaderObject.CompileShaderObject(source);
     if(clearOnBuild){
+        versionStream = std::stringstream();
         attributesStream = std::stringstream();
         mainStream = std::stringstream();
     }

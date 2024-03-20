@@ -29,6 +29,7 @@ private:
     bool clearOnBuild = false;
     int version = 330;
     GLenum shaderType;
+    std::stringstream versionStream;
     std::stringstream attributesStream;
     std::stringstream mainStream;
     std::string GLSLTypeToString(GLSL_TYPE type);
