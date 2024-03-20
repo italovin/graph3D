@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     min_s = min_t = 0;
     max_s = M_PI;
     max_t = 2*M_PI;
+    bool perfomanceCounter = true;
 
     for(int i = 1; i < argc; i++){
         if(std::strcmp(argv[i], "-x") == 0 && i < argc - 1){
@@ -117,7 +118,13 @@ int main(int argc, char *argv[])
             t_steps = std::stof(argv[i+1]);
             continue;
         }
-
+        if(std::strcmp(argv[i], "-c") == 0 && i < argc -1){
+            if(std::strcmp(argv[i+1], "true") == 0){
+                perfomanceCounter = true;
+            } else if(std::strcmp(argv[i+1], "false") == 0){
+                perfomanceCounter = false;
+            } 
+        }
     }
 
     GLFWwindow* window;
@@ -238,23 +245,27 @@ int main(int argc, char *argv[])
         time = glfwGetTime();
         deltaTime = time - lastTime;
         lastTime = time;
-
-        if(minDeltaTime == 0){
-            minDeltaTime = deltaTime;
+        if(perfomanceCounter){
+            if(minDeltaTime == 0){
+                minDeltaTime = deltaTime;
+            }
+            if(deltaTime < minDeltaTime){
+                minDeltaTime = deltaTime;
+            }
+            if(deltaTime > maxDeltaTime){
+                maxDeltaTime = deltaTime;
+            }
+            ticks++;
         }
-        if(deltaTime < minDeltaTime){
-            minDeltaTime = deltaTime;
-        }
-        if(deltaTime > maxDeltaTime){
-            maxDeltaTime = deltaTime;
-        }
-        ticks++;
+        
         //processInput(window, deltaTime);
         //std::cout << "FPS: " << 1/deltaTime << "\n";
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
-            std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
-            std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
-            std::cout << "Ticks: " << ticks << "; Ticks/Sec: " << ticks/time << "\n";
+            if(perfomanceCounter){
+                std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
+                std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
+                std::cout << "Ticks: " << ticks << "; Ticks/Sec: " << ticks/time << "\n";
+            }
             glfwSetWindowShouldClose(window, true);
         }
 
