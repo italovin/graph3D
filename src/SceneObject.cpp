@@ -70,7 +70,9 @@ void SceneObject::SetShader(ShaderProgram shaderProgram){
 
 void SceneObject::UpdateModel(const std::string &modelName){
     glm::mat4 model = glm::mat4(1.0f);
-    glm::mat4 rot = glm::rotate(model, glm::radians(0.0f), glm::vec3(1, 0, 0));
+    //glm::mat4 rot = glm::rotate(model, glm::radians(0.0f), glm::vec3(1, 0, 0));
+    glm::vec3 radiansEulerAngles = glm::radians(transform.rotation);
+    glm::mat4 rot = glm::eulerAngleXYZ(radiansEulerAngles.x, radiansEulerAngles.y, radiansEulerAngles.z);
     glm::mat4 scl = glm::scale(model, transform.scale);
     glm::mat4 trn = glm::translate(model, transform.position);
     model = trn*scl*rot;

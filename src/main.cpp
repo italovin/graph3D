@@ -22,8 +22,34 @@ Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
 Camera freeCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, -90, 0));
 Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, -90, 0));
 
+float randomFloat()
+{
+    return (float)(std::rand()) / (float)(RAND_MAX);
+}
+ 
+int randomInt(int a, int b)
+{
+    if (a > b)
+        return randomInt(b, a);
+    if (a == b)
+        return a;
+    return a + (std::rand() % (b - a));
+}
+
+float randomFloat(int a, int b)
+{
+    if (a > b)
+        return randomFloat(b, a);
+    if (a == b)
+        return a;
+ 
+    return (float)randomInt(a, b) + randomFloat();
+}
+
 int main(int argc, char *argv[])
-{  
+{ 
+    std::string equation1 = "sin(phi)*cos(theta)";
+    std::string equation2 = "sin(phi)*sin(theta)";
     std::string graphFunctionString = "cos(x + 2*time)*sin(y + 2*time)";
     const int maxFunctionSize = 256;
     if(argc >= 2){
@@ -75,39 +101,42 @@ int main(int argc, char *argv[])
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
     
-    int N = 128; // Max Limit N is 588 for current stack variables, but is recommended below 400
-    float graphSemiWidth = 10;
-    
-    float vertices[2*(N+1)*(N+1)];
-    
-    for(int i = 0; i < N+1; i++) {
-        for(int j = 0; j < N+1; j++) {
-            float x = (2*graphSemiWidth*(j - (N/2))) / N;
-            float y = (2*graphSemiWidth*(i - (N/2))) / N;
-            vertices[2*i*(N+1)+2*j] = x;
-            vertices[2*i*(N+1)+2*j+1] = y;
+    int s_steps = 100;
+    int t_steps = 100;
+    float min_s, max_s, min_t, max_t;
+    min_s = min_t = 0;
+    max_s = M_PI;
+    max_t = 2*M_PI;
+    float s_stepSize = (max_s - min_s)/s_steps;
+    float t_stepSize = (max_t - min_t)/t_steps;
+    GLfloat parameters[2*(s_steps+1)*(t_steps+1)];
+    int index = 0;
+    for(int i = 0; i < s_steps+1; i++) {
+        for(int j = 0; j < t_steps+1; j++) {
+            float s = min_s + s_stepSize*j;
+            float t = min_t + t_stepSize*i;
+            parameters[2*i*(s_steps+1)+2*j] = s;
+            parameters[2*i*(s_steps+1)+2*j+1] = t;
         }
     }
-    GLuint indices[2*N*(N+1)*2];
+    GLuint indices[2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1)];
     int i = 0;
-    for(int y = 0; y < N+1; y++) {
-        for(int x = 0; x < N; x++) {
-            indices[i++] = y * (N+1) + x;
-            indices[i++] = y * (N+1) + x + 1;
+    for(int y = 0; y < t_steps+1; y++) {
+        for(int x = 0; x < s_steps; x++) {
+            indices[i++] = y * (s_steps+1) + x;
+            indices[i++] = y * (s_steps+1) + x + 1;
         }
     }
 
     // Vertical grid lines
-    for(int x = 0; x < N+1; x++) {
-        for(int y = 0; y < N; y++) {
-            indices[i++] = y * (N+1) + x;
-            indices[i++] = (y + 1) * (N+1) + x;
+    for(int x = 0; x < s_steps+1; x++) {
+        for(int y = 0; y < t_steps; y++) {
+            indices[i++] = y * (t_steps+1) + x;
+            indices[i++] = (y + 1) * (t_steps+1) + x;
         }
     }
-    std::cout << "Graph data size in kylobytes " << (sizeof(vertices) + sizeof(indices))/1024 << "(kB)\n";
-
     SceneObject graph = SceneObject(1);
-    graph.StartImmutableBufferStorage(0, vertices, sizeof(vertices));
+    graph.StartImmutableBufferStorage(0, parameters, sizeof(parameters));
     graph.StartElementBufferStorage(indices, sizeof(indices));
     graph.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
     graph.AttachElementBuffer();
@@ -117,14 +146,17 @@ int main(int argc, char *argv[])
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(true);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(330)
-    .AddInput(0, SH_VEC2, "aPos")
+    .AddInput(0, SH_VEC2, "params")
     .AddUniform(SH_MAT4, "model")
     .AddUniform(SH_MAT4, "view")
     .AddUniform(SH_MAT4, "projection")
     .AddUniform(SH_FLOAT, "time")
-    .SetMain("float x = aPos.x;\n"
-    "float y = aPos.y;\n"
-    "float z = cos(x - 2*time)*sin(y - 2*time);\n"
+    .SetMain("float s = params.x;\n"
+    "float t = params.y;\n"
+    "float radius = abs(sin(time));"
+    "float x = sin(s)*cos(t);"
+    "float y = sin(s)*sin(t);"
+    "float z = cos(s);"
     "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)
@@ -153,7 +185,6 @@ int main(int argc, char *argv[])
     mainCamera = freeCamera;
     bool isFreeCamera = true;
     bool holdingCameraSwitchKey = false;
-    bool compiled = false;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -181,7 +212,7 @@ int main(int argc, char *argv[])
             glfwSetWindowShouldClose(window, true);
         }
 
-        float cameraSpeed = static_cast<float>(2.5 * deltaTime);
+        float cameraSpeed = static_cast<float>(2 * deltaTime);
         if(isFreeCamera){
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
                 freeCamera.transform.position += cameraSpeed * freeCamera.front;
@@ -206,38 +237,11 @@ int main(int argc, char *argv[])
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && holdingCameraSwitchKey){
             holdingCameraSwitchKey = false;
         }
-        
-        if (time > 3 && !compiled){
-            compiled = true;
-            
-            ShaderBuilder sh1Builder = ShaderBuilder(false);
-            ShaderObject sh1 = sh1Builder.SetShaderType(GL_VERTEX_SHADER)
-            .SetVersion(330)
-            .AddInput(0, SH_VEC2, "aPos")
-            .AddUniform(SH_MAT4, "model")
-            .AddUniform(SH_MAT4, "view")
-            .AddUniform(SH_MAT4, "projection")
-            .AddUniform(SH_FLOAT, "time")
-            .AddOutput(SH_FLOAT, "graphZ")
-            .SetMain("float x = aPos.x;\n"
-            "float y = aPos.y;\n"
-            "float z =" + graphFunctionString + ";\n"
-            "graphZ = z;\n"
-            "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
-            ShaderBuilder sh2Builder = ShaderBuilder(false);
-            ShaderObject sh2 = sh2Builder.SetShaderType(GL_FRAGMENT_SHADER)
-            .SetVersion(330)
-            .AddInput(SH_FLOAT, "graphZ")
-            .AddOutput(SH_VEC4, "FragColor")
-            .SetMain("FragColor = vec4(graphZ/1.5, graphZ/1.5, 1.0, 1.0);").Build();
-            shader.AttachShaderObject(sh1);
-            shader.AttachShaderObject(sh2);
-            shader.Link();
-            graph.UpdateProjection("projection", WIDTH, HEIGHT);
-        }
 
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
+
+        graph.transform.rotation.y = 45*time;
         shader.SetFloat("time", time);
         graph.UpdateModel("model");
         graph.UpdateView("view", mainCamera);

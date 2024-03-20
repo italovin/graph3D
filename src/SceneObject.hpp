@@ -4,6 +4,8 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/euler_angles.hpp>
 
 class SceneObject{
 private:
@@ -12,8 +14,8 @@ private:
     std::vector<GLuint> vbo;
     GLuint ibo;
     unsigned int indicesCount;
-    Transform transform;
 public:
+    Transform transform;
     SceneObject();
     SceneObject(unsigned int n_vbo);
     void Startup(unsigned int n_vbo);
