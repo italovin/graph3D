@@ -19,10 +19,14 @@ public:
     SceneObject();
     SceneObject(unsigned int n_vbo);
     void Startup(unsigned int n_vbo);
-    void StartImmutableBufferStorage(unsigned int vbo_index, float data[], unsigned int dataSize);
-    void StartMutableBufferStorage(unsigned int vbo_index, GLenum bufferType, float data[], unsigned int dataSize);
+    void StartImmutableBufferStorage(GLuint vbo_index, float data[], unsigned int dataSize);
+    void StartImmutableBufferStorage(GLuint vbo_index, const std::vector<float> &data);
+    void StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, float data[], unsigned int dataSize);
+    void StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, const std::vector<float> &data);
     void StartElementBufferStorage(unsigned int data[], unsigned int dataSize);
+    void StartElementBufferStorage(const std::vector<unsigned int> &data);
     void StartElementBufferStorage(unsigned short data[], unsigned int dataSize);
+    void StartElementBufferStorage(const std::vector<unsigned short> &data);
     void UpdateBufferData(GLuint vbo_index, int offset, float data[], unsigned int dataSize);
     void AttachVertexBuffer(GLuint vbo_index, GLuint bindingPoint, int offset, int stride);
     void AttachElementBuffer();
