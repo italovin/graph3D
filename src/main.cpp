@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
-    GLfloat parameters[2*(s_steps+1)*(t_steps+1)];
+    std::vector<GLfloat> parameters(2*(s_steps+1)*(t_steps+1));
     int index = 0;
     for(int i = 0; i < s_steps+1; i++) {
         for(int j = 0; j < t_steps+1; j++) {
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
             parameters[2*i*(s_steps+1)+2*j+1] = t;
         }
     }
-    GLuint indices[2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1)];
+    std::vector<GLuint> indices(2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1));
     int i = 0;
     for(int y = 0; y < t_steps+1; y++) {
         for(int x = 0; x < s_steps; x++) {
@@ -190,8 +190,8 @@ int main(int argc, char *argv[])
         }
     }
     SceneObject graph = SceneObject(1);
-    graph.StartImmutableBufferStorage(0, parameters, sizeof(parameters));
-    graph.StartElementBufferStorage(indices, sizeof(indices));
+    graph.StartImmutableBufferStorage(0, parameters);
+    graph.StartElementBufferStorage(indices);
     graph.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
     graph.AttachElementBuffer();
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
