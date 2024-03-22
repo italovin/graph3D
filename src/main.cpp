@@ -48,6 +48,39 @@ float randomFloat(int a, int b)
 
 int main(int argc, char *argv[])
 { 
+    GLFWwindow* window;
+
+    /* Initialize the library */
+    if (!glfwInit())
+        return -1;
+
+    /* Create a windowed mode window and its OpenGL context */
+    window = glfwCreateWindow(WIDTH, HEIGHT, "Graph 3D", nullptr, nullptr);
+    if (!window)
+    {
+        glfwTerminate();
+        return -1;
+    }
+
+    /* Make the window's context current */
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
+    std::cout << glGetString(GL_VERSION) << std::endl;
+
+    GLint no_of_extensions = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
+
+    GLenum err=glewInit();
+    if(err != GLEW_OK){
+        std::cout << "Failed to start GLEW" << std::endl;
+        return -1;
+    }
+       
+    if(GLEW_ARB_direct_state_access)
+        std::cout << "Direct access extension suported\n\n";
+    
     std::string var1 = "s";
     std::string var2 = "t";
     std::string equationX = "2*sin(s)*cos(t)";
@@ -126,45 +159,10 @@ int main(int argc, char *argv[])
             } 
         }
     }
-
-    GLFWwindow* window;
-
-    /* Initialize the library */
-    if (!glfwInit())
-        return -1;
-
-    /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Graph 3D", nullptr, nullptr);
-    if (!window)
-    {
-        glfwTerminate();
-        return -1;
-    }
-
-    /* Make the window's context current */
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-
-    std::cout << glGetString(GL_VERSION) << std::endl;
-
-    GLint no_of_extensions = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
-
-    GLenum err=glewInit();
-    if(err != GLEW_OK){
-        std::cout << "Failed to start GLEW" << std::endl;
-        return -1;
-    }
-       
-    if(GLEW_ARB_direct_state_access)
-        std::cout << "Direct access extension suported\n\n";
-    
-
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
+
     std::vector<GLfloat> parameters(2*(s_steps+1)*(t_steps+1));
-    int index = 0;
     for(int i = 0; i < s_steps+1; i++) {
         for(int j = 0; j < t_steps+1; j++) {
             float s = min_s + s_stepSize*j;
