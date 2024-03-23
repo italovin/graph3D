@@ -1,13 +1,24 @@
 #include <GL/glew.h>
 #include <string>
+#include <unordered_map>
+#include <memory>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "ShaderObject.hpp"
+
+struct uniform_info
+{ 
+	GLint location;
+	GLsizei count;
+};
 
 class ShaderProgram {
 private:
     GLuint handle;
     bool debugInfo;
+    std::unordered_map<std::string, uniform_info> uniforms;
+    void GetUniformsInfo();
+    bool CheckUniform(const std::string &name);
 public:
     ShaderProgram();
     ShaderProgram(bool debugInfo);

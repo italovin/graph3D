@@ -1,5 +1,31 @@
 #include "ShaderProgram.hpp"
 
+void ShaderProgram::GetUniformsInfo(){
+    GLint uniform_count = 0;
+    glGetProgramiv(handle, GL_ACTIVE_UNIFORMS, &uniform_count);
+
+    if (uniform_count != 0)
+    {
+        GLint 	max_name_len = 0;
+        GLsizei length = 0;
+        GLsizei count = 0;
+        GLenum 	type = GL_NONE;
+        glGetProgramiv(handle, GL_ACTIVE_UNIFORM_MAX_LENGTH, &max_name_len);
+        
+        auto uniform_name = std::make_unique<char[]>(max_name_len);
+
+        for (GLint i = 0; i < uniform_count; ++i)
+        {
+            glGetActiveUniform(handle, i, max_name_len, &length, &count, &type, uniform_name.get());
+
+            uniform_info uniform_info = {};
+            uniform_info.location = glGetUniformLocation(handle, uniform_name.get());
+            uniform_info.count = count;
+            uniforms.emplace(std::make_pair(std::string(uniform_name.get(), length), uniform_info));
+        }
+    }
+}
+
 ShaderProgram::ShaderProgram(){
     debugInfo = false;
     handle = glCreateProgram();
@@ -45,6 +71,7 @@ void ShaderProgram::Link(){
             std::cout << "LINK_SUCCESSFUL" << std::endl;
         }
     }
+    GetUniformsInfo();
 }
 void ShaderProgram::Use(){
     glUseProgram(handle);
@@ -53,19 +80,24 @@ GLuint ShaderProgram::GetHandle(){
     return handle;
 }
 void ShaderProgram::SetBool(const std::string &name, bool value) const {
-    glProgramUniform1i(handle, glGetUniformLocation(handle, name.c_str()), (int)value);
+    if(uniforms.count(name) > 0)
+        glProgramUniform1i(handle, uniforms.at(name).location, (int)value);
 }
-void ShaderProgram::SetInt(const std::string &name, int value) const{ 
-    glProgramUniform1i(handle, glGetUniformLocation(handle, name.c_str()), value); 
+void ShaderProgram::SetInt(const std::string &name, int value) const{
+    if(uniforms.count(name) > 0) 
+        glProgramUniform1i(handle, uniforms.at(name).location, value); 
 }
 void ShaderProgram::SetFloat(const std::string &name, float value) const{
-    glProgramUniform1f(handle, glGetUniformLocation(handle, name.c_str()), value); 
+    if(uniforms.count(name) > 0)
+        glProgramUniform1f(handle, uniforms.at(name).location, value); 
 }
 void ShaderProgram::SetDouble(const std::string &name, double value) const{
-    glProgramUniform1d(handle, glGetUniformLocation(handle, name.c_str()), value);
+    if(uniforms.count(name) > 0)
+        glProgramUniform1d(handle, uniforms.at(name).location, value);
 }
 void ShaderProgram::SetMat4Float(const std::string &name, const glm::mat4 &matrix) const{
-    glProgramUniformMatrix4fv(handle, glGetUniformLocation(handle, name.c_str()), 1, GL_FALSE, glm::value_ptr(matrix));
+    if(uniforms.count(name) > 0)    
+        glProgramUniformMatrix4fv(handle, uniforms.at(name).location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 void ShaderProgram::DetachShaderObject(ShaderObject shaderObject)
 {
