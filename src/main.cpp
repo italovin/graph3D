@@ -188,10 +188,15 @@ int main(int argc, char *argv[])
         }
     }
     SceneObject graph = SceneObject(1);
-    graph.StartImmutableBufferStorage(0, parameters);
-    graph.StartElementBufferStorage(indices);
+    //std::cout << indices.size()*sizeof(GLuint) << std::endl;
+    GLsizei parametersSize = parameters.size()*sizeof(GLfloat);
+    GLsizei indicesSize = indices.size()*sizeof(GLuint);
+    graph.BufferStorageEmpty(0, parametersSize + indicesSize);
+    graph.BufferSubData(0, parametersSize, indices);
+    graph.BufferSubData(0, 0, parameters);
     graph.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
-    graph.AttachElementBuffer();
+    graph.AttachElementBuffer(0);
+    graph.SetIndicesInfo(indices.size(), parametersSize);
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);

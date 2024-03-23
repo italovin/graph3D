@@ -4,85 +4,108 @@ SceneObject::SceneObject(){
     indicesCount = 0;
     vao = VertexArray();
     Bind();
+    transform.position = glm::vec3(0, 0, 0);
+    transform.rotation = glm::vec3(0, 0, 0);
+    transform.scale = glm::vec3(1, 1, 1);
 }
-SceneObject::SceneObject(unsigned int n_vbo){
+SceneObject::SceneObject(unsigned int n_buffers){
     indicesCount = 0;
     vao = VertexArray();
     Bind();
-    Startup(n_vbo);
+    Startup(n_buffers);
     transform.position = glm::vec3(0, 0, 0);
     transform.rotation = glm::vec3(0, 0, 0);
     transform.scale = glm::vec3(1, 1, 1);
 }
 
-void SceneObject::Startup(unsigned int n_vbo)
+void SceneObject::Startup(unsigned int n_buffers)
 {
-    vbo = std::vector<unsigned int>(n_vbo);
-    glCreateBuffers(n_vbo, vbo.data());
-    glCreateBuffers(1, &ibo);
+    buffers = std::vector<GLuint>(n_buffers);
+    glCreateBuffers(n_buffers, buffers.data());
 }
 
-void SceneObject::StartImmutableBufferStorage(GLuint vbo_index, float data[], unsigned int dataSize){
-    glNamedBufferStorage(vbo[vbo_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+GLuint SceneObject::GetBuffer(int index){
+    return buffers[index];
 }
 
-void SceneObject::StartImmutableBufferStorage(GLuint vbo_index, const std::vector<float> &data)
+void SceneObject::BufferStorageEmpty(GLuint buffers_index, unsigned int dataSize){
+    glNamedBufferStorage(buffers[buffers_index], dataSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::BufferStorage(GLuint buffers_index, GLfloat data[], unsigned int dataSize){
+    glNamedBufferStorage(buffers[buffers_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::BufferStorage(GLuint buffers_index, const std::vector<GLfloat> &data)
 {
     unsigned int dataSize = sizeof(float)*data.size();
-    glNamedBufferStorage(vbo[vbo_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(buffers[buffers_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
 }
 
-void SceneObject::StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, float data[], unsigned int dataSize)
+void SceneObject::BufferStorage(GLuint buffers_index, GLuint data[], unsigned int dataSize){
+    glNamedBufferStorage(buffers[buffers_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::BufferStorage(GLuint buffers_index, const std::vector<GLuint> &data)
+{
+    unsigned int dataSize = sizeof(float)*data.size();
+    glNamedBufferStorage(buffers[buffers_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::BufferStorage(GLuint buffers_index, GLushort data[], unsigned int dataSize){
+    glNamedBufferStorage(buffers[buffers_index], dataSize, data, GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::BufferStorage(GLuint buffers_index, const std::vector<GLushort> &data)
+{
+    unsigned int dataSize = sizeof(float)*data.size();
+    glNamedBufferStorage(buffers[buffers_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
+}
+
+void SceneObject::MutableBufferStorage(GLuint buffers_index, GLenum bufferType, GLfloat data[], unsigned int dataSize)
 {
     if(bufferType == GL_ARRAY_BUFFER){
-        glNamedBufferData(vbo[vbo_index], dataSize, data, GL_STATIC_DRAW);
+        glNamedBufferData(buffers[buffers_index], dataSize, data, GL_STATIC_DRAW);
     }
 }
 
-void SceneObject::StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, const std::vector<float> &data)
+void SceneObject::MutableBufferStorage(GLuint buffers_index, GLenum bufferType, const std::vector<GLfloat> &data)
 {
     unsigned int dataSize = sizeof(float)*data.size();
     if(bufferType == GL_ARRAY_BUFFER){
-        glNamedBufferData(vbo[vbo_index], dataSize, data.data(), GL_STATIC_DRAW);
+        glNamedBufferData(buffers[buffers_index], dataSize, data.data(), GL_STATIC_DRAW);
     }
 }
 
-void SceneObject::StartElementBufferStorage(unsigned int data[], unsigned int dataSize)
-{
-    glNamedBufferStorage(ibo, dataSize, data, GL_DYNAMIC_STORAGE_BIT);
-    indicesCount = dataSize / sizeof(unsigned int);
+void SceneObject::BufferSubData(GLuint buffers_index, int offset, GLfloat data[], unsigned int dataSize){
+    glNamedBufferSubData(buffers[buffers_index], offset, dataSize, data);
 }
 
-void SceneObject::StartElementBufferStorage(const std::vector<unsigned int> &data)
-{
-    unsigned int dataSize = sizeof(unsigned int)*data.size();
-    glNamedBufferStorage(ibo, dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
-    indicesCount = dataSize / sizeof(unsigned int);
+void SceneObject::BufferSubData(GLuint buffers_index, int offset, const std::vector<GLfloat> &data){
+    GLsizeiptr dataSize = sizeof(GLfloat)*data.size();
+    glNamedBufferSubData(buffers[buffers_index], offset, dataSize, data.data());
 }
 
-void SceneObject::StartElementBufferStorage(unsigned short data[], unsigned int dataSize)
-{
-    glNamedBufferStorage(ibo, dataSize, data, GL_DYNAMIC_STORAGE_BIT);
-    indicesCount = dataSize / sizeof(unsigned short);
+void SceneObject::BufferSubData(GLuint buffers_index, int offset, GLuint data[], unsigned int dataSize){
+    glNamedBufferSubData(buffers[buffers_index], offset, dataSize, data);
 }
 
-void SceneObject::StartElementBufferStorage(const std::vector<unsigned short> &data)
-{
-    unsigned int dataSize = sizeof(unsigned short)*data.size();
-    glNamedBufferStorage(ibo, dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
-    indicesCount = dataSize / sizeof(unsigned short);
+void SceneObject::BufferSubData(GLuint buffers_index, int offset, const std::vector<GLuint> &data){
+    GLsizeiptr dataSize = sizeof(GLuint)*data.size();
+    glNamedBufferSubData(buffers[buffers_index], offset, dataSize, data.data());
 }
 
-void SceneObject::UpdateBufferData(GLuint vbo_index, int offset, float data[], unsigned int dataSize){
-    glNamedBufferSubData(vbo[vbo_index], offset, dataSize, data);
+void SceneObject::AttachVertexBuffer(GLuint buffers_index, GLuint bindingPoint, int offset, int stride)
+{
+    glVertexArrayVertexBuffer(vao.GetHandle(), bindingPoint, buffers[buffers_index], offset, stride);
+}
+void SceneObject::AttachElementBuffer(GLuint buffers_index){
+    glVertexArrayElementBuffer(vao.GetHandle(), buffers[buffers_index]);
 }
 
-void SceneObject::AttachVertexBuffer(GLuint vbo_index, GLuint bindingPoint, int offset, int stride)
-{
-    glVertexArrayVertexBuffer(vao.GetHandle(), bindingPoint, vbo[vbo_index], offset, stride);
-}
-void SceneObject::AttachElementBuffer(){
-    glVertexArrayElementBuffer(vao.GetHandle(), ibo);
+void SceneObject::SetIndicesInfo(unsigned int indicesCount, unsigned int indicesOffset){
+    this->indicesCount = indicesCount;
+    this->indicesOffset = indicesOffset;
 }
 
 void SceneObject::SetAttribute(GLuint attrib, GLuint bindingPoint, int size, GLenum type, GLboolean normalized, int offset)
@@ -123,17 +146,17 @@ void SceneObject::Bind()
 void SceneObject::Draw(){
     shader.Use();
     Bind();
-    glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, (void *)indicesOffset);
 }
 
 void SceneObject::DrawLines(){
     shader.Use();
     Bind();
-    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_INT, (void *)indicesOffset);
 }
 
 void SceneObject::DrawLines(GLenum type){
     shader.Use();
     Bind();
-    glDrawElements(GL_LINES, indicesCount, type, 0);
+    glDrawElements(GL_LINES, indicesCount, type, (void *)indicesOffset);
 }

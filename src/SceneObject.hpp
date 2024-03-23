@@ -11,25 +11,34 @@ class SceneObject{
 private:
     ShaderProgram shader;
     VertexArray vao;
-    std::vector<GLuint> vbo;
-    GLuint ibo;
-    unsigned int indicesCount;
+    std::vector<GLuint> buffers;
+    unsigned int indicesOffset = 0;
+    unsigned int indicesCount = 0;
 public:
     Transform transform;
     SceneObject();
-    SceneObject(unsigned int n_vbo);
-    void Startup(unsigned int n_vbo);
-    void StartImmutableBufferStorage(GLuint vbo_index, float data[], unsigned int dataSize);
-    void StartImmutableBufferStorage(GLuint vbo_index, const std::vector<float> &data);
-    void StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, float data[], unsigned int dataSize);
-    void StartMutableBufferStorage(GLuint vbo_index, GLenum bufferType, const std::vector<float> &data);
-    void StartElementBufferStorage(unsigned int data[], unsigned int dataSize);
-    void StartElementBufferStorage(const std::vector<unsigned int> &data);
-    void StartElementBufferStorage(unsigned short data[], unsigned int dataSize);
-    void StartElementBufferStorage(const std::vector<unsigned short> &data);
-    void UpdateBufferData(GLuint vbo_index, int offset, float data[], unsigned int dataSize);
-    void AttachVertexBuffer(GLuint vbo_index, GLuint bindingPoint, int offset, int stride);
-    void AttachElementBuffer();
+    SceneObject(unsigned int n_buffers);
+    void Startup(unsigned int n_buffers);
+    GLuint GetBuffer(int index);
+    //Create empty immutable buffer storage
+    void BufferStorageEmpty(GLuint buffers_index, unsigned int dataSize);
+    //Create immutable buffer storage
+    void BufferStorage(GLuint buffers_index, GLfloat data[], unsigned int dataSize);
+    void BufferStorage(GLuint buffers_index, const std::vector<GLfloat> &data);
+    void BufferStorage(GLuint buffers_index, GLuint data[], unsigned int dataSize);
+    void BufferStorage(GLuint buffers_index, const std::vector<GLuint> &data);
+    void BufferStorage(GLuint buffers_index, GLushort data[], unsigned int dataSize);
+    void BufferStorage(GLuint buffers_index, const std::vector<GLushort> &data);
+    //Create mutable buffer storage
+    void MutableBufferStorage(GLuint buffers_index, GLenum bufferType, GLfloat data[], unsigned int dataSize);
+    void MutableBufferStorage(GLuint buffers_index, GLenum bufferType, const std::vector<GLfloat> &data);
+    void BufferSubData(GLuint buffers_index, int offset, GLfloat data[], unsigned int dataSize);
+    void BufferSubData(GLuint buffers_index, int offset, const std::vector<GLfloat> &data);
+    void BufferSubData(GLuint buffers_index, int offset, GLuint data[], unsigned int dataSize);
+    void BufferSubData(GLuint buffers_index, int offset, const std::vector<GLuint> &data);
+    void AttachVertexBuffer(GLuint buffers_index, GLuint bindingPoint, int offset, int stride);
+    void AttachElementBuffer(GLuint buffers_index);
+    void SetIndicesInfo(unsigned int indicesCount, unsigned int indicesOffset);
     void SetAttribute(GLuint attrib, GLuint bindingPoint, int size, GLenum type, GLboolean normalized, int offset);
     void SetShader(ShaderProgram shaderProgram);
     void UpdateModel(const std::string &modelName);
