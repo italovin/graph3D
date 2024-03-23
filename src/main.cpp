@@ -95,69 +95,120 @@ int main(int argc, char *argv[])
     max_s = M_PI;
     max_t = 2*M_PI;
     bool perfomanceCounter = true;
-
+    
     for(int i = 1; i < argc; i++){
-        if(std::strcmp(argv[i], "-x") == 0 && i < argc - 1){
-            if(std::string(argv[i+1]).size() <= maxEquationSize){
+        std::string argvString = argv[i];
+        if(argvString == "-x" && i < argc - 1){
+            std::string value = argv[i+1];
+            if(value.size() <= maxEquationSize){
                 equationX = argv[i+1];
                 continue;
             }
         }
-        if(std::strcmp(argv[i], "-y") == 0 && i < argc - 1){
-            if(std::string(argv[i+1]).size() <= maxEquationSize){
+        if(argvString == "-y" && i < argc - 1){
+            std::string value = argv[i+1];
+            if(value.size() <= maxEquationSize){
                 equationY = argv[i+1];
                 continue;
             }
         }
-        if(std::strcmp(argv[i], "-z") == 0 && i < argc - 1){
-            if(std::string(argv[i+1]).size() <= maxEquationSize){
+        if(argvString == "-z" && i < argc - 1){
+            std::string value = argv[i+1];
+            if(value.size() <= maxEquationSize){
                 equationZ = argv[i+1];
                 continue;
             }
         }
-        if(std::strcmp(argv[i], "-t") == 0 && i < argc - 1){
+        if(argvString == "-t" && i < argc - 1){
             timeString = argv[i+1];
             continue;
         }
-        if(std::strcmp(argv[i], "-v1") == 0 && i < argc - 1){
+        if(argvString == "-v1" && i < argc - 1){
             var1 = argv[i+1];
             continue;
         }
-        if(std::strcmp(argv[i], "-v2") == 0 && i < argc - 1){
+        if(argvString == "-v2" && i < argc - 1){
             var2 = argv[i+1];
             continue;
         }
-        if(std::strcmp(argv[i], "--min_v1") == 0 && i < argc - 1){
+        if(argvString == "--min_v1" && i < argc - 1){
+            try{
             min_s = std::stof(argv[i+1]);
             continue;
+            } catch (const std::invalid_argument &e){
+                std::cout << e.what() << " - Invalid value for argument min_v1\n";
+            } catch (const std::out_of_range &e){
+                std::cout << e.what() << " - Out of range value\n";
+            }
         }
-        if(std::strcmp(argv[i], "--max_v1") == 0 && i < argc - 1){
+        if(argvString == "--max_v1" && i < argc - 1){
+            try{
             max_s = std::stof(argv[i+1]);
             continue;
+            }catch (const std::invalid_argument &e){
+                std::cout << e.what() << " - Invalid value for argument max_v1\n";
+            } catch (const std::out_of_range &e){
+                std::cout << e.what() << " - Out of range value\n";
+            }
         }
-        if(std::strcmp(argv[i], "--min_v2") == 0 && i < argc - 1){
+        if(argvString == "--min_v2" && i < argc - 1){
+            try{
             min_t = std::stof(argv[i+1]);
             continue;
+            }catch (const std::invalid_argument &e){
+                std::cout << e.what() << " - Invalid value for argument min_v2\n";
+            } catch (const std::out_of_range &e){
+                std::cout << e.what() << " - Out of range value\n";
+            }
         }
-        if(std::strcmp(argv[i], "--max_v2") == 0 && i < argc - 1){
+        if(argvString == "--max_v2" && i < argc - 1){
+            try{
             max_t = std::stof(argv[i+1]);
             continue;
+            }catch (const std::invalid_argument &e){
+                std::cout << e.what() << " - Invalid value for argument max_v2\n";
+            } catch (const std::out_of_range &e){
+                std::cout << e.what() << " - Out of range value\n";
+            }
         }
-        if(std::strcmp(argv[i], "--steps_v1") == 0 && i < argc - 1){
-            s_steps = std::stof(argv[i+1]);
+        if(argvString == "--steps_v1" && i < argc - 1){
+            try{
+            s_steps = std::stoi(argv[i+1]);
             continue;
+            }catch (const std::invalid_argument &e){
+                std::cout << e.what() << " - Invalid value for argument steps_v1\n";
+            } catch (const std::out_of_range &e){
+                std::cout << e.what() << " - Out of range value\n";
+            }
         }
-        if(std::strcmp(argv[i], "--steps_v2") == 0 && i < argc - 1){
-            t_steps = std::stof(argv[i+1]);
+        if(argvString == "--steps_v2" && i < argc - 1){
+            try{
+            t_steps = std::stoi(argv[i+1]);
             continue;
+            }catch (const std::invalid_argument &e){
+                std::cout << e.what() << " - Invalid value for argument steps_v2\n";
+            } catch (const std::out_of_range &e){
+                std::cout << e.what() << " - Out of range value\n";
+            }
         }
-        if(std::strcmp(argv[i], "-c") == 0 && i < argc -1){
-            if(std::strcmp(argv[i+1], "true") == 0){
+        if(argvString == "-c" && i < argc -1){
+            std::string flag = argv[i+1];
+            if(flag == "true" || flag == "1"){
                 perfomanceCounter = true;
-            } else if(std::strcmp(argv[i+1], "false") == 0){
+                continue;
+            } else if(flag == "false" || flag == "0"){
                 perfomanceCounter = false;
+                continue;
             } 
         }
+    }
+    if(min_s > max_s){
+        std::swap(min_s, max_s);
+        std::cout << "Min Var1 is lesser than Max Var1 - Swapping values\n";
+    }
+    if(min_t > max_t){
+        std::swap(min_t, max_t);
+        std::cout << "Min Var2 is lesser than Max Var2 - Swapping values\n";
     }
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
