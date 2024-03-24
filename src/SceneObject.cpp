@@ -4,18 +4,12 @@ SceneObject::SceneObject(){
     indicesCount = 0;
     vao = VertexArray();
     Bind();
-    transform.position = glm::vec3(0, 0, 0);
-    transform.rotation = glm::vec3(0, 0, 0);
-    transform.scale = glm::vec3(1, 1, 1);
 }
 SceneObject::SceneObject(unsigned int n_buffers){
     indicesCount = 0;
     vao = VertexArray();
     Bind();
     Startup(n_buffers);
-    transform.position = glm::vec3(0, 0, 0);
-    transform.rotation = glm::vec3(0, 0, 0);
-    transform.scale = glm::vec3(1, 1, 1);
 }
 
 void SceneObject::Startup(unsigned int n_buffers)
@@ -122,15 +116,19 @@ void SceneObject::SetShader(ShaderProgram shaderProgram){
 void SceneObject::UpdateModel(const std::string &modelName){
     glm::mat4 model = glm::mat4(1.0f);
     //glm::mat4 rot = glm::rotate(model, glm::radians(0.0f), glm::vec3(1, 0, 0));
-    glm::vec3 radiansEulerAngles = glm::radians(transform.rotation);
-    glm::mat4 rot = glm::eulerAngleXYZ(radiansEulerAngles.x, radiansEulerAngles.y, radiansEulerAngles.z);
+    //transform.eulerAngles(glm::eulerAngles(transform.rotation));
     glm::mat4 scl = glm::scale(model, transform.scale);
+    glm::mat4 rot = glm::mat4_cast(glm::conjugate(transform.rotation)); // Conjugate makes
     glm::mat4 trn = glm::translate(model, transform.position);
-    model = trn*scl*rot;
+    model = trn*rot*scl;
     shader.SetMat4Float(modelName, model);
 }
 void SceneObject::UpdateView(const std::string &viewName, Camera camera){
-    glm::mat4 view = glm::lookAt(camera.transform.position, camera.transform.position + camera.front, camera.up);
+    //glm::mat4 view = glm::lookAt(camera.transform.position, camera.transform.position + camera.front, camera.up);
+    glm::mat4 rotate = glm::mat4_cast(camera.transform.rotation);
+    glm::mat4 translate = glm::mat4(1.0f);
+    translate = glm::translate(translate, -camera.transform.position);
+    glm::mat4 view = rotate * translate;
     shader.SetMat4Float(viewName, view);
 }
 void SceneObject::UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height){

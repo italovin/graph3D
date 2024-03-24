@@ -18,9 +18,11 @@ bool firstMouse = true;
 float lastX = WIDTH/2;
 float lastY = HEIGHT/2;
 
+// Rotation Euler angles +X = Look Up; +Y = Look Left
+
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
-Camera freeCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, -90, 0));
-Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, -90, 0));
+Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 0, 0));
+Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 90, 0));
 
 float randomFloat()
 {
@@ -47,7 +49,7 @@ float randomFloat(int a, int b)
 }
 
 int main(int argc, char *argv[])
-{ 
+{
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -83,9 +85,9 @@ int main(int argc, char *argv[])
     
     std::string var1 = "s";
     std::string var2 = "t";
-    std::string equationX = "2*sin(s)*cos(t)";
-    std::string equationY = "2*sin(s)*sin(t)";
-    std::string equationZ = "2*cos(s)";
+    std::string equationX = "2*sin(s)*cos(t)"; //2*sin(s)*cos(t)
+    std::string equationY = "2*sin(s)*sin(t)"; //2*sin(s)*sin(t)
+    std::string equationZ = "2*cos(s)"; //2*cos(s)
     std::string timeString = "time";
     const int maxEquationSize = 256;
     int s_steps = 100;
@@ -320,16 +322,17 @@ int main(int argc, char *argv[])
 
         float cameraSpeed = static_cast<float>(2 * deltaTime);
         if(isFreeCamera){
+            //std::cout << freeCamera.front.x << ", " << freeCamera.front.y << ", " << freeCamera.front.z << std::endl;
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-                freeCamera.transform.position += cameraSpeed * freeCamera.front;
+                freeCamera.transform.position += cameraSpeed * freeCamera.transform.Forward();
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-                freeCamera.transform.position -= cameraSpeed * freeCamera.front;
+                freeCamera.transform.position -= cameraSpeed * freeCamera.transform.Forward();
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-                freeCamera.transform.position -= glm::normalize(glm::cross(freeCamera.front, freeCamera.up)) * cameraSpeed;
+                freeCamera.transform.position -= freeCamera.transform.Right() * cameraSpeed;
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-                freeCamera.transform.position += glm::normalize(glm::cross(freeCamera.front, freeCamera.up)) * cameraSpeed;
+                freeCamera.transform.position += freeCamera.transform.Right() * cameraSpeed;
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-                freeCamera.transform.position += cameraSpeed * freeCamera.up;
+                freeCamera.transform.position += cameraSpeed * freeCamera.transform.Up();
 
             mainCamera = freeCamera;
         } else {
@@ -347,7 +350,7 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
 
-        graph.transform.rotation.x = 30*time;
+        graph.transform.eulerAngles(glm::vec3(0, 30*time, 0));
         shader.SetFloat("time", time);
         graph.UpdateModel("model");
         graph.UpdateView("view", mainCamera);
