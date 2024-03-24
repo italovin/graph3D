@@ -18,7 +18,7 @@ bool firstMouse = true;
 float lastX = WIDTH/2;
 float lastY = HEIGHT/2;
 
-// Rotation Euler angles +X = Look Up; +Y = Look Left
+// Rotation Euler angles +X = Look Down; +Y = Look Right
 
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
 Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 0, 0));
