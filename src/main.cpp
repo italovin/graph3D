@@ -22,7 +22,7 @@ float lastY = HEIGHT/2;
 
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
 Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 0, 0));
-Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 90, 0));
+Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
 
 float randomFloat()
 {
@@ -322,7 +322,7 @@ int main(int argc, char *argv[])
 
         float cameraSpeed = static_cast<float>(2 * deltaTime);
         if(isFreeCamera){
-            //std::cout << freeCamera.front.x << ", " << freeCamera.front.y << ", " << freeCamera.front.z << std::endl;
+            std::cout << freeCamera.transform.Right().x << ", " << freeCamera.transform.Right().y << ", " << freeCamera.transform.Right().z << std::endl;
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
                 freeCamera.transform.position += cameraSpeed * freeCamera.transform.Forward();
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

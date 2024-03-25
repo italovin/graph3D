@@ -8,7 +8,8 @@ public:
     glm::vec3 position = glm::vec3(0, 0, 0);
     glm::quat rotation = glm::quat(1, 0, 0, 0);
     glm::vec3 scale = glm::vec3(1, 1, 1);
-    const glm::vec3 &eulerAngles() const {
+    const glm::vec3 &eulerAngles() {
+        _eulerAngles = glm::degrees(glm::eulerAngles(rotation));
         return this->_eulerAngles;
     }
     void eulerAngles(const glm::vec3 &eulerAngles) {
