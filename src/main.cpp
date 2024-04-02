@@ -19,10 +19,10 @@ float lastX = WIDTH/2;
 float lastY = HEIGHT/2;
 
 // Rotation Euler angles +X = Look Down; +Y = Look Right
-
+// Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
-Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 0, 0));
-Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
+Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
+Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, 0, 0));
 
 float randomFloat()
 {
@@ -257,16 +257,14 @@ int main(int argc, char *argv[])
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(330)
     .AddInput(0, SH_VEC2, "params")
-    .AddUniform(SH_MAT4, "model")
-    .AddUniform(SH_MAT4, "view")
-    .AddUniform(SH_MAT4, "projection")
+    .AddUniform(SH_MAT4, "mvp")
     .AddUniform(SH_FLOAT, timeString)
     .SetMain("float " + var1 + "= params.x;"
     "float " + var2 + "= params.y;"
     "float x =" + equationX + ";"
     "float y =" + equationY + ";"
     "float z =" + equationZ + ";"
-    + "gl_Position = projection*view*model*vec4(x, z, y, 1.0);").Build();
+    + "gl_Position = mvp*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(330)
     .AddOutput(SH_VEC4, "FragColor")
@@ -276,7 +274,7 @@ int main(int argc, char *argv[])
     shader.SetFloat("red", 1.0f);
 
     graph.SetShader(shader);
-    graph.UpdateProjection("projection", WIDTH, HEIGHT);
+    glm::mat4 projection = graph.GetProjectionMatrix(WIDTH, HEIGHT);
 
     glClearColor(0, 0, 0, 1);
     double time = 0;
@@ -322,17 +320,20 @@ int main(int argc, char *argv[])
 
         float cameraSpeed = static_cast<float>(2 * deltaTime);
         if(isFreeCamera){
-            std::cout << freeCamera.transform.Right().x << ", " << freeCamera.transform.Right().y << ", " << freeCamera.transform.Right().z << std::endl;
+            glm::vec3 up = freeCamera.transform.Up();
+            glm::vec3 right = freeCamera.transform.Right();
+            glm::vec3 forward = freeCamera.transform.Forward();
+            
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-                freeCamera.transform.position += cameraSpeed * freeCamera.transform.Forward();
+                freeCamera.transform.position += cameraSpeed * forward;
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-                freeCamera.transform.position -= cameraSpeed * freeCamera.transform.Forward();
+                freeCamera.transform.position -= cameraSpeed * forward;
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-                freeCamera.transform.position -= freeCamera.transform.Right() * cameraSpeed;
+                freeCamera.transform.position -= cameraSpeed * right;
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-                freeCamera.transform.position += freeCamera.transform.Right() * cameraSpeed;
+                freeCamera.transform.position += cameraSpeed * right;
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-                freeCamera.transform.position += cameraSpeed * freeCamera.transform.Up();
+                freeCamera.transform.position += cameraSpeed * up;
 
             mainCamera = freeCamera;
         } else {
@@ -351,9 +352,12 @@ int main(int argc, char *argv[])
         /* Render here */
 
         graph.transform.eulerAngles(glm::vec3(0, 30*time, 0));
+        //graph.transform.position += 0.1f*graph.transform.Right();
         shader.SetFloat("time", time);
-        graph.UpdateModel("model");
-        graph.UpdateView("view", mainCamera);
+        glm::mat4 model = graph.GetModelMatrix();
+        glm::mat4 view = graph.GetViewMatrix(mainCamera);
+        glm::mat4 mvp = projection*view*model;
+        graph.Shader().SetMat4Float("mvp", mvp);
         graph.DrawLines();
 
         /* Swap front and back buffers */

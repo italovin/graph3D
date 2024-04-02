@@ -108,7 +108,9 @@ void SceneObject::SetAttribute(GLuint attrib, GLuint bindingPoint, int size, GLe
     glEnableVertexAttribArray(attrib);
     glVertexArrayAttribBinding(vao.GetHandle(), attrib, bindingPoint);
 }
-
+ShaderProgram SceneObject::Shader() const{
+    return shader;
+}
 void SceneObject::SetShader(ShaderProgram shaderProgram){
     shader = shaderProgram;
 }
@@ -118,12 +120,12 @@ void SceneObject::UpdateModel(const std::string &modelName){
     //glm::mat4 rot = glm::rotate(model, glm::radians(0.0f), glm::vec3(1, 0, 0));
     //transform.eulerAngles(glm::eulerAngles(transform.rotation));
     glm::mat4 scl = glm::scale(model, transform.scale);
-    glm::mat4 rot = glm::mat4_cast(glm::conjugate(transform.rotation)); // Conjugate makes
+    glm::mat4 rot = glm::mat4_cast(transform.rotation);
     glm::mat4 trn = glm::translate(model, transform.position);
     model = trn*rot*scl;
     shader.SetMat4Float(modelName, model);
 }
-void SceneObject::UpdateView(const std::string &viewName, Camera camera){
+void SceneObject::UpdateView(const std::string &viewName, const Camera &camera){
     //glm::mat4 view = glm::lookAt(camera.transform.position, camera.transform.position + camera.front, camera.up);
     glm::mat4 rotate = glm::mat4_cast(camera.transform.rotation);
     glm::mat4 translate = glm::mat4(1.0f);
@@ -133,9 +135,30 @@ void SceneObject::UpdateView(const std::string &viewName, Camera camera){
 }
 void SceneObject::UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height){
     glm::mat4 projection = glm::mat4(1.0f);
-    projection = glm::perspective(glm::radians(45.0f), (float)width/height, 0.1f, 100.0f);
+    projection = glm::perspectiveLH(glm::radians(45.0f), (float)width/height, 0.1f, 100.0f);
     shader.SetMat4Float(projectionName, projection);
 }
+glm::mat4 SceneObject::GetModelMatrix() const{
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 scl = glm::scale(model, transform.scale);
+    glm::mat4 rot = glm::mat4_cast(glm::conjugate(transform.rotation));
+    glm::mat4 trn = glm::translate(model, transform.position);
+    model = trn*rot*scl;
+    return model;
+}
+glm::mat4 SceneObject::GetViewMatrix(const Camera &camera) const{
+    glm::mat4 rotate = glm::mat4_cast(camera.transform.rotation);
+    glm::mat4 translate = glm::mat4(1.0f);
+    translate = glm::translate(translate, -camera.transform.position);
+    glm::mat4 view = rotate * translate;
+    return view;
+}
+glm::mat4 SceneObject::GetProjectionMatrix(unsigned int width, unsigned int height) const{
+    glm::mat4 projection = glm::mat4(1.0f);
+    projection = glm::perspectiveLH(glm::radians(45.0f), (float)width/height, 0.1f, 100.0f);
+    return projection;
+}
+
 void SceneObject::Bind()
 {
     vao.Bind();

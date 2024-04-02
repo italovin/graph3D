@@ -13,5 +13,5 @@ glm::vec3 Transform::Up(){
 }
 
 glm::vec3 Transform::Forward(){
-    return glm::conjugate(rotation) * glm::vec3(0, 0, -1) ;
+    return glm::conjugate(rotation) * glm::vec3(0, 0, 1);
 }

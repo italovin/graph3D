@@ -13,10 +13,11 @@ Camera::Camera(const glm::vec3 &position, const glm::vec3 &eulerAngles){
 }
 
 void Camera::ProcessMouseMovement(float xOffset, float yOffset){
-    xOffset *= sensitivity;
-    yOffset *= sensitivity;
-    glm::quat qPitch = glm::angleAxis(-glm::radians(yOffset), glm::vec3(1, 0, 0));
-    glm::quat qYaw = glm::angleAxis(glm::radians(xOffset), glm::vec3(0, 1, 0));
+    float factor = 0.01f;
+    xOffset *= factor*sensitivity;
+    yOffset *= factor*sensitivity;
+    glm::quat qPitch = glm::angleAxis(yOffset, glm::vec3(1, 0, 0));
+    glm::quat qYaw = glm::angleAxis(-xOffset, glm::vec3(0, 1, 0));
     transform.rotation =  qPitch * transform.rotation * qYaw;
     transform.rotation  = glm::normalize(transform.rotation);
 }
