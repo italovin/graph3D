@@ -16,7 +16,7 @@ public:
         glm::quat quatX = glm::angleAxis(glm::radians(eulerAngles).x, glm::vec3(1, 0, 0));
         glm::quat quatY = glm::angleAxis(glm::radians(eulerAngles).y, glm::vec3(0, 1, 0));
         glm::quat quatZ = glm::angleAxis(glm::radians(eulerAngles).z, glm::vec3(0, 0, 1));
-        rotation = glm::conjugate(glm::normalize(quatX * quatY * quatZ));
+        rotation = glm::normalize(quatX * quatY * quatZ);
         this->_eulerAngles = eulerAngles;
     }
     Transform();

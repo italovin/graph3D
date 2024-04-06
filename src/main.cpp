@@ -22,7 +22,7 @@ float lastY = HEIGHT/2;
 // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
 Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
 Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
-Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(-90, 0, 0));
+Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
 
 float randomFloat()
 {
@@ -323,7 +323,6 @@ int main(int argc, char *argv[])
             glm::vec3 up = freeCamera.transform.Up();
             glm::vec3 right = freeCamera.transform.Right();
             glm::vec3 forward = freeCamera.transform.Forward();
-            
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
                 freeCamera.transform.position += cameraSpeed * forward;
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -352,7 +351,7 @@ int main(int argc, char *argv[])
         /* Render here */
 
         graph.transform.eulerAngles(glm::vec3(0, 30*time, 0));
-        //graph.transform.position += 0.1f*graph.transform.Right();
+        
         shader.SetFloat("time", time);
         glm::mat4 model = graph.GetModelMatrix();
         glm::mat4 view = graph.GetViewMatrix(mainCamera);
