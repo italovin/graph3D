@@ -141,17 +141,20 @@ void SceneObject::Bind()
 void SceneObject::Draw(){
     shader.Use();
     Bind();
-    glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, (void *)indicesOffset);
+    glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, 
+    reinterpret_cast<GLvoid *>(static_cast<uintptr_t>(indicesOffset)));
 }
 
 void SceneObject::DrawLines(){
     shader.Use();
     Bind();
-    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_INT, (void *)indicesOffset);
+    glDrawElements(GL_LINES, indicesCount, GL_UNSIGNED_INT,
+    reinterpret_cast<GLvoid *>(static_cast<uintptr_t>(indicesOffset)));
 }
 
 void SceneObject::DrawLines(GLenum type){
     shader.Use();
     Bind();
-    glDrawElements(GL_LINES, indicesCount, type, (void *)indicesOffset);
+    glDrawElements(GL_LINES, indicesCount, type, 
+    reinterpret_cast<GLvoid *>(static_cast<uintptr_t>(indicesOffset)));
 }
