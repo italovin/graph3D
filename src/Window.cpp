@@ -42,6 +42,6 @@ glm::mat4 Window::GetProjectionMatrix() const{
 
 glm::mat4 Window::GetProjectionMatrix(float fovy, float near, float far) const{
     glm::mat4 projection = glm::mat4(1.0f);
-    projection = glm::perspectiveLH(glm::radians(45.0f), (float)width/height, near, far);
+    projection = glm::perspectiveLH(glm::radians(fovy), (float)width/height, near, far);
     return projection;
 }
