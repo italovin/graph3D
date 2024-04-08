@@ -1,55 +1,20 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <iostream>
 #include "SceneObject.hpp"
 #include "ShaderBuilder.hpp"
 #include "Input.hpp"
 #include <string>
-#include <set>
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void processInput(GLFWwindow* window, float deltaTime);
-
-const int WIDTH = 800; 
-const int HEIGHT = 600;
-
-bool firstMouse = true;
-float lastX = WIDTH/2;
-float lastY = HEIGHT/2;
-
-
-
-float randomFloat()
-{
-    return (float)(std::rand()) / (float)(RAND_MAX);
-}
- 
-int randomInt(int a, int b)
-{
-    if (a > b)
-        return randomInt(b, a);
-    if (a == b)
-        return a;
-    return a + (std::rand() % (b - a));
-}
-
-float randomFloat(int a, int b)
-{
-    if (a > b)
-        return randomFloat(b, a);
-    if (a == b)
-        return a;
- 
-    return (float)randomInt(a, b) + randomFloat();
-}
+#include <iostream>
 
 int main(int argc, char *argv[])
 {
     /* Initialize the library */
     if (!glfwInit())
         return -1;
+
+    const int WIDTH = 800; 
+    const int HEIGHT = 600;
 
     /* Create a windowed mode window and its OpenGL context */
     Window window;
@@ -311,9 +276,7 @@ int main(int argc, char *argv[])
             ticks++;
         }
         
-        //processInput(window, deltaTime);
-        //std::cout << "FPS: " << 1/deltaTime << "\n";
-        if (glfwGetKey(window.GetHandle(), GLFW_KEY_ESCAPE) == GLFW_PRESS){
+        if (Input::GetKeyDown(GLFW_KEY_ESCAPE)){
             if(perfomanceCounter){
                 std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
                 std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
