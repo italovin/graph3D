@@ -29,3 +29,7 @@ void Window::SetMouseCallback(GLFWcursorposfun callback){
 void Window::SetKeyCallback(GLFWkeyfun callback){
     glfwSetKeyCallback(handle, callback);
 }
+
+void Window::SetMouseButtonCallback(GLFWmousebuttonfun callback){
+    glfwSetMouseButtonCallback(handle, callback);
+}

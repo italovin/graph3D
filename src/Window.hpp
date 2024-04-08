@@ -14,4 +14,5 @@ public:
     GLFWwindow* GetHandle() const;
     void SetMouseCallback(GLFWcursorposfun callback);
     void SetKeyCallback(GLFWkeyfun callback);
+    void SetMouseButtonCallback(GLFWmousebuttonfun callback);
 };

@@ -5,10 +5,15 @@ float Input::mouseXDelta = 0;
 float Input::mouseYDelta = 0;
 bool Input::firstMouseMove = true;
 Window Input::registeredWindow = Window();
-std::map<int, KeyState> Input::monitoredKeys = std::map<int, KeyState>();
+std::unordered_map<int, KeyState> Input::monitoredKeys = std::unordered_map<int, KeyState>();
+std::unordered_map<int, MouseButtonState> Input::monitoredMouseButtons = std::unordered_map<int, MouseButtonState>();
 
 void Input::MonitorKey(int key, KeyState keyState){
     monitoredKeys.insert(std::make_pair(key, keyState));
+}
+
+void Input::MonitorMouseButton(int button, MouseButtonState mouseButtonState){
+    monitoredMouseButtons.insert(std::make_pair(button, mouseButtonState));
 }
 
 void Input::FirstMove(){
@@ -22,6 +27,7 @@ void Input::FirstMove(){
 void Input::SetupCallbacks(){
     registeredWindow.SetMouseCallback(MouseCallback);
     registeredWindow.SetKeyCallback(KeyCallback);
+    registeredWindow.SetMouseButtonCallback(MouseButtonCallback);
 }
 
 void Input::RegisterWindow(const Window &window){
@@ -35,7 +41,13 @@ void Input::MouseCallback(GLFWwindow *window, double xPos, double yPos){
 
 void Input::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
     if(monitoredKeys.count(key) == 0){
-        Input::MonitorKey(key, KEY_UP);
+        Input::MonitorKey(key, KEY_RELEASE);
+    }
+}
+
+void Input::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods){
+    if(monitoredMouseButtons.count(button) == 0){
+        Input::MonitorMouseButton(button, MOUSE_BTN_RELEASE);
     }
 }
 
@@ -52,15 +64,30 @@ void Input::Update(const Window &window){
         KeyState lastKeyState = i.second;
         int key = i.first;
         int state = glfwGetKey(registeredWindow.GetHandle(), key);
-        if(lastKeyState == KEY_UP && state == GLFW_PRESS){
+        if((lastKeyState == KEY_UP || lastKeyState == KEY_RELEASE) && state == GLFW_PRESS){
             monitoredKeys[key] = KEY_DOWN;
         } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD) && state == GLFW_PRESS){
             monitoredKeys[key] = KEY_HELD;
-        } else if(state == GLFW_RELEASE){
+        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD) && state == GLFW_RELEASE){
             monitoredKeys[key] = KEY_UP;
+        } else if(lastKeyState == KEY_UP && state == GLFW_RELEASE){
+            monitoredKeys[key] = KEY_RELEASE;
         }
     }
-    
+    for (auto &&i : monitoredMouseButtons){
+        MouseButtonState lastMouseBtnState = i.second;
+        int button = i.first;
+        int state = glfwGetMouseButton(registeredWindow.GetHandle(), button);
+        if((lastMouseBtnState == MOUSE_BTN_UP || lastMouseBtnState == MOUSE_BTN_RELEASE) && state == GLFW_PRESS){
+            monitoredMouseButtons[button] = MOUSE_BTN_DOWN;
+        } else if((lastMouseBtnState == MOUSE_BTN_DOWN || lastMouseBtnState == MOUSE_BTN_HELD) && state == GLFW_PRESS){
+            monitoredMouseButtons[button] = MOUSE_BTN_HELD;
+        } else if((lastMouseBtnState == MOUSE_BTN_DOWN || lastMouseBtnState == MOUSE_BTN_HELD) && state == GLFW_RELEASE){
+            monitoredMouseButtons[button] = MOUSE_BTN_UP;
+        } else if(lastMouseBtnState == MOUSE_BTN_UP && state == GLFW_RELEASE){
+            monitoredMouseButtons[button] = MOUSE_BTN_RELEASE;
+        }
+    }
     
 }
 
@@ -80,6 +107,12 @@ float Input::GetMouseDeltaY(){
     return mouseYDelta;
 }
 
+KeyState Input::GetKeyState(int key){
+    if(monitoredKeys.count(key) == 0)
+        return KEY_RELEASE;
+    return monitoredKeys[key];
+}
+
 bool Input::GetKeyHeld(int key){
     if(monitoredKeys.count(key) == 0)
         return false;
@@ -90,4 +123,34 @@ bool Input::GetKeyDown(int key){
     if(monitoredKeys.count(key) == 0)
         return false;
     return monitoredKeys[key] == KEY_DOWN;
+}
+
+bool Input::GetKeyUp(int key){
+    if(monitoredKeys.count(key) == 0)
+        return false;
+    return monitoredKeys[key] == KEY_UP;
+}
+
+MouseButtonState Input::GetMouseButtonState(int button){
+    if(monitoredMouseButtons.count(button) == 0)
+        return MOUSE_BTN_RELEASE;
+    return monitoredMouseButtons[button];
+}
+
+bool Input::GetMouseButtonHeld(int button){
+    if(monitoredMouseButtons.count(button) == 0)
+        return false;
+    return monitoredMouseButtons[button] == MOUSE_BTN_HELD || monitoredMouseButtons[button] == MOUSE_BTN_DOWN;
+}
+
+bool Input::GetMouseButtonDown(int button){
+    if(monitoredMouseButtons.count(button) == 0)
+        return false;
+    return monitoredMouseButtons[button] == MOUSE_BTN_DOWN;
+}
+
+bool Input::GetMouseButtonUp(int button){
+    if(monitoredMouseButtons.count(button) == 0)
+        return false;
+    return monitoredMouseButtons[button] == MOUSE_BTN_UP;
 }

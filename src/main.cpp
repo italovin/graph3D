@@ -322,22 +322,27 @@ int main(int argc, char *argv[])
             glfwSetWindowShouldClose(window.GetHandle(), true);
         }
 
-        float cameraSpeed = static_cast<float>(2 * deltaTime);
+        
         if(isFreeCamera){
             glm::vec3 up = freeCamera.transform.Up();
             glm::vec3 right = freeCamera.transform.Right();
             glm::vec3 forward = freeCamera.transform.Forward();
-            if (Input::GetKeyHeld(GLFW_KEY_W))
+            float cameraSpeed = static_cast<float>(1.5 * deltaTime);
+            if (Input::GetKeyHeld(GLFW_KEY_W)){
                 freeCamera.transform.position += cameraSpeed * forward;
-            if (Input::GetKeyHeld(GLFW_KEY_S))
+            }
+            if (Input::GetKeyHeld(GLFW_KEY_S)){
                 freeCamera.transform.position -= cameraSpeed * forward;
-            if (Input::GetKeyHeld(GLFW_KEY_A))
+            }
+            if (Input::GetKeyHeld(GLFW_KEY_A)){
                 freeCamera.transform.position -= cameraSpeed * right;
-            if (Input::GetKeyHeld(GLFW_KEY_D))
+            }
+            if (Input::GetKeyHeld(GLFW_KEY_D)){
                 freeCamera.transform.position += cameraSpeed * right;
-            if (Input::GetKeyHeld(GLFW_KEY_SPACE))
+            }
+            if (Input::GetKeyHeld(GLFW_KEY_SPACE)){
                 freeCamera.transform.position += cameraSpeed * up;
-
+            }
             mainCamera = freeCamera;
             float factor = 0.01f;
             glm::quat qPitch = glm::angleAxis(-factor*Input::GetMouseDeltaY(), glm::vec3(1, 0, 0));
@@ -347,7 +352,7 @@ int main(int argc, char *argv[])
         } else {
             mainCamera = topDownCamera;
         }
-        
+
         if (Input::GetKeyDown(GLFW_KEY_T)){
             isFreeCamera = !isFreeCamera;
         }
@@ -373,33 +378,4 @@ int main(int argc, char *argv[])
 
     glfwTerminate();
     return 0;
-}
-void processInput(GLFWwindow *window, float deltaTime)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
-}
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    /*if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-    lastX = xpos;
-    lastY = ypos;*/
-    //Input::FirstMove(window);
 }
