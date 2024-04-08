@@ -4,6 +4,7 @@
 #include <iostream>
 #include "SceneObject.hpp"
 #include "ShaderBuilder.hpp"
+#include "Input.hpp"
 #include <string>
 #include <set>
 
@@ -11,18 +12,14 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow* window, float deltaTime);
 
-const unsigned int WIDTH = 800; 
-const unsigned int HEIGHT = 600;
+const int WIDTH = 800; 
+const int HEIGHT = 600;
 
 bool firstMouse = true;
 float lastX = WIDTH/2;
 float lastY = HEIGHT/2;
 
-// Rotation Euler angles +X = Look Down; +Y = Look Right
-// Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
-Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
-Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
-Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
+
 
 float randomFloat()
 {
@@ -50,24 +47,22 @@ float randomFloat(int a, int b)
 
 int main(int argc, char *argv[])
 {
-    GLFWwindow* window;
-
     /* Initialize the library */
     if (!glfwInit())
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Graph 3D", nullptr, nullptr);
-    if (!window)
+    Window window;
+
+    if (!window.Create("Graph 3D", WIDTH, HEIGHT))
     {
         glfwTerminate();
         return -1;
     }
 
     /* Make the window's context current */
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
+    window.MakeContextCurrent();
+    Input::RegisterWindow(window);
 
     std::cout << glGetString(GL_VERSION) << std::endl;
 
@@ -276,6 +271,12 @@ int main(int argc, char *argv[])
     graph.SetShader(shader);
     glm::mat4 projection = graph.GetProjectionMatrix(WIDTH, HEIGHT);
 
+    // Rotation Euler angles +X = Look Down; +Y = Look Right
+    // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
+    Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
+    Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
+    Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
+
     glClearColor(0, 0, 0, 1);
     double time = 0;
     double lastTime = 0;
@@ -289,8 +290,11 @@ int main(int argc, char *argv[])
     bool holdingCameraSwitchKey = false;
 
     /* Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window.GetHandle()))
     {
+        //Input
+        Input::Update(window);
+
         time = glfwGetTime();
         deltaTime = time - lastTime;
         lastTime = time;
@@ -309,13 +313,13 @@ int main(int argc, char *argv[])
         
         //processInput(window, deltaTime);
         //std::cout << "FPS: " << 1/deltaTime << "\n";
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
+        if (glfwGetKey(window.GetHandle(), GLFW_KEY_ESCAPE) == GLFW_PRESS){
             if(perfomanceCounter){
                 std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
                 std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
                 std::cout << "Ticks: " << ticks << "; Ticks/Sec: " << ticks/time << "\n";
             }
-            glfwSetWindowShouldClose(window, true);
+            glfwSetWindowShouldClose(window.GetHandle(), true);
         }
 
         float cameraSpeed = static_cast<float>(2 * deltaTime);
@@ -323,28 +327,29 @@ int main(int argc, char *argv[])
             glm::vec3 up = freeCamera.transform.Up();
             glm::vec3 right = freeCamera.transform.Right();
             glm::vec3 forward = freeCamera.transform.Forward();
-            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            if (Input::GetKeyHeld(GLFW_KEY_W))
                 freeCamera.transform.position += cameraSpeed * forward;
-            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            if (Input::GetKeyHeld(GLFW_KEY_S))
                 freeCamera.transform.position -= cameraSpeed * forward;
-            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            if (Input::GetKeyHeld(GLFW_KEY_A))
                 freeCamera.transform.position -= cameraSpeed * right;
-            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            if (Input::GetKeyHeld(GLFW_KEY_D))
                 freeCamera.transform.position += cameraSpeed * right;
-            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+            if (Input::GetKeyHeld(GLFW_KEY_SPACE))
                 freeCamera.transform.position += cameraSpeed * up;
 
             mainCamera = freeCamera;
+            float factor = 0.01f;
+            glm::quat qPitch = glm::angleAxis(-factor*Input::GetMouseDeltaY(), glm::vec3(1, 0, 0));
+            glm::quat qYaw = glm::angleAxis(factor*Input::GetMouseDeltaX(), glm::vec3(0, 1, 0));
+            freeCamera.transform.rotation =  qYaw * freeCamera.transform.rotation;
+            freeCamera.transform.rotation = freeCamera.transform.rotation * qPitch;
         } else {
             mainCamera = topDownCamera;
         }
         
-        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !holdingCameraSwitchKey){
-            holdingCameraSwitchKey = true;
+        if (Input::GetKeyDown(GLFW_KEY_T)){
             isFreeCamera = !isFreeCamera;
-        }
-        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && holdingCameraSwitchKey){
-            holdingCameraSwitchKey = false;
         }
 
         glClear(GL_COLOR_BUFFER_BIT);
@@ -360,7 +365,7 @@ int main(int argc, char *argv[])
         graph.DrawLines();
 
         /* Swap front and back buffers */
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(window.GetHandle());
 
         /* Poll for and process events */
         glfwPollEvents();
@@ -385,7 +390,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
 
-    if (firstMouse)
+    /*if (firstMouse)
     {
         lastX = xpos;
         lastY = ypos;
@@ -395,7 +400,6 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
     lastX = xpos;
-    lastY = ypos;
-
-    freeCamera.ProcessMouseMovement(xoffset, yoffset);
+    lastY = ypos;*/
+    //Input::FirstMove(window);
 }
