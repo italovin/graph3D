@@ -43,11 +43,7 @@ public:
     ShaderProgram Shader() const;
     void SetShader(ShaderProgram shaderProgram);
     void UpdateModel(const std::string &modelName);
-    void UpdateView(const std::string &viewName, const Camera &camera);
-    void UpdateProjection(const std::string &projectionName, unsigned int width, unsigned int height);
     glm::mat4 GetModelMatrix() const;
-    glm::mat4 GetViewMatrix(const Camera &camera) const;
-    glm::mat4 GetProjectionMatrix(unsigned int width, unsigned int height) const;
     void Bind();
     void Draw();
     void DrawLines();

@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
     shader.SetFloat("red", 1.0f);
 
     graph.SetShader(shader);
-    glm::mat4 projection = graph.GetProjectionMatrix(WIDTH, HEIGHT);
+    glm::mat4 projection = window.GetProjectionMatrix();
 
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
         
         shader.SetFloat("time", time);
         glm::mat4 model = graph.GetModelMatrix();
-        glm::mat4 view = graph.GetViewMatrix(mainCamera);
+        glm::mat4 view = mainCamera.GetViewMatrix();
         glm::mat4 mvp = projection*view*model;
         graph.Shader().SetMat4Float("mvp", mvp);
         graph.DrawLines();

@@ -1,4 +1,6 @@
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <string>
 
 class Window{
@@ -15,4 +17,6 @@ public:
     void SetMouseCallback(GLFWcursorposfun callback);
     void SetKeyCallback(GLFWkeyfun callback);
     void SetMouseButtonCallback(GLFWmousebuttonfun callback);
+    glm::mat4 GetProjectionMatrix() const;
+    glm::mat4 GetProjectionMatrix(float fovy, float near, float far) const;
 };

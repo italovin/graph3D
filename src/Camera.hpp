@@ -1,5 +1,6 @@
 #include "Transform.hpp"
 #include "glm/gtc/quaternion.hpp"
+#include "glm/glm.hpp"
 
 class Camera{
 private:
@@ -9,5 +10,5 @@ public:
     Camera();
     Camera(const glm::vec3 &position);
     Camera(const glm::vec3 &position, const glm::vec3 &eulerAngles);
-    void ProcessMouseMovement(float xOffset, float yOffset);
+    glm::mat4 GetViewMatrix() const;
 };

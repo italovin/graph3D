@@ -12,12 +12,10 @@ Camera::Camera(const glm::vec3 &position, const glm::vec3 &eulerAngles){
     transform.eulerAngles(eulerAngles);
 }
 
-void Camera::ProcessMouseMovement(float xOffset, float yOffset){
-    float factor = 0.01f;
-    xOffset *= factor*sensitivity;
-    yOffset *= factor*sensitivity;
-    glm::quat qPitch = glm::angleAxis(-yOffset, glm::vec3(1, 0, 0));
-    glm::quat qYaw = glm::angleAxis(xOffset, glm::vec3(0, 1, 0));
-    transform.rotation =  qYaw * transform.rotation;
-    transform.rotation = transform.rotation * qPitch;
+glm::mat4 Camera::GetViewMatrix() const{
+    glm::mat4 rotate = glm::mat4_cast(glm::conjugate(transform.rotation));
+    glm::mat4 translate = glm::mat4(1.0f);
+    translate = glm::translate(translate, -transform.position);
+    glm::mat4 view = rotate * translate;
+    return view;
 }
