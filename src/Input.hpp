@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include "Window.hpp"
 #include <unordered_map>
+#include <vector>
 
 enum KeyState{
     KEY_HELD, //key is helding down; in this state at second input update
@@ -24,6 +25,8 @@ private:
     static float mouseXDelta;
     static float mouseYDelta;
     static bool firstMouseMove;
+    static std::vector<int> joysticksAxesCount;
+    static std::vector<const float*> joysticksAxes;
     static Window registeredWindow;
     static std::unordered_map<int, KeyState> monitoredKeys;
     static std::unordered_map<int, MouseButtonState> monitoredMouseButtons;
@@ -48,5 +51,6 @@ public:
     static bool GetMouseButtonHeld(int button);
     static bool GetMouseButtonDown(int button);
     static bool GetMouseButtonUp(int button);
+    static bool IsJoystickPresent(int jid);
 };
 #endif

@@ -4,6 +4,8 @@ glm::vec2 Input::mousePosition = glm::vec2(0);
 float Input::mouseXDelta = 0;
 float Input::mouseYDelta = 0;
 bool Input::firstMouseMove = true;
+std::vector<int> Input::joysticksAxesCount = std::vector<int>();
+std::vector<const float*> Input::joysticksAxes = std::vector<const float*>();
 Window Input::registeredWindow = Window();
 std::unordered_map<int, KeyState> Input::monitoredKeys = std::unordered_map<int, KeyState>();
 std::unordered_map<int, MouseButtonState> Input::monitoredMouseButtons = std::unordered_map<int, MouseButtonState>();
@@ -88,6 +90,23 @@ void Input::Update(const Window &window){
             monitoredMouseButtons[button] = MOUSE_BTN_RELEASE;
         }
     }
+    int id = GLFW_JOYSTICK_1;
+    bool updatingJoysticks = true;
+    while(!updatingJoysticks){
+        updatingJoysticks = glfwJoystickPresent(id) == GLFW_TRUE;
+        if(updatingJoysticks){
+            if(id >= joysticksAxes.size() && id >= joysticksAxesCount.size()){
+                int axesCount = 0;
+                joysticksAxes.push_back(glfwGetJoystickAxes(id, &axesCount));
+                joysticksAxesCount.push_back(axesCount);
+            } else {
+                int axesCount = 0;
+                joysticksAxes[id] = glfwGetJoystickAxes(id, &axesCount);
+                joysticksAxesCount[id] = axesCount;
+            }
+        }
+        id++;
+    }
     
 }
 
@@ -153,4 +172,8 @@ bool Input::GetMouseButtonUp(int button){
     if(monitoredMouseButtons.count(button) == 0)
         return false;
     return monitoredMouseButtons[button] == MOUSE_BTN_UP;
+}
+
+bool Input::IsJoystickPresent(int jid){
+    return glfwJoystickPresent(jid) == GLFW_TRUE;
 }

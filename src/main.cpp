@@ -252,7 +252,6 @@ int main(int argc, char *argv[])
 
     mainCamera = freeCamera;
     bool isFreeCamera = true;
-    bool holdingCameraSwitchKey = false;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window.GetHandle()))
