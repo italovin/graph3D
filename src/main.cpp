@@ -290,21 +290,19 @@ int main(int argc, char *argv[])
             glm::vec3 right = freeCamera.transform.Right();
             glm::vec3 forward = freeCamera.transform.Forward();
             float cameraSpeed = static_cast<float>(1.5 * deltaTime);
-            if (Input::GetKeyHeld(GLFW_KEY_W)){
-                freeCamera.transform.position += cameraSpeed * forward;
-            }
-            if (Input::GetKeyHeld(GLFW_KEY_S)){
-                freeCamera.transform.position -= cameraSpeed * forward;
-            }
-            if (Input::GetKeyHeld(GLFW_KEY_A)){
-                freeCamera.transform.position -= cameraSpeed * right;
-            }
-            if (Input::GetKeyHeld(GLFW_KEY_D)){
-                freeCamera.transform.position += cameraSpeed * right;
-            }
+            
+            float horizontalKeyboard = Input::GetAxis(KEYB_AXIS_HORIZONTAL);
+            float verticalKeyboard = Input::GetAxis(KEYB_AXIS_VERTICAL);
             if (Input::GetKeyHeld(GLFW_KEY_SPACE)){
                 freeCamera.transform.position += cameraSpeed * up;
             }
+            int jid = GLFW_JOYSTICK_1;
+            float horizontalJoystick = Input::GetJoystickAxisLeftX(jid);
+            float verticalJoystick = Input::GetJoystickAxisLeftY(jid);
+            float horizontal = glm::abs(horizontalKeyboard) > glm::abs(horizontalJoystick) ? horizontalKeyboard:horizontalJoystick;
+            float vertical = glm::abs(verticalKeyboard) > glm::abs(verticalJoystick) ? verticalKeyboard:verticalJoystick;
+            freeCamera.transform.position += cameraSpeed * right * horizontal;
+            freeCamera.transform.position += cameraSpeed * forward * vertical;
             mainCamera = freeCamera;
             float factor = 0.01f;
             glm::quat qPitch = glm::angleAxis(-factor*Input::GetMouseDeltaY(), glm::vec3(1, 0, 0));
@@ -314,11 +312,9 @@ int main(int argc, char *argv[])
         } else {
             mainCamera = topDownCamera;
         }
-
         if (Input::GetKeyDown(GLFW_KEY_T)){
             isFreeCamera = !isFreeCamera;
         }
-
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
 

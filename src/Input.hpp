@@ -3,7 +3,12 @@
 #include <glm/glm.hpp>
 #include "Window.hpp"
 #include <unordered_map>
-#include <vector>
+#include <map>
+
+enum KeyboardAxis{
+    KEYB_AXIS_HORIZONTAL,
+    KEYB_AXIS_VERTICAL
+};
 
 enum KeyState{
     KEY_HELD, //key is helding down; in this state at second input update
@@ -25,11 +30,18 @@ private:
     static float mouseXDelta;
     static float mouseYDelta;
     static bool firstMouseMove;
-    static std::vector<int> joysticksAxesCount;
-    static std::vector<const float*> joysticksAxes;
+    struct Joystick{
+        std::string name;
+        GLFWgamepadstate state;
+    };
+    static std::map<int, Joystick> joysticks;
     static Window registeredWindow;
     static std::unordered_map<int, KeyState> monitoredKeys;
     static std::unordered_map<int, MouseButtonState> monitoredMouseButtons;
+    static int positiveHorizontalKey;
+    static int negativeHorizontalKey;
+    static int positiveVerticalKey;
+    static int negativeVerticalKey;
     static void MonitorKey(int key, KeyState keyState);
     static void MonitorMouseButton(int button, MouseButtonState mouseButtonState);
     static void FirstMove();
@@ -37,6 +49,8 @@ private:
     static void MouseCallback(GLFWwindow *window, double xPos, double yPos);
     static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    static void JoystickCallback(int jid, int event);
+    static std::map<int, Input::Joystick>::iterator GetJoystick(int jid);
 public:
     static void RegisterWindow(const Window &window);
     static void Update(const Window &window);
@@ -47,10 +61,16 @@ public:
     static bool GetKeyHeld(int key);
     static bool GetKeyDown(int key);
     static bool GetKeyUp(int key);
+    static float GetAxis(KeyboardAxis axis);
     static MouseButtonState GetMouseButtonState(int button);
     static bool GetMouseButtonHeld(int button);
     static bool GetMouseButtonDown(int button);
     static bool GetMouseButtonUp(int button);
     static bool IsJoystickPresent(int jid);
+    static int JoysticksCount();
+    static float GetJoystickAxisLeftX(int jid);
+    static float GetJoystickAxisLeftY(int jid);
+    static float GetJoystickAxisRightX(int jid);
+    static float GetJoystickAxisRightY(int jid);
 };
 #endif
