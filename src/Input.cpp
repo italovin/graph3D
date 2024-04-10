@@ -43,13 +43,13 @@ void Input::MouseCallback(GLFWwindow *window, double xPos, double yPos){
 
 void Input::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
     if(monitoredKeys.count(key) == 0){
-        Input::MonitorKey(key, KEY_RELEASE);
+        Input::MonitorKey(key, KEY_UNKNOWN);
     }
 }
 
 void Input::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods){
     if(mouse.monitoredButtons.count(button) == 0){
-        Input::MonitorMouseButton(button, MOUSE_BTN_RELEASE);
+        Input::MonitorMouseButton(button, MOUSE_BTN_UNKNOWN);
     }
 }
 
@@ -82,11 +82,11 @@ void Input::Update(const Window &window){
         KeyState lastKeyState = i.second;
         int key = i.first;
         int state = glfwGetKey(registeredWindow.GetHandle(), key);
-        if((lastKeyState == KEY_UP || lastKeyState == KEY_RELEASE) && state == GLFW_PRESS){
+        if((lastKeyState == KEY_UP || lastKeyState == KEY_RELEASE || lastKeyState == KEY_UNKNOWN) && state == GLFW_PRESS){
             monitoredKeys[key] = KEY_DOWN;
         } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD) && state == GLFW_PRESS){
             monitoredKeys[key] = KEY_HELD;
-        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD) && state == GLFW_RELEASE){
+        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD || lastKeyState == KEY_UNKNOWN) && state == GLFW_RELEASE){
             monitoredKeys[key] = KEY_UP;
         } else if(lastKeyState == KEY_UP && state == GLFW_RELEASE){
             monitoredKeys[key] = KEY_RELEASE;
@@ -96,11 +96,11 @@ void Input::Update(const Window &window){
         MouseButtonState lastMouseBtnState = i.second;
         int button = i.first;
         int state = glfwGetMouseButton(registeredWindow.GetHandle(), button);
-        if((lastMouseBtnState == MOUSE_BTN_UP || lastMouseBtnState == MOUSE_BTN_RELEASE) && state == GLFW_PRESS){
+        if((lastMouseBtnState == MOUSE_BTN_UP || lastMouseBtnState == MOUSE_BTN_RELEASE || lastMouseBtnState == MOUSE_BTN_UNKNOWN) && state == GLFW_PRESS){
             mouse.monitoredButtons[button] = MOUSE_BTN_DOWN;
         } else if((lastMouseBtnState == MOUSE_BTN_DOWN || lastMouseBtnState == MOUSE_BTN_HELD) && state == GLFW_PRESS){
             mouse.monitoredButtons[button] = MOUSE_BTN_HELD;
-        } else if((lastMouseBtnState == MOUSE_BTN_DOWN || lastMouseBtnState == MOUSE_BTN_HELD) && state == GLFW_RELEASE){
+        } else if((lastMouseBtnState == MOUSE_BTN_DOWN || lastMouseBtnState == MOUSE_BTN_HELD  || lastMouseBtnState == MOUSE_BTN_UNKNOWN) && state == GLFW_RELEASE){
             mouse.monitoredButtons[button] = MOUSE_BTN_UP;
         } else if(lastMouseBtnState == MOUSE_BTN_UP && state == GLFW_RELEASE){
             mouse.monitoredButtons[button] = MOUSE_BTN_RELEASE;

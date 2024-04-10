@@ -4,6 +4,7 @@
 #include "Window.hpp"
 #include <unordered_map>
 #include <map>
+#include <iostream>
 
 enum KeyboardAxis{
     KEYB_AXIS_HORIZONTAL,
@@ -14,14 +15,16 @@ enum KeyState{
     KEY_HELD, //key is helding down; in this state at second input update
     KEY_DOWN, //key is down at exact input udpate or frame
     KEY_UP, //key is up at exact input udpate or frame
-    KEY_RELEASE //key is released for long
+    KEY_RELEASE, //key is released for long
+    KEY_UNKNOWN //undefined state
 };
 
 enum MouseButtonState{
     MOUSE_BTN_HELD,
     MOUSE_BTN_DOWN,
     MOUSE_BTN_UP,
-    MOUSE_BTN_RELEASE
+    MOUSE_BTN_RELEASE,
+    MOUSE_BTN_UNKNOWN
 };
 
 class Input{
