@@ -29,6 +29,7 @@ enum MouseButtonState{
 
 class Input{
 private:
+    static Window registeredWindow;
     struct Mouse{
         glm::vec2 position;
         float xDelta;
@@ -37,17 +38,19 @@ private:
         std::unordered_map<int, MouseButtonState> monitoredButtons;
     };
     static Mouse mouse;
+    struct Keyboard{
+        std::unordered_map<int, KeyState> monitoredKeys;
+        int positiveHorizontalKey;
+        int negativeHorizontalKey;
+        int positiveVerticalKey;
+        int negativeVerticalKey;
+    }; 
+    static Keyboard keyboard;
     struct Joystick{
         std::string name;
         GLFWgamepadstate state;
     };
     static std::map<int, Joystick> joysticks;
-    static Window registeredWindow;
-    static std::unordered_map<int, KeyState> monitoredKeys;
-    static int positiveHorizontalKey;
-    static int negativeHorizontalKey;
-    static int positiveVerticalKey;
-    static int negativeVerticalKey;
     static void MonitorKey(int key, KeyState keyState);
     static void MonitorMouseButton(int button, MouseButtonState mouseButtonState);
     static void FirstMove(glm::vec2 mousePos);
@@ -57,6 +60,9 @@ private:
     static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
     static void JoystickCallback(int jid, int event);
     static std::map<int, Input::Joystick>::iterator GetJoystick(int jid);
+    static void UpdateMouse();
+    static void UpdateKeyboard();
+    static void UpdateJoysticks();
 public:
     static void RegisterWindow(const Window &window);
     static void Update(const Window &window);

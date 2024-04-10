@@ -256,12 +256,10 @@ int main(int argc, char *argv[])
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window.GetHandle()))
     {
-        //Input
-        Input::Update(window);
-
         time = glfwGetTime();
         deltaTime = time - lastTime;
         lastTime = time;
+        
         if(perfomanceCounter){
             if(minDeltaTime == 0){
                 minDeltaTime = deltaTime;
@@ -274,7 +272,10 @@ int main(int argc, char *argv[])
             }
             ticks++;
         }
-        
+        //Input
+        Input::Update(window);
+        ///////
+
         if (Input::GetKeyDown(GLFW_KEY_ESCAPE)){
             if(perfomanceCounter){
                 std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";

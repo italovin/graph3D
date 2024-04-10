@@ -1,17 +1,18 @@
 #include "Input.hpp"
 
+Window Input::registeredWindow = Window();
+
 Input::Mouse Input::mouse = { .position = glm::vec2(0), .xDelta = 0, .yDelta = 0, .firstMove = true,
 .monitoredButtons = std::unordered_map<int, MouseButtonState>()};
+
+Input::Keyboard Input::keyboard = { .monitoredKeys = std::unordered_map<int, KeyState>(),
+.positiveHorizontalKey = GLFW_KEY_D, .negativeHorizontalKey = GLFW_KEY_A, .positiveVerticalKey = GLFW_KEY_W,
+.negativeVerticalKey = GLFW_KEY_S};
+
 std::map<int, Input::Joystick> Input::joysticks = std::map<int, Joystick>();
-Window Input::registeredWindow = Window();
-std::unordered_map<int, KeyState> Input::monitoredKeys = std::unordered_map<int, KeyState>();
-int Input::positiveHorizontalKey = GLFW_KEY_D;
-int Input::negativeHorizontalKey = GLFW_KEY_A;
-int Input::positiveVerticalKey = GLFW_KEY_W;
-int Input::negativeVerticalKey = GLFW_KEY_S;
 
 void Input::MonitorKey(int key, KeyState keyState){
-    monitoredKeys.insert(std::make_pair(key, keyState));
+    keyboard.monitoredKeys.insert(std::make_pair(key, keyState));
 }
 
 void Input::MonitorMouseButton(int button, MouseButtonState mouseButtonState){
@@ -19,10 +20,8 @@ void Input::MonitorMouseButton(int button, MouseButtonState mouseButtonState){
 }
 
 void Input::FirstMove(glm::vec2 mousePos){
-    if(mouse.firstMove){
-        mouse.position = mousePos;
-        mouse.firstMove = false;
-    }
+    mouse.position = mousePos;
+    mouse.firstMove = false;
 }
 
 void Input::SetupCallbacks(){
@@ -38,11 +37,13 @@ void Input::RegisterWindow(const Window &window){
 }
 
 void Input::MouseCallback(GLFWwindow *window, double xPos, double yPos){
-    Input::FirstMove(glm::vec2((float)xPos, (float)yPos));
+    if(mouse.firstMove){
+        Input::FirstMove(glm::vec2((float)xPos, (float)yPos));
+    }
 }
 
 void Input::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
-    if(monitoredKeys.count(key) == 0){
+    if(keyboard.monitoredKeys.count(key) == 0){
         Input::MonitorKey(key, KEY_UNKNOWN);
     }
 }
@@ -68,6 +69,12 @@ void Input::Update(const Window &window){
     if(registeredWindow.GetHandle() == nullptr){
         return;
     }
+    UpdateMouse();
+    UpdateKeyboard();
+    UpdateJoysticks();
+}
+
+void Input::UpdateMouse(){
     if(!mouse.firstMove){
         double x,y;
         glfwGetCursorPos(registeredWindow.GetHandle(), &x, &y);
@@ -76,21 +83,6 @@ void Input::Update(const Window &window){
         mouse.xDelta = delta.x;
         mouse.yDelta = -delta.y;
         mouse.position = mousePos;
-    }
-    for (auto &&i : monitoredKeys)
-    {
-        KeyState lastKeyState = i.second;
-        int key = i.first;
-        int state = glfwGetKey(registeredWindow.GetHandle(), key);
-        if((lastKeyState == KEY_UP || lastKeyState == KEY_RELEASE || lastKeyState == KEY_UNKNOWN) && state == GLFW_PRESS){
-            monitoredKeys[key] = KEY_DOWN;
-        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD) && state == GLFW_PRESS){
-            monitoredKeys[key] = KEY_HELD;
-        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD || lastKeyState == KEY_UNKNOWN) && state == GLFW_RELEASE){
-            monitoredKeys[key] = KEY_UP;
-        } else if(lastKeyState == KEY_UP && state == GLFW_RELEASE){
-            monitoredKeys[key] = KEY_RELEASE;
-        }
     }
     for (auto &&i : mouse.monitoredButtons){
         MouseButtonState lastMouseBtnState = i.second;
@@ -106,6 +98,27 @@ void Input::Update(const Window &window){
             mouse.monitoredButtons[button] = MOUSE_BTN_RELEASE;
         }
     }
+}
+
+void Input::UpdateKeyboard(){
+    for (auto &&i : keyboard.monitoredKeys)
+    {
+        KeyState lastKeyState = i.second;
+        int key = i.first;
+        int state = glfwGetKey(registeredWindow.GetHandle(), key);
+        if((lastKeyState == KEY_UP || lastKeyState == KEY_RELEASE || lastKeyState == KEY_UNKNOWN) && state == GLFW_PRESS){
+            keyboard.monitoredKeys[key] = KEY_DOWN;
+        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD) && state == GLFW_PRESS){
+            keyboard.monitoredKeys[key] = KEY_HELD;
+        } else if((lastKeyState == KEY_DOWN || lastKeyState == KEY_HELD || lastKeyState == KEY_UNKNOWN) && state == GLFW_RELEASE){
+            keyboard.monitoredKeys[key] = KEY_UP;
+        } else if(lastKeyState == KEY_UP && state == GLFW_RELEASE){
+            keyboard.monitoredKeys[key] = KEY_RELEASE;
+        }
+    }
+}
+
+void Input::UpdateJoysticks(){
     for(int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++){
         if(Input::IsJoystickPresent(i)){
             if(joysticks.count(i) == 0){
@@ -118,7 +131,6 @@ void Input::Update(const Window &window){
             }
         }
     }
-    
 }
 
 glm::vec2 Input::GetMousePosition(){
@@ -134,42 +146,42 @@ float Input::GetMouseDeltaY(){
 }
 
 KeyState Input::GetKeyState(int key){
-    if(monitoredKeys.count(key) == 0)
+    if(keyboard.monitoredKeys.count(key) == 0)
         return KEY_RELEASE;
-    return monitoredKeys[key];
+    return keyboard.monitoredKeys[key];
 }
 
 bool Input::GetKeyHeld(int key){
-    if(monitoredKeys.count(key) == 0)
+    if(keyboard.monitoredKeys.count(key) == 0)
         return false;
-    return monitoredKeys[key] == KEY_HELD || monitoredKeys[key] == KEY_DOWN;
+    return keyboard.monitoredKeys[key] == KEY_HELD || keyboard.monitoredKeys[key] == KEY_DOWN;
 }
 
 bool Input::GetKeyDown(int key){
-    if(monitoredKeys.count(key) == 0)
+    if(keyboard.monitoredKeys.count(key) == 0)
         return false;
-    return monitoredKeys[key] == KEY_DOWN;
+    return keyboard.monitoredKeys[key] == KEY_DOWN;
 }
 
 bool Input::GetKeyUp(int key){
-    if(monitoredKeys.count(key) == 0)
+    if(keyboard.monitoredKeys.count(key) == 0)
         return false;
-    return monitoredKeys[key] == KEY_UP;
+    return keyboard.monitoredKeys[key] == KEY_UP;
 }
 
 float Input::GetAxis(KeyboardAxis axis){
     if(axis == KEYB_AXIS_HORIZONTAL){
-        if(Input::GetKeyHeld(positiveHorizontalKey)){
+        if(Input::GetKeyHeld(keyboard.positiveHorizontalKey)){
             return 1;
-        } else if(Input::GetKeyHeld(negativeHorizontalKey)){
+        } else if(Input::GetKeyHeld(keyboard.negativeHorizontalKey)){
             return -1;
         } else {
             return 0;
         }
     } else if(axis == KEYB_AXIS_VERTICAL){
-        if(Input::GetKeyHeld(positiveVerticalKey)){
+        if(Input::GetKeyHeld(keyboard.positiveVerticalKey)){
             return 1;
-        } else if(Input::GetKeyHeld(negativeVerticalKey)){
+        } else if(Input::GetKeyHeld(keyboard.negativeVerticalKey)){
             return -1;
         } else {
             return 0;
