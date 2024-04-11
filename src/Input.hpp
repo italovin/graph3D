@@ -51,6 +51,7 @@ private:
         GLFWgamepadstate state;
     };
     static std::map<int, Joystick> joysticks;
+    static int maxJoysticksToSearch;
     static void MonitorKey(int key, KeyState keyState);
     static void MonitorMouseButton(int button, MouseButtonState mouseButtonState);
     static void FirstMove(glm::vec2 mousePos);
@@ -78,6 +79,7 @@ public:
     static bool GetMouseButtonHeld(int button);
     static bool GetMouseButtonDown(int button);
     static bool GetMouseButtonUp(int button);
+    static void SetMaxJoysticksToSearch(int maxJoysticks);
     static bool IsJoystickPresent(int jid);
     static int JoysticksCount();
     static float GetJoystickAxisLeftX(int jid);

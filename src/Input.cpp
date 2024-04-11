@@ -10,6 +10,7 @@ Input::Keyboard Input::keyboard = { .monitoredKeys = std::unordered_map<int, Key
 .negativeVerticalKey = GLFW_KEY_S};
 
 std::map<int, Input::Joystick> Input::joysticks = std::map<int, Joystick>();
+int Input::maxJoysticksToSearch = 8;
 
 void Input::MonitorKey(int key, KeyState keyState){
     keyboard.monitoredKeys.insert(std::make_pair(key, keyState));
@@ -119,7 +120,7 @@ void Input::UpdateKeyboard(){
 }
 
 void Input::UpdateJoysticks(){
-    for(int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++){
+    for(int i = GLFW_JOYSTICK_1; i < maxJoysticksToSearch; i++){
         if(Input::IsJoystickPresent(i)){
             if(joysticks.count(i) == 0){
                 Joystick newJoystick;
@@ -212,6 +213,10 @@ bool Input::GetMouseButtonUp(int button){
     if(mouse.monitoredButtons.count(button) == 0)
         return false;
     return mouse.monitoredButtons[button] == MOUSE_BTN_UP;
+}
+
+void Input::SetMaxJoysticksToSearch(int maxJoysticks){
+    maxJoysticksToSearch = maxJoysticks;
 }
 
 bool Input::IsJoystickPresent(int jid){
