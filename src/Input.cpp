@@ -216,7 +216,8 @@ bool Input::GetMouseButtonUp(int button){
 }
 
 void Input::SetMaxJoysticksToSearch(int maxJoysticks){
-    maxJoysticksToSearch = maxJoysticks;
+    maxJoysticksToSearch = maxJoysticks <= GLFW_JOYSTICK_LAST + 1 ? maxJoysticks : GLFW_JOYSTICK_LAST + 1;
+    maxJoysticksToSearch = maxJoysticksToSearch >= 0 ? maxJoysticksToSearch : -maxJoysticksToSearch;
 }
 
 bool Input::IsJoystickPresent(int jid){
