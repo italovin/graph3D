@@ -254,3 +254,17 @@ float Input::GetJoystickAxisRightY(int jid){
     std::map<int, Joystick>::iterator it = Input::GetJoystick(jid);
     return -it->second.state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
 }
+
+float Input::GetJoystickLeftTrigger(int jid){
+    if(!Input::IsJoystickPresent(jid))
+        return 0;
+    std::map<int, Joystick>::iterator it = Input::GetJoystick(jid);
+    return -it->second.state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER];
+}
+
+float Input::GetJoystickRightTrigger(int jid){
+    if(!Input::IsJoystickPresent(jid))
+        return 0;
+    std::map<int, Joystick>::iterator it = Input::GetJoystick(jid);
+    return -it->second.state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER];
+}

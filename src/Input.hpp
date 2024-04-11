@@ -86,5 +86,7 @@ public:
     static float GetJoystickAxisLeftY(int jid);
     static float GetJoystickAxisRightX(int jid);
     static float GetJoystickAxisRightY(int jid);
+    static float GetJoystickLeftTrigger(int jid);
+    static float GetJoystickRightTrigger(int jid);
 };
 #endif
