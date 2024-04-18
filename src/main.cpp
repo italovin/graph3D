@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     int majorVersion = 0;
     glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-    int glslVersion = majorVersion * 100 + minorVersion * 10;
+    window.SetContextVersion(majorVersion, minorVersion, 0);
 
     GLenum err=glewInit();
     if(err != GLEW_OK){
@@ -217,6 +217,7 @@ int main(int argc, char *argv[])
     graph.SetIndicesInfo(indices.size(), parametersSize);
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
+    int glslVersion = window.GetGLSLVersion();
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)

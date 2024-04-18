@@ -9,9 +9,14 @@ private:
     std::string title;
     int width = 0;
     int height = 0;
+    int contextMajorVersion = 1;
+    int contextMinorVersion = 0;
+    int contextPatchVersion = 0;
     static void ResizeCallback(GLFWwindow *window, int width, int height);
 public:
     bool Create(const std::string &title, int width, int height);
+    void SetContextVersion(int majorVersion, int minorVersion, int patchVersion);
+    int GetGLSLVersion();
     void MakeContextCurrent();
     GLFWwindow* GetHandle() const;
     void SetMouseCallback(GLFWcursorposfun callback);
