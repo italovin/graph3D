@@ -33,6 +33,11 @@ int main(int argc, char *argv[])
 
     GLint no_of_extensions = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
+    int minorVersion = 0;
+    int majorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+    int glslVersion = majorVersion * 100 + minorVersion * 10;
 
     GLenum err=glewInit();
     if(err != GLEW_OK){
@@ -215,7 +220,7 @@ int main(int argc, char *argv[])
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
-    .SetVersion(330)
+    .SetVersion(glslVersion)
     .AddInput(0, SH_VEC2, "params")
     .AddUniform(SH_MAT4, "mvp")
     .AddUniform(SH_FLOAT, timeString)
@@ -226,7 +231,7 @@ int main(int argc, char *argv[])
     "float z =" + equationZ + ";"
     + "gl_Position = mvp*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
-    .SetVersion(330)
+    .SetVersion(glslVersion)
     .AddOutput(SH_VEC4, "FragColor")
     .AddUniform(SH_FLOAT, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
