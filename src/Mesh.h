@@ -16,18 +16,20 @@ enum MeshDataType{
 
 class Mesh{
 private:
-    void *data;
     std::vector<unsigned int> indices;
     MeshTopology topology;
+    
+    template <typename T,
+    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
     struct MeshAttribute{
         std::string name;
-        MeshDataType dataType;
-        int count;
+        std::vector<T> data;
+        int size;
+        bool normalized;
     };
-    
-    std::vector<MeshAttribute> attributes;
 public:
     void SetMeshSize(unsigned int size);
     void SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology);
+    void PushMeshData(const std::vector<float> data, int attributeIndex);
     void PushAttribute(const std::string &name, MeshDataType dataType, int count);
 };
