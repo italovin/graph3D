@@ -105,7 +105,7 @@ void SceneObject::SetIndicesInfo(unsigned int indicesCount, unsigned int indices
 void SceneObject::SetAttribute(GLuint attrib, GLuint bindingPoint, int size, GLenum type, GLboolean normalized, int offset)
 {
     glVertexArrayAttribFormat(vao.GetHandle(), attrib, size, type, normalized, offset);
-    glEnableVertexAttribArray(attrib);
+    glEnableVertexArrayAttrib(vao.GetHandle(), attrib);
     glVertexArrayAttribBinding(vao.GetHandle(), attrib, bindingPoint);
 }
 ShaderProgram SceneObject::Shader() const{

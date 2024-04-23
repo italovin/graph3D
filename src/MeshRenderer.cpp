@@ -1,10 +1,10 @@
 #include "MeshRenderer.hpp"
 
-Mesh MeshRenderer::GetMesh(){
+Mesh MeshRenderer::GetMesh() const{
     return mesh;
 }
 
-ShaderProgram MeshRenderer::GetShader(){
+ShaderProgram MeshRenderer::GetShader() const{
     return shader;
 }
 

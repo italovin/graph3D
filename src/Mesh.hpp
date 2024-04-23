@@ -1,6 +1,9 @@
+#ifndef MESH_H
+#define MESH_H
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
+#include <memory>
 
 enum MeshTopology{
     Triangle,
@@ -60,24 +63,31 @@ struct MeshLayout{
     }
 };
 
+struct MeshAttributeData{
+    std::string name;
+    std::vector<float> data;
+    int dataSize;
+    MeshAttribute attribute;
+};
+
 class Mesh{
 private:
     std::vector<unsigned int> indices;
     MeshTopology topology;
-    
-    struct MeshAttributeData{
-        std::string name;
-        void *data;
-        int dataSize;
-        MeshAttribute attribute;
-    };
     std::vector<MeshAttributeData> attributesData;
     MeshLayout layout;
 public:
     ~Mesh();
     void SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology);
     void PushAttribute(const std::string &name, int index, const std::vector<float> &data, int size, bool normalized);
+    int GetAttributesCount();
+    std::vector<int> GetAttributeDatasSizes();
     int GetMeshDataSize();
+    int GetIndicesCount();
     int GetIndicesSize();
     MeshLayout GetLayout();
+    MeshTopology GetTopology();
+    const std::vector<MeshAttributeData> &GetAttributesDatas();
+    const std::vector<unsigned int> &GetIndices();
 };
+#endif

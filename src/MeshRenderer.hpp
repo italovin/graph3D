@@ -1,3 +1,5 @@
+#ifndef MESH_RENDERER_H
+#define MESH_RENDERER_H
 #include "Mesh.hpp"
 #include "ShaderProgram.hpp"
 
@@ -6,8 +8,9 @@ private:
     Mesh mesh;
     ShaderProgram shader;
 public:
-    Mesh GetMesh();
-    ShaderProgram GetShader();
+    Mesh GetMesh() const;
+    ShaderProgram GetShader() const;
     void SetMesh(Mesh mesh);
     void SetShader(ShaderProgram shader);
 };
+#endif

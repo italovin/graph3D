@@ -1,10 +1,6 @@
 #include "Mesh.hpp"
 
-Mesh::~Mesh(){
-    for (auto &&attribute : attributesData)
-    {
-        delete [] attribute.data;
-    }  
+Mesh::~Mesh(){ 
 }
 
 void Mesh::SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology){
@@ -20,11 +16,24 @@ void Mesh::PushAttribute(const std::string &name, int index, const std::vector<f
     meshAttribute.normalized = normalized;
     MeshAttributeData meshAttributeData;
     meshAttributeData.name = name;
-    std::copy(data.begin(), data.end(), meshAttributeData.data);
-    meshAttributeData.dataSize = data.size();
+    //std::copy(data.begin(), data.end(), meshAttributeData.data);
+    meshAttributeData.data = data;
+    meshAttributeData.dataSize = sizeof(float)*data.size();
     meshAttributeData.attribute = meshAttribute;
     attributesData.push_back(meshAttributeData);
     layout.attributes.push_back(meshAttribute);
+}
+
+int Mesh::GetAttributesCount(){
+    return attributesData.size();
+}
+
+std::vector<int> Mesh::GetAttributeDatasSizes(){
+    std::vector<int> datasSizes;
+    for(auto &&attriuteData : attributesData){
+        datasSizes.push_back(attriuteData.dataSize);
+    }
+    return datasSizes;
 }
 
 int Mesh::GetMeshDataSize(){
@@ -43,10 +52,26 @@ int Mesh::GetMeshDataSize(){
     return size;
 }
 
-int Mesh::GetIndicesSize(){
+int Mesh::GetIndicesCount(){
     return indices.size();
+}
+
+int Mesh::GetIndicesSize(){
+    return sizeof(unsigned int)*GetIndicesCount();
 }
 
 MeshLayout Mesh::GetLayout(){
     return layout;
+}
+
+MeshTopology Mesh::GetTopology(){
+    return topology;
+}
+
+const std::vector<MeshAttributeData> &Mesh::GetAttributesDatas(){
+    return attributesData;
+}
+
+const std::vector<unsigned int> &Mesh::GetIndices(){
+    return indices;
 }

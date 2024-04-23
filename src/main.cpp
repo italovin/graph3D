@@ -4,6 +4,7 @@
 #include "SceneObject.hpp"
 #include "ShaderBuilder.hpp"
 #include "Input.hpp"
+#include "Renderer.hpp"
 #include <string>
 #include <iostream>
 
@@ -242,6 +243,33 @@ int main(int argc, char *argv[])
     graph.SetShader(shader);
     glm::mat4 projection = window.GetProjectionMatrix();
 
+    Mesh mesh = Mesh();
+    std::vector<float> triangle = {-1, -1, 0,
+    1, -1, 0,
+    0, 1, 0};
+    std::vector<unsigned int> triangleIndices = {
+        0, 1, 2
+    };
+    mesh.PushAttribute("positions", 0, triangle, 3, false);
+    mesh.SetIndices(triangleIndices, Triangle);
+    ShaderBuilder testVBuilder = ShaderBuilder(false);
+    ShaderBuilder testFBuilder = ShaderBuilder(false);
+    ShaderObject testV = testVBuilder.SetShaderType(GL_VERTEX_SHADER)
+    .SetVersion(glslVersion)
+    .AddInput(0, SH_VEC3, "aPos")
+    .SetMain("gl_Position = vec4(aPos, 1.0);").Build();
+    ShaderObject testF = testFBuilder.SetShaderType(GL_FRAGMENT_SHADER)
+    .SetVersion(glslVersion)
+    .AddOutput(SH_VEC4, "FragColor")
+    .SetMain("FragColor = vec4(1.0);").Build();
+    ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF});
+    MeshRenderer meshRenderer = MeshRenderer();
+    meshRenderer.SetMesh(mesh);
+    meshRenderer.SetShader(testShader);
+    Renderer mainRenderer = Renderer();
+    std::vector<MeshRenderer> meshRenderers = { meshRenderer };
+    mainRenderer.Prepare(meshRenderers);
+
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
     Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
@@ -333,7 +361,7 @@ int main(int argc, char *argv[])
         glm::mat4 mvp = projection*view*model;
         graph.Shader().SetMat4Float("mvp", mvp);
         graph.DrawLines();
-
+        mainRenderer.Draw();
         /* Swap front and back buffers */
         glfwSwapBuffers(window.GetHandle());
 

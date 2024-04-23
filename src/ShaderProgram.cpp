@@ -76,7 +76,7 @@ void ShaderProgram::Link(){
 void ShaderProgram::Use(){
     glUseProgram(handle);
 }
-GLuint ShaderProgram::GetHandle(){
+GLuint ShaderProgram::GetHandle() const{
     return handle;
 }
 void ShaderProgram::SetBool(const std::string &name, bool value) const {
