@@ -8,7 +8,7 @@ SceneObject::SceneObject(){
 SceneObject::SceneObject(unsigned int n_buffers){
     indicesCount = 0;
     vao = VertexArray();
-    Bind();
+    //Bind();
     Startup(n_buffers);
 }
 
@@ -42,7 +42,7 @@ void SceneObject::BufferStorage(GLuint buffers_index, GLuint data[], unsigned in
 
 void SceneObject::BufferStorage(GLuint buffers_index, const std::vector<GLuint> &data)
 {
-    unsigned int dataSize = sizeof(float)*data.size();
+    unsigned int dataSize = sizeof(GLuint)*data.size();
     glNamedBufferStorage(buffers[buffers_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
 }
 
@@ -52,7 +52,7 @@ void SceneObject::BufferStorage(GLuint buffers_index, GLushort data[], unsigned 
 
 void SceneObject::BufferStorage(GLuint buffers_index, const std::vector<GLushort> &data)
 {
-    unsigned int dataSize = sizeof(float)*data.size();
+    unsigned int dataSize = sizeof(GLushort)*data.size();
     glNamedBufferStorage(buffers[buffers_index], dataSize, data.data(), GL_DYNAMIC_STORAGE_BIT);
 }
 

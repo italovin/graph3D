@@ -48,6 +48,19 @@ ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects){
         DetachShaderObject(shaderObject);
     }
 }
+ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects, bool debugInfo){
+    this->debugInfo = debugInfo;
+    handle = glCreateProgram();
+    for (auto &&shaderObject : shaderObjects)
+    {
+        AttachShaderObject(shaderObject);
+    }
+    Link();
+    for (auto &&shaderObject : shaderObjects)
+    {
+        DetachShaderObject(shaderObject);
+    }
+}
 void ShaderProgram::AttachShaderObject(ShaderObject shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());
@@ -58,10 +71,10 @@ void ShaderProgram::Create(){
 void ShaderProgram::Link(){
     glLinkProgram(handle);
     if(debugInfo){
-        int  success;
-        glGetShaderiv(handle, GL_LINK_STATUS, &success);
+        GLint success;
+        glGetProgramiv(handle, GL_LINK_STATUS, &success);
 
-        if(!success){
+        if(success == GL_FALSE){
             GLint maxLength = 0;
             glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &maxLength);
             std::vector<GLchar> infoLog(maxLength);

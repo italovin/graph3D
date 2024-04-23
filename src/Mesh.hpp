@@ -7,7 +7,7 @@
 
 enum MeshTopology{
     Triangle,
-    Line,
+    Lines,
     LineStrip
 };
 
@@ -25,7 +25,7 @@ struct MeshAttribute{
         return (attribute.index == index) && (attribute.size == size) && (attribute.type == type) && 
         (attribute.normalized == normalized);
     }
-    int DataSize(){
+    unsigned int DataSize(){
         switch(type){
             case MeshFloat32:
                 return size*sizeof(float);
@@ -66,7 +66,7 @@ struct MeshLayout{
 struct MeshAttributeData{
     std::string name;
     std::vector<float> data;
-    int dataSize;
+    unsigned int dataSize;
     MeshAttribute attribute;
 };
 

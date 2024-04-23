@@ -1,10 +1,11 @@
 #include "Renderer.hpp"
 
-Renderer::Batch Renderer::CreateBatch(const std::vector<int> &buffersSizes, int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
+Renderer::Batch Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, unsigned int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
 const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
+    VertexArray newVao = VertexArray();
+    newVao.Bind();
     std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
     glCreateBuffers(buffersSizes.size(), newBuffers.data());
-    VertexArray newVao = VertexArray();
     Batch newBatch;
     int bindingPointIt = 0;
     for(int i = 0; i < buffersSizes.size(); i++){
@@ -53,7 +54,7 @@ void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
     }
 }
 
-void Renderer::BufferSubData(Batch &batch, const std::vector<int> &offsets, const std::vector<MeshAttributeData> &attributesDatas){
+void Renderer::BufferSubData(Batch &batch, const std::vector<unsigned int> &offsets, const std::vector<MeshAttributeData> &attributesDatas){
     int index = 0;
     for(auto &&buffer : batch.buffers){
         glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, attributesDatas[index].data.data());
@@ -61,7 +62,7 @@ void Renderer::BufferSubData(Batch &batch, const std::vector<int> &offsets, cons
     }
 }
 
-void Renderer::BufferIndices(Batch &batch, int offset, const std::vector<unsigned int> &indices){
+void Renderer::BufferIndices(Batch &batch, unsigned int offset, const std::vector<unsigned int> &indices){
     glNamedBufferSubData(batch.indiceBuffer.name, offset, sizeof(unsigned int)*indices.size(), indices.data());
 }
 
@@ -93,9 +94,9 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
             return (m.GetMesh().GetLayout() == group[0].GetMesh().GetLayout())
             && (m.GetMesh().GetTopology() == group[0].GetMesh().GetTopology());  
         })){
-            std::vector<int> buffersSizes = std::vector<int>(group[0].GetMesh().GetAttributesCount());
-            std::vector<std::vector<int>> dataOffsetsMatrix = std::vector<std::vector<int>>(group.size());
-            std::vector<int> indicesOffsets = std::vector<int>();
+            std::vector<unsigned int> buffersSizes = std::vector<unsigned int>(group[0].GetMesh().GetAttributesCount());
+            std::vector<std::vector<unsigned int>> dataOffsetsMatrix = std::vector<std::vector<unsigned int>>(group.size());
+            std::vector<unsigned int> indicesOffsets = std::vector<unsigned int>();
             std::vector<int> baseVertices = std::vector<int>();
             std::vector<int> indicesCounts = std::vector<int>();
             int indicesSize = 0;
@@ -122,9 +123,8 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
             }
             Batch createdBatch = CreateBatch(buffersSizes, indicesSize, group[0].GetMesh().GetTopology(), group[0].GetShader(),
             indicesCounts, baseVertices);
+            createdBatch.vao.Bind();
             StartBatch(createdBatch);
-            MeshLayout layout = group[0].GetMesh().GetLayout();
-            SetupBatchLayout(createdBatch, layout);
             int indiceOffsetIndex = 0;
             for(auto &&renderer : group){
                 for(auto &&offsets : dataOffsetsMatrix){
@@ -132,6 +132,8 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
                 }
                 BufferIndices(createdBatch, indicesOffsets[indiceOffsetIndex++], renderer.GetMesh().GetIndices());
             }
+            MeshLayout layout = group[0].GetMesh().GetLayout();
+            SetupBatchLayout(createdBatch, layout);
         }
     }
 }
@@ -140,8 +142,8 @@ void Renderer::Draw(){
     for(auto &&batch : batches){
         GLenum mode;
         switch(batch.topology){
-            case Line:
-                mode = GL_LINE;
+            case Lines:
+                mode = GL_LINES;
                 break;
             case LineStrip:
                 mode = GL_LINE_STRIP;
@@ -152,8 +154,8 @@ void Renderer::Draw(){
         }
         batch.shader.Use();
         batch.vao.Bind();
-        std::vector<int> indices(batch.indicesCounts.size(), 0);
+        //std::vector<int> indices(batch.indicesCounts.size(), 0);
         glDrawElements(mode, batch.indicesCounts[0], GL_UNSIGNED_INT, 0);
-        glMultiDrawElementsBaseVertex(mode, batch.indicesCounts.data(), GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(indices.data()), batch.indicesCounts.size(), batch.baseVertices.data());
+        //glMultiDrawElementsBaseVertex(mode, batch.indicesCounts.data(), GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(indices.data()), batch.indicesCounts.size(), batch.baseVertices.data());
     }
 }

@@ -8,6 +8,8 @@
 #include <string>
 #include <iostream>
 
+void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
+
 int main(int argc, char *argv[])
 {
     /* Initialize the library */
@@ -49,6 +51,11 @@ int main(int argc, char *argv[])
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
     
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(message_callback, nullptr);
+
+    int glslVersion = window.GetGLSLVersion();
+
     std::string var1 = "s";
     std::string var2 = "t";
     std::string equationX = "2*sin(s)*cos(t)"; //2*sin(s)*cos(t)
@@ -218,7 +225,7 @@ int main(int argc, char *argv[])
     graph.SetIndicesInfo(indices.size(), parametersSize);
     graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
 
-    int glslVersion = window.GetGLSLVersion();
+    
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
@@ -237,20 +244,20 @@ int main(int argc, char *argv[])
     .AddOutput(SH_VEC4, "FragColor")
     .AddUniform(SH_FLOAT, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
-    ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader});
+    ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader}, true);
     shader.SetFloat("red", 1.0f);
 
     graph.SetShader(shader);
     glm::mat4 projection = window.GetProjectionMatrix();
 
     Mesh mesh = Mesh();
-    std::vector<float> triangle = {-1, -1, 0,
-    1, -1, 0,
-    0, 1, 0};
+    std::vector<float> triangle = {-0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f};
     std::vector<unsigned int> triangleIndices = {
         0, 1, 2
     };
-    mesh.PushAttribute("positions", 0, triangle, 3, false);
+    mesh.PushAttribute("pos", 0, triangle, 3, false);
     mesh.SetIndices(triangleIndices, Triangle);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
     ShaderBuilder testFBuilder = ShaderBuilder(false);
@@ -261,8 +268,8 @@ int main(int argc, char *argv[])
     ShaderObject testF = testFBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(glslVersion)
     .AddOutput(SH_VEC4, "FragColor")
-    .SetMain("FragColor = vec4(1.0);").Build();
-    ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF});
+    .SetMain("FragColor = vec4(1.0, 0.0, 0.0, 1.0);").Build();
+    ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF}, true);
     MeshRenderer meshRenderer = MeshRenderer();
     meshRenderer.SetMesh(mesh);
     meshRenderer.SetShader(testShader);
@@ -360,7 +367,7 @@ int main(int argc, char *argv[])
         glm::mat4 view = mainCamera.GetViewMatrix();
         glm::mat4 mvp = projection*view*model;
         graph.Shader().SetMat4Float("mvp", mvp);
-        graph.DrawLines();
+        //graph.DrawLines();
         mainRenderer.Draw();
         /* Swap front and back buffers */
         glfwSwapBuffers(window.GetHandle());
@@ -371,4 +378,45 @@ int main(int argc, char *argv[])
 
     glfwTerminate();
     return 0;
+}
+
+void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param)
+{
+	auto const src_str = [source]() {
+		switch (source)
+		{
+		case GL_DEBUG_SOURCE_API: return "API";
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
+		case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
+		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
+		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+		}
+        return "UNDEFINED SOURCE";
+	}();
+
+	auto const type_str = [type]() {
+		switch (type)
+		{
+		case GL_DEBUG_TYPE_ERROR: return "ERROR";
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+		case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+		case GL_DEBUG_TYPE_MARKER: return "MARKER";
+		case GL_DEBUG_TYPE_OTHER: return "OTHER";
+		}
+        return "UNDEFINED TYPE";
+	}();
+
+	auto const severity_str = [severity]() {
+		switch (severity) {
+		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
+		case GL_DEBUG_SEVERITY_LOW: return "LOW";
+		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
+		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
+		}
+        return "UNDEFINED SEVERITY";
+	}();
+	std::cout << src_str << ", " << type_str << ", " << severity_str << ", " << id << ": " << message << '\n';
 }
