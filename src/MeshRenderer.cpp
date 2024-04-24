@@ -1,6 +1,6 @@
 #include "MeshRenderer.hpp"
 
-Mesh MeshRenderer::GetMesh() const{
+Mesh MeshRenderer::GetMesh(){
     return mesh;
 }
 

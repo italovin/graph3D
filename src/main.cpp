@@ -15,7 +15,9 @@ int main(int argc, char *argv[])
     /* Initialize the library */
     if (!glfwInit())
         return -1;
-
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     const int WIDTH = 800; 
     const int HEIGHT = 600;
 
@@ -251,14 +253,20 @@ int main(int argc, char *argv[])
     glm::mat4 projection = window.GetProjectionMatrix();
 
     Mesh mesh = Mesh();
+    Mesh mesh2 = Mesh();
     std::vector<float> triangle = {-0.5f, -0.5f, 0.0f,
      0.5f, -0.5f, 0.0f,
      0.0f,  0.5f, 0.0f};
     std::vector<unsigned int> triangleIndices = {
         0, 1, 2
     };
-    mesh.PushAttribute("pos", 0, triangle, 3, false);
-    mesh.SetIndices(triangleIndices, Triangle);
+    std::vector<float> triangle2 = {-1.0f, -0.5f, 0.0f,
+    -0.5f, -0.5f, 0.0f,
+    -0.75f, 0.0f, 0.0f};
+    mesh.PushAttribute("pos", MeshDataType::Float3, false, triangle);
+    mesh.SetIndices(triangleIndices, MeshTopology::Triangles);
+    mesh2.PushAttribute("positions", MeshDataType::Float3, false, triangle2);
+    mesh2.SetIndices(triangleIndices, MeshTopology::Triangles);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
     ShaderBuilder testFBuilder = ShaderBuilder(false);
     ShaderObject testV = testVBuilder.SetShaderType(GL_VERTEX_SHADER)
@@ -271,10 +279,13 @@ int main(int argc, char *argv[])
     .SetMain("FragColor = vec4(1.0, 0.0, 0.0, 1.0);").Build();
     ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF}, true);
     MeshRenderer meshRenderer = MeshRenderer();
+    MeshRenderer meshRenderer2 = MeshRenderer();
     meshRenderer.SetMesh(mesh);
     meshRenderer.SetShader(testShader);
+    meshRenderer2.SetMesh(mesh2);
+    meshRenderer2.SetShader(testShader);
     Renderer mainRenderer = Renderer();
-    std::vector<MeshRenderer> meshRenderers = { meshRenderer };
+    std::vector<MeshRenderer> meshRenderers = { meshRenderer, meshRenderer2 };
     mainRenderer.Prepare(meshRenderers);
 
     // Rotation Euler angles +X = Look Down; +Y = Look Right

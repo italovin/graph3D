@@ -1,15 +1,16 @@
 #include "Renderer.hpp"
 
-Renderer::Batch Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, unsigned int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
+Renderer::Batch Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
+unsigned int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
 const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     VertexArray newVao = VertexArray();
-    newVao.Bind();
     std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
     glCreateBuffers(buffersSizes.size(), newBuffers.data());
     Batch newBatch;
     int bindingPointIt = 0;
     for(int i = 0; i < buffersSizes.size(); i++){
-        Buffer buffer = {.name = newBuffers[i], .bufferSize = buffersSizes[i], .bindingPoint = bindingPointIt++};
+        Buffer buffer = {.name = newBuffers[i], .bufferSize = buffersSizes[i], .stride = strides[i],
+        .bindingPoint = bindingPointIt++};
         newBatch.buffers.push_back(buffer);
     }
     GLuint newIndicesBuffer;
@@ -28,29 +29,35 @@ const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
 void Renderer::StartBatch(Batch &batch){
     for(auto &&buffer : batch.buffers){
         glNamedBufferStorage(buffer.name, buffer.bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
-        glVertexArrayVertexBuffer(batch.vao.GetHandle(), buffer.bindingPoint, buffer.name, 0, 0);
+        glVertexArrayVertexBuffer(batch.vao.GetHandle(), buffer.bindingPoint, buffer.name, 0, buffer.stride);
     }
     glNamedBufferStorage(batch.indiceBuffer.name, batch.indiceBuffer.bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     glVertexArrayElementBuffer(batch.vao.GetHandle(), batch.indiceBuffer.name);
 }
 
 void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
+    int bindingPoint = 0;
+    int locationsOffset = 0;
     for(auto &&attribute : layout.attributes){
-        int bindingPoint = attribute.index;
         GLenum type;
         GLboolean normalized;
+        int locations = attribute.LocationsCount();
         switch(attribute.type){
-            case MeshFloat32:
-                type = GL_FLOAT;
-                break;
-            case MeshInt32:
-                type = GL_INT;
-                break;
+            case MeshDataType::Float:
+            case MeshDataType::Float2:
+            case MeshDataType::Float3:
+            case MeshDataType::Float4: type = GL_FLOAT; break;
+            case MeshDataType::Int: type = GL_INT; break;
+            default: type = GL_FLOAT;
         }
         normalized = attribute.normalized ? GL_TRUE : GL_FALSE;
-        glVertexArrayAttribFormat(batch.vao.GetHandle(), attribute.index, attribute.size, type, normalized, 0);
-        glEnableVertexArrayAttrib(batch.vao.GetHandle(), attribute.index);
-        glVertexArrayAttribBinding(batch.vao.GetHandle(), attribute.index, bindingPoint);
+        for(int i = 0; i < locations; i++){
+            glVertexArrayAttribFormat(batch.vao.GetHandle(), locationsOffset + i, attribute.ScalarElementsCount(), type, normalized, 0);
+            glEnableVertexArrayAttrib(batch.vao.GetHandle(), locationsOffset + i);
+            glVertexArrayAttribBinding(batch.vao.GetHandle(), locationsOffset + i, bindingPoint);
+        }
+        locationsOffset += locations;
+        bindingPoint++;
     }
 }
 
@@ -95,6 +102,7 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
             && (m.GetMesh().GetTopology() == group[0].GetMesh().GetTopology());  
         })){
             std::vector<unsigned int> buffersSizes = std::vector<unsigned int>(group[0].GetMesh().GetAttributesCount());
+            std::vector<int> strides = std::vector<int>(group[0].GetMesh().GetAttributesCount());
             std::vector<std::vector<unsigned int>> dataOffsetsMatrix = std::vector<std::vector<unsigned int>>(group.size());
             std::vector<unsigned int> indicesOffsets = std::vector<unsigned int>();
             std::vector<int> baseVertices = std::vector<int>();
@@ -103,6 +111,7 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
             int rendererIndex = 0;
             int indicesOffset = 0;
             int baseVertex = 0;
+            std::vector<int> dataOffsets = std::vector<int>(group[0].GetMesh().GetAttributesCount());
             for(auto &&renderer : group){
                 Mesh mesh = renderer.GetMesh();
                 indicesSize += mesh.GetIndicesSize();
@@ -113,22 +122,23 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
                 baseVertex += mesh.GetIndicesCount();
 
                 std::vector<int> attributesDataSizes = mesh.GetAttributeDatasSizes();
-                int dataOffset = 0;
+                
                 for(int i = 0; i < buffersSizes.size(); i++){
+                    strides[rendererIndex] = mesh.GetLayout().attributes[i].AttributeDataSize();
                     buffersSizes[i] += attributesDataSizes[i];
-                    dataOffsetsMatrix[rendererIndex].push_back(dataOffset);
-                    dataOffset += attributesDataSizes[i];
+                    dataOffsetsMatrix[rendererIndex].push_back(dataOffsets[i]);
+                    dataOffsets[i] += attributesDataSizes[i];
                     rendererIndex++;
                 }
             }
-            Batch createdBatch = CreateBatch(buffersSizes, indicesSize, group[0].GetMesh().GetTopology(), group[0].GetShader(),
+            Batch createdBatch = CreateBatch(buffersSizes, strides, indicesSize, group[0].GetMesh().GetTopology(), group[0].GetShader(),
             indicesCounts, baseVertices);
-            createdBatch.vao.Bind();
             StartBatch(createdBatch);
             int indiceOffsetIndex = 0;
-            for(auto &&renderer : group){
+            for(auto &renderer : group){
                 for(auto &&offsets : dataOffsetsMatrix){
-                    BufferSubData(createdBatch, offsets, renderer.GetMesh().GetAttributesDatas());
+                    Mesh mesh = renderer.GetMesh();
+                    BufferSubData(createdBatch, offsets, mesh.GetAttributesDatas());
                 }
                 BufferIndices(createdBatch, indicesOffsets[indiceOffsetIndex++], renderer.GetMesh().GetIndices());
             }
@@ -142,20 +152,25 @@ void Renderer::Draw(){
     for(auto &&batch : batches){
         GLenum mode;
         switch(batch.topology){
-            case Lines:
+            case MeshTopology::Lines:
                 mode = GL_LINES;
                 break;
-            case LineStrip:
+            case MeshTopology::LineStrip:
                 mode = GL_LINE_STRIP;
                 break;
-            case Triangle:
+            case MeshTopology::Triangles:
                 mode = GL_TRIANGLES;
                 break;
         }
         batch.shader.Use();
         batch.vao.Bind();
-        //std::vector<int> indices(batch.indicesCounts.size(), 0);
-        glDrawElements(mode, batch.indicesCounts[0], GL_UNSIGNED_INT, 0);
-        //glMultiDrawElementsBaseVertex(mode, batch.indicesCounts.data(), GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(indices.data()), batch.indicesCounts.size(), batch.baseVertices.data());
+        std::vector<float> data = std::vector<float>(18);
+        glGetNamedBufferSubData(batch.buffers[0].name, 0, 72, data.data());
+        std::vector<int> indices(batch.indicesCounts.size(), 0);
+        glMultiDrawElementsBaseVertex(mode, batch.indicesCounts.data(), GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(indices.data()), batch.indicesCounts.size(), batch.baseVertices.data());
     }
+}
+
+int Renderer::GetBatchesCount(){
+    return batches.size();
 }

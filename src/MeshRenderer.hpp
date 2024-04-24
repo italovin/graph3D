@@ -8,7 +8,7 @@ private:
     Mesh mesh;
     ShaderProgram shader;
 public:
-    Mesh GetMesh() const;
+    Mesh GetMesh();
     ShaderProgram GetShader() const;
     void SetMesh(Mesh mesh);
     void SetShader(ShaderProgram shader);

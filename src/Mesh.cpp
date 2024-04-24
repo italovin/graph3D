@@ -8,20 +8,25 @@ void Mesh::SetIndices(const std::vector<unsigned int> &indices, MeshTopology top
     this->topology = topology;
 }
 
-void Mesh::PushAttribute(const std::string &name, int index, const std::vector<float> &data, int size, bool normalized){
+bool Mesh::PushAttribute(const std::string &name, MeshDataType type, bool normalized, const std::vector<float> &data){
     MeshAttribute meshAttribute;
-    meshAttribute.index = index;
-    meshAttribute.size = glm::clamp(size, 1, 4);
-    meshAttribute.type = MeshFloat32;
+    meshAttribute.name = name;
+    meshAttribute.type = type;
     meshAttribute.normalized = normalized;
+    std::div_t verticesDiv = std::div(data.size(), meshAttribute.ScalarElementsCount());
+    if(verticesDiv.rem > 0 || (verticesCount > 0 && verticesCount != verticesDiv.quot)){
+        return false;
+    } else if(verticesCount == 0){
+        verticesCount = verticesDiv.quot;
+    }
+    int totalDataSize = meshAttribute.AttributeDataSize()*verticesCount;
     MeshAttributeData meshAttributeData;
-    meshAttributeData.name = name;
-    //std::copy(data.begin(), data.end(), meshAttributeData.data);
     meshAttributeData.data = data;
-    meshAttributeData.dataSize = sizeof(float)*data.size();
+    meshAttributeData.dataSize = totalDataSize;
     meshAttributeData.attribute = meshAttribute;
     attributesData.push_back(meshAttributeData);
     layout.attributes.push_back(meshAttribute);
+    return true;
 }
 
 int Mesh::GetAttributesCount(){
@@ -36,18 +41,11 @@ std::vector<int> Mesh::GetAttributeDatasSizes(){
     return datasSizes;
 }
 
-int Mesh::GetMeshDataSize(){
+int Mesh::GetTotalDataSize(){
     int size = 0;
     for (auto &&attributeData : attributesData)
     {
-        switch(attributeData.attribute.type){
-            case MeshFloat32:
-                size += sizeof(float)*attributeData.dataSize;
-                break;
-            case MeshInt32:
-                size += sizeof(int)*attributeData.dataSize;
-                break;
-        }
+        size += attributeData.dataSize;
     }
     return size;
 }
