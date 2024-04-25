@@ -20,11 +20,14 @@ private:
         std::vector<int> baseVertices;
         MeshTopology topology;
         ShaderProgram shader;
+        GLenum mode; //must be equivalent to topology
+        std::vector<int> indicesOffsetInBuffer; //must be a vector with zeros
     };
     std::vector<Batch> batches;
     Batch CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides,
     unsigned int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
     const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices);
+    GLenum GetDrawMode(MeshTopology topology);
     void StartBatch(Batch &batch);
     void SetupBatchLayout(Batch &batch, MeshLayout &layout);
     void BufferSubData(Batch &batch, const std::vector<unsigned int> &offsets, const std::vector<MeshAttributeData> &attributesDatas);

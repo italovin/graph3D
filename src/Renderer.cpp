@@ -1,5 +1,14 @@
 #include "Renderer.hpp"
 
+GLenum Renderer::GetDrawMode(MeshTopology topology){
+    switch(topology){
+        case MeshTopology::Lines: return GL_LINES;
+        case MeshTopology::LineStrip: return GL_LINE_STRIP;
+        case MeshTopology::Triangles: return GL_TRIANGLES;
+        default: return GL_TRIANGLES;
+    }
+}
+
 Renderer::Batch Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
 unsigned int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
 const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
@@ -7,21 +16,22 @@ const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
     glCreateBuffers(buffersSizes.size(), newBuffers.data());
     Batch newBatch;
-    int bindingPointIt = 0;
     for(int i = 0; i < buffersSizes.size(); i++){
         Buffer buffer = {.name = newBuffers[i], .bufferSize = buffersSizes[i], .stride = strides[i],
-        .bindingPoint = bindingPointIt++};
+        .bindingPoint = i};
         newBatch.buffers.push_back(buffer);
     }
     GLuint newIndicesBuffer;
     glCreateBuffers(1, &newIndicesBuffer);
     Buffer indicesBuffer = {.name = newIndicesBuffer, .bufferSize = indicesBufferSize};
-    newBatch.indiceBuffer = indicesBuffer;
     newBatch.vao = newVao;
-    newBatch.topology = topology;
-    newBatch.shader = shader;
+    newBatch.indiceBuffer = indicesBuffer;
     newBatch.indicesCounts = indicesCounts;
     newBatch.baseVertices = baseVertices;
+    newBatch.topology = topology;
+    newBatch.shader = shader;
+    newBatch.mode = GetDrawMode(topology);
+    newBatch.indicesOffsetInBuffer = std::vector<int>(indicesCounts.size(), 0);
     batches.push_back(newBatch);
     return newBatch;
 }
@@ -151,22 +161,11 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
 
 void Renderer::Draw(){
     for(auto &&batch : batches){
-        GLenum mode;
-        switch(batch.topology){
-            case MeshTopology::Lines:
-                mode = GL_LINES;
-                break;
-            case MeshTopology::LineStrip:
-                mode = GL_LINE_STRIP;
-                break;
-            case MeshTopology::Triangles:
-                mode = GL_TRIANGLES;
-                break;
-        }
         batch.shader.Use();
         batch.vao.Bind();
-        std::vector<int> indices(batch.indicesCounts.size(), 0);
-        glMultiDrawElementsBaseVertex(mode, batch.indicesCounts.data(), GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(indices.data()), batch.indicesCounts.size(), batch.baseVertices.data());
+        glMultiDrawElementsBaseVertex(batch.mode, batch.indicesCounts.data(), 
+        GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(batch.indicesOffsetInBuffer.data()), 
+        batch.indicesCounts.size(), batch.baseVertices.data());
     }
 }
 
