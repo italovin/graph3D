@@ -8,7 +8,7 @@ void Mesh::SetIndices(const std::vector<unsigned int> &indices, MeshTopology top
     this->topology = topology;
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshDataType type, bool normalized, const std::vector<float> &data){
+bool Mesh::PushAttribute(const std::string &name, ShaderDataType type, bool normalized, const std::vector<float> &data){
     MeshAttribute meshAttribute;
     meshAttribute.name = name;
     meshAttribute.type = type;

@@ -1,62 +1,27 @@
 #include "ShaderBuilder.hpp"
 
-std::string ShaderBuilder::GLSLTypeToString(GLSL_TYPE type){ 
-    std::string string;
+const std::string ShaderBuilder::GLSLTypeToString(ShaderDataType type){ 
     switch (type)
     {
-    case SH_BOOL:
-        string = "bool";
-        break;
-    case SH_INT:
-        string = "int";
-        break;
-    case SH_UINT:
-        string = "uint";
-        break;
-    case SH_FLOAT:
-        string = "float";
-        break;
-    case SH_DOUBLE:
-        string = "double";
-        break;
-    case SH_BVEC2:
-        string = "bvec2";
-        break;
-    case SH_IVEC2:
-        string = "ivec2";
-        break;
-    case SH_UVEC2:
-        string = "uvec2";
-        break;
-    case SH_VEC2:
-        string = "vec2";
-        break;
-    case SH_DVEC2:
-        string = "dvec2";
-        break;
-    case SH_BVEC3:
-        string = "bvec3";
-        break;
-    case SH_IVEC3:
-        string = "ivec3";
-        break;
-    case SH_UVEC3:
-        string = "uvec3";
-        break;
-    case SH_VEC3:
-        string = "vec3";
-        break;
-    case SH_DVEC3:
-        string = "dvec3";
-        break;
-    case SH_VEC4:
-        string = "vec4";
-        break;
-    case SH_MAT4:
-        string = "mat4";
-        break;
+        case ShaderDataType::Bool: return "bool";
+        case ShaderDataType::Int: return "int";
+        //case ShaderDataType::UInt: return "uint";
+        case ShaderDataType::Float: return "float";
+        //case ShaderDataType::Double: return "double";
+        //case ShaderDataType::Bool2: return "bvec2";
+        case ShaderDataType::Int2: return "ivec2";
+        //case ShaderDataType::UInt2: return "uvec2";
+        case ShaderDataType::Float2: return "vec2";
+        //case ShaderDataType::Double2: return "dvec2";
+        //case ShaderDataType::Bool3: return "bvec3";
+        case ShaderDataType::Int3: return "ivec3";
+        //case ShaderDataType::UInt3: return "uvec3";
+        case ShaderDataType::Float3: return "vec3";
+        //case ShaderDataType::Double3: return "dvec3";
+        case ShaderDataType::Float4: return "vec4";
+        case ShaderDataType::Mat4: return "mat4";
+        default: return "undefined"; //It will cause shader compilation error
     }
-    return string;
 }
 ShaderBuilder::ShaderBuilder(bool clearOnBuild){
     this->clearOnBuild = clearOnBuild;
@@ -74,25 +39,25 @@ ShaderBuilder& ShaderBuilder::SetShaderType(GLenum shaderType){
     return *this;
 }
 
-ShaderBuilder& ShaderBuilder::AddInput(GLSL_TYPE type, const std::string & inputName)
+ShaderBuilder& ShaderBuilder::AddInput(ShaderDataType type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
     attributesStream << "in " << typeString << " " << inputName << ";\n";
     return *this;
 }
 
-ShaderBuilder& ShaderBuilder::AddInput(int location, GLSL_TYPE type, const std::string & inputName)
+ShaderBuilder& ShaderBuilder::AddInput(int location, ShaderDataType type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
     attributesStream << "layout (location = " << location << ") in " << typeString << " " << inputName << ";\n";
     return *this;
 }
-ShaderBuilder& ShaderBuilder::AddUniform(GLSL_TYPE type, const std::string &uniformName){
+ShaderBuilder& ShaderBuilder::AddUniform(ShaderDataType type, const std::string &uniformName){
     std::string typeString = GLSLTypeToString(type);
     attributesStream << "uniform " << typeString << " " << uniformName << ";\n";
     return *this;
 }
-ShaderBuilder& ShaderBuilder::AddOutput(GLSL_TYPE type, const std::string & outputName)
+ShaderBuilder& ShaderBuilder::AddOutput(ShaderDataType type, const std::string & outputName)
 {
     std::string typeString = GLSLTypeToString(type);
     attributesStream << "out " << typeString << " " << outputName << ";\n";

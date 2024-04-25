@@ -8,7 +8,7 @@
 #include <string>
 #include <iostream>
 
-void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
+void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
 int main(int argc, char *argv[])
 {
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
         std::cout << "Direct access extension suported\n\n";
     
     glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(message_callback, nullptr);
+    glDebugMessageCallback(GLDebugCallback, nullptr);
 
     int glslVersion = window.GetGLSLVersion();
 
@@ -232,9 +232,9 @@ int main(int argc, char *argv[])
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(glslVersion)
-    .AddInput(0, SH_VEC2, "params")
-    .AddUniform(SH_MAT4, "mvp")
-    .AddUniform(SH_FLOAT, timeString)
+    .AddInput(0, ShaderDataType::Float2, "params")
+    .AddUniform(ShaderDataType::Mat4, "mvp")
+    .AddUniform(ShaderDataType::Float, timeString)
     .SetMain("float " + var1 + "= params.x;"
     "float " + var2 + "= params.y;"
     "float x =" + equationX + ";"
@@ -243,8 +243,8 @@ int main(int argc, char *argv[])
     + "gl_Position = mvp*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(glslVersion)
-    .AddOutput(SH_VEC4, "FragColor")
-    .AddUniform(SH_FLOAT, "red")
+    .AddOutput(ShaderDataType::Float4, "FragColor")
+    .AddUniform(ShaderDataType::Float, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
     ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader});
     shader.SetFloat("red", 1.0f);
@@ -269,25 +269,25 @@ int main(int argc, char *argv[])
     std::vector<float> triangle2 = {-1.0f, -0.5f, 0.0f,
     -0.5f, -0.5f, 0.0f,
     -0.75f, 0.0f, 0.0f};
-    mesh.PushAttribute("pos", MeshDataType::Float3, false, triangle);
-    mesh.PushAttribute("color", MeshDataType::Float4, false, color1);
+    mesh.PushAttribute("pos", ShaderDataType::Float3, false, triangle);
+    mesh.PushAttribute("color", ShaderDataType::Float4, false, color1);
     mesh.SetIndices(triangleIndices, MeshTopology::Triangles);
-    mesh2.PushAttribute("pos", MeshDataType::Float3, false, triangle2);
-    mesh2.PushAttribute("color", MeshDataType::Float4, false, color2);
+    mesh2.PushAttribute("pos", ShaderDataType::Float3, false, triangle2);
+    mesh2.PushAttribute("color", ShaderDataType::Float4, false, color2);
     mesh2.SetIndices(triangleIndices, MeshTopology::Triangles);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
     ShaderBuilder testFBuilder = ShaderBuilder(false);
     ShaderObject testV = testVBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(glslVersion)
-    .AddInput(0, SH_VEC3, "aPos")
-    .AddInput(1, SH_VEC4, "aColor")
-    .AddOutput(SH_VEC4, "colorOut")
+    .AddInput(0, ShaderDataType::Float3, "aPos")
+    .AddInput(1, ShaderDataType::Float4, "aColor")
+    .AddOutput(ShaderDataType::Float4, "colorOut")
     .SetMain("colorOut = aColor;"
     "gl_Position = vec4(aPos, 1.0);").Build();
     ShaderObject testF = testFBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(glslVersion)
-    .AddInput(SH_VEC4, "colorOut")
-    .AddOutput(SH_VEC4, "FragColor")
+    .AddInput(ShaderDataType::Float4, "colorOut")
+    .AddOutput(ShaderDataType::Float4, "FragColor")
     .SetMain("FragColor = colorOut;").Build();
     ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF});
     MeshRenderer meshRenderer = MeshRenderer();
@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
         glm::mat4 view = mainCamera.GetViewMatrix();
         glm::mat4 mvp = projection*view*model;
         graph.Shader().SetMat4Float("mvp", mvp);
-        //graph.DrawLines();
+        graph.DrawLines();
         mainRenderer.Draw();
         /* Swap front and back buffers */
         glfwSwapBuffers(window.GetHandle());
@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param)
+void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param)
 {
 	auto const src_str = [source]() {
 		switch (source)

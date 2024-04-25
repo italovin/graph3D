@@ -53,11 +53,11 @@ void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
         GLboolean normalized;
         int locations = attribute.LocationsCount();
         switch(attribute.type){
-            case MeshDataType::Float:
-            case MeshDataType::Float2:
-            case MeshDataType::Float3:
-            case MeshDataType::Float4: type = GL_FLOAT; break;
-            case MeshDataType::Int: type = GL_INT; break;
+            case ShaderDataType::Float:
+            case ShaderDataType::Float2:
+            case ShaderDataType::Float3:
+            case ShaderDataType::Float4: type = GL_FLOAT; break;
+            case ShaderDataType::Int: type = GL_INT; break;
             default: type = GL_FLOAT;
         }
         normalized = attribute.normalized ? GL_TRUE : GL_FALSE;
