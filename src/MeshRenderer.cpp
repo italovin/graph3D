@@ -1,17 +1,17 @@
 #include "MeshRenderer.hpp"
 
-Mesh MeshRenderer::GetMesh(){
+const Mesh &MeshRenderer::GetMesh() const{
     return mesh;
 }
 
-ShaderProgram MeshRenderer::GetShader() const{
+const ShaderProgram &MeshRenderer::GetShader() const{
     return shader;
 }
 
-void MeshRenderer::SetMesh(Mesh mesh){
+void MeshRenderer::SetMesh(const Mesh &mesh){
     this->mesh = mesh;
 }
 
-void MeshRenderer::SetShader(ShaderProgram shader){
+void MeshRenderer::SetShader(const ShaderProgram &shader){
     this->shader = shader;
 }

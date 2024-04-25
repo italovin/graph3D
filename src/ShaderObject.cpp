@@ -102,14 +102,14 @@ void ShaderObject::SetupShaderObject(const std::string &shaderPath){
     CompileShaderObject(source);
 }
 
-GLuint ShaderObject::GetHandle(){
+GLuint ShaderObject::GetHandle() const{
     return handle;
 }
 
-GLenum ShaderObject::GetType(){
+GLenum ShaderObject::GetType() const{
     return shaderType;
 }
 
-void ShaderObject::Delete(){
+void ShaderObject::Delete() const{
     glDeleteShader(handle);
 }

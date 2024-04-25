@@ -131,7 +131,7 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
                 baseVertices.push_back(baseVertex);
                 baseVertex += mesh.GetIndicesCount();
 
-                std::vector<int> attributesDataSizes = mesh.GetAttributeDatasSizes();
+                std::vector<int> attributesDataSizes = mesh.GetAttributesDatasSizes();
                 
                 for(int i = 0; i < buffersSizes.size(); i++){
                     if(rendererIndex == 0){

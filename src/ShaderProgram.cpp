@@ -61,7 +61,7 @@ ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects, boo
         DetachShaderObject(shaderObject);
     }
 }
-void ShaderProgram::AttachShaderObject(ShaderObject shaderObject)
+void ShaderProgram::AttachShaderObject(const ShaderObject &shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());
 }
@@ -112,11 +112,11 @@ void ShaderProgram::SetMat4Float(const std::string &name, const glm::mat4 &matri
     if(uniforms.count(name) > 0)    
         glProgramUniformMatrix4fv(handle, uniforms.at(name).location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
-void ShaderProgram::DetachShaderObject(ShaderObject shaderObject)
+void ShaderProgram::DetachShaderObject(const ShaderObject &shaderObject)
 {
     glDetachShader(handle, shaderObject.GetHandle());
 }
-void ShaderProgram::RemoveShaderObject(ShaderObject shaderObject){
+void ShaderProgram::RemoveShaderObject(const ShaderObject &shaderObject){
     DetachShaderObject(shaderObject);
     shaderObject.Delete();
 }

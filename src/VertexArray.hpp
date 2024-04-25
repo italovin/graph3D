@@ -7,7 +7,7 @@ private:
     GLuint handle;
 public:
     VertexArray();
-    GLuint GetHandle();
+    GLuint GetHandle() const;
     void Bind();
 };
 #endif

@@ -14,7 +14,7 @@ struct MeshAttribute{
     std::string name;
     ShaderDataType type;
     bool normalized;
-    bool operator == (const MeshAttribute &attribute){
+    bool operator == (const MeshAttribute &attribute) const{
         return (attribute.type == type) && (attribute.normalized == normalized);
     }
     int LocationsCount() const{
@@ -69,7 +69,7 @@ struct MeshAttribute{
 };
 struct MeshLayout{
     std::vector<MeshAttribute> attributes;
-    bool operator == (const MeshLayout &layout){
+    bool operator == (const MeshLayout &layout) const{
         if(attributes.size() == 0 || attributes.size() != layout.attributes.size()){
             return false;
         }
@@ -100,16 +100,17 @@ private:
     MeshLayout layout;
 public:
     ~Mesh();
+    
     void SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology);
     bool PushAttribute(const std::string &name, ShaderDataType type, bool normalized, const std::vector<float> &data);
-    int GetAttributesCount();
-    std::vector<int> GetAttributeDatasSizes();
-    int GetTotalDataSize();
-    int GetIndicesCount();
-    int GetIndicesSize();
-    MeshLayout GetLayout();
-    MeshTopology GetTopology();
+    int GetAttributesCount() const;
+    std::vector<int> GetAttributesDatasSizes();
     const std::vector<MeshAttributeData> &GetAttributesDatas();
+    int GetTotalAttributesDataSize();
     const std::vector<unsigned int> &GetIndices();
+    int GetIndicesCount() const;
+    int GetIndicesSize() const;
+    const MeshLayout &GetLayout() const;
+    MeshTopology GetTopology() const;
 };
 #endif

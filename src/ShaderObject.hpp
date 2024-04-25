@@ -26,8 +26,9 @@ public:
     void CompileShaderObject(const std::string &source);
     void SetupShaderObject(const char *shaderPath);
     void SetupShaderObject(const std::string &shaderPath);
-    GLuint GetHandle();
-    GLenum GetType();
-    void Delete();
+    GLuint GetHandle() const;
+    GLenum GetType() const;
+    //This method will leave the handle useless
+    void Delete() const;
 };
 #endif

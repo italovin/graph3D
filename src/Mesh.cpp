@@ -29,19 +29,23 @@ bool Mesh::PushAttribute(const std::string &name, ShaderDataType type, bool norm
     return true;
 }
 
-int Mesh::GetAttributesCount(){
+int Mesh::GetAttributesCount() const{
     return attributesData.size();
 }
 
-std::vector<int> Mesh::GetAttributeDatasSizes(){
+std::vector<int> Mesh::GetAttributesDatasSizes(){
     std::vector<int> datasSizes;
-    for(auto &&attriuteData : attributesData){
-        datasSizes.push_back(attriuteData.dataSize);
+    for(auto &&attributeData : attributesData){
+        datasSizes.push_back(attributeData.dataSize);
     }
     return datasSizes;
 }
 
-int Mesh::GetTotalDataSize(){
+const std::vector<MeshAttributeData> &Mesh::GetAttributesDatas(){
+    return attributesData;
+}
+
+int Mesh::GetTotalAttributesDataSize(){
     int size = 0;
     for (auto &&attributeData : attributesData)
     {
@@ -50,26 +54,22 @@ int Mesh::GetTotalDataSize(){
     return size;
 }
 
-int Mesh::GetIndicesCount(){
+const std::vector<unsigned int> &Mesh::GetIndices(){
+    return indices;
+}
+
+int Mesh::GetIndicesCount() const{
     return indices.size();
 }
 
-int Mesh::GetIndicesSize(){
+int Mesh::GetIndicesSize() const{
     return sizeof(unsigned int)*GetIndicesCount();
 }
 
-MeshLayout Mesh::GetLayout(){
+const MeshLayout &Mesh::GetLayout() const{
     return layout;
 }
 
-MeshTopology Mesh::GetTopology(){
+MeshTopology Mesh::GetTopology() const{
     return topology;
-}
-
-const std::vector<MeshAttributeData> &Mesh::GetAttributesDatas(){
-    return attributesData;
-}
-
-const std::vector<unsigned int> &Mesh::GetIndices(){
-    return indices;
 }

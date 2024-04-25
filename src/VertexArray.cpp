@@ -3,7 +3,7 @@
 VertexArray::VertexArray(){
     glCreateVertexArrays(1, &handle);
 }
-GLuint VertexArray::GetHandle()
+GLuint VertexArray::GetHandle() const
 {
     return handle;
 }
