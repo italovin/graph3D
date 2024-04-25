@@ -124,23 +124,24 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
                 std::vector<int> attributesDataSizes = mesh.GetAttributeDatasSizes();
                 
                 for(int i = 0; i < buffersSizes.size(); i++){
-                    strides[rendererIndex] = mesh.GetLayout().attributes[i].AttributeDataSize();
+                    if(rendererIndex == 0){
+                        strides[i] = mesh.GetLayout().attributes[i].AttributeDataSize();
+                    }
                     buffersSizes[i] += attributesDataSizes[i];
                     dataOffsetsMatrix[rendererIndex].push_back(dataOffsets[i]);
                     dataOffsets[i] += attributesDataSizes[i];
-                    rendererIndex++;
                 }
+                rendererIndex++;
             }
             Batch createdBatch = CreateBatch(buffersSizes, strides, indicesSize, group[0].GetMesh().GetTopology(), group[0].GetShader(),
             indicesCounts, baseVertices);
             StartBatch(createdBatch);
-            int indiceOffsetIndex = 0;
-            for(auto &renderer : group){
-                for(auto &&offsets : dataOffsetsMatrix){
-                    Mesh mesh = renderer.GetMesh();
-                    BufferSubData(createdBatch, offsets, mesh.GetAttributesDatas());
-                }
-                BufferIndices(createdBatch, indicesOffsets[indiceOffsetIndex++], renderer.GetMesh().GetIndices());
+            
+            for(int i = 0; i < group.size(); i++){
+                auto offsets = dataOffsetsMatrix[i];
+                Mesh mesh = group[i].GetMesh();
+                BufferSubData(createdBatch, offsets, mesh.GetAttributesDatas());
+                BufferIndices(createdBatch, indicesOffsets[i], mesh.GetIndices());
             }
             MeshLayout layout = group[0].GetMesh().GetLayout();
             SetupBatchLayout(createdBatch, layout);
@@ -164,8 +165,6 @@ void Renderer::Draw(){
         }
         batch.shader.Use();
         batch.vao.Bind();
-        std::vector<float> data = std::vector<float>(18);
-        glGetNamedBufferSubData(batch.buffers[0].name, 0, 72, data.data());
         std::vector<int> indices(batch.indicesCounts.size(), 0);
         glMultiDrawElementsBaseVertex(mode, batch.indicesCounts.data(), GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(indices.data()), batch.indicesCounts.size(), batch.baseVertices.data());
     }

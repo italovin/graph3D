@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
     .AddOutput(SH_VEC4, "FragColor")
     .AddUniform(SH_FLOAT, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
-    ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader}, true);
+    ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader});
     shader.SetFloat("red", 1.0f);
 
     graph.SetShader(shader);
@@ -260,24 +260,36 @@ int main(int argc, char *argv[])
     std::vector<unsigned int> triangleIndices = {
         0, 1, 2
     };
+    std::vector<float> color1 = {1.0f, 0.0f, 0.0f, 1.0f,
+    1.0f, 0.0f, 0.0f, 1.0f,
+    1.0f, 0.0f, 0.0f, 1.0f};
+    std::vector<float> color2 = {0.0f, 0.0f, 1.0f, 1.0f,
+    0.0f, 0.0f, 1.0f, 1.0f,
+    0.0f, 0.0f, 1.0f, 1.0f};
     std::vector<float> triangle2 = {-1.0f, -0.5f, 0.0f,
     -0.5f, -0.5f, 0.0f,
     -0.75f, 0.0f, 0.0f};
     mesh.PushAttribute("pos", MeshDataType::Float3, false, triangle);
+    mesh.PushAttribute("color", MeshDataType::Float4, false, color1);
     mesh.SetIndices(triangleIndices, MeshTopology::Triangles);
-    mesh2.PushAttribute("positions", MeshDataType::Float3, false, triangle2);
+    mesh2.PushAttribute("pos", MeshDataType::Float3, false, triangle2);
+    mesh2.PushAttribute("color", MeshDataType::Float4, false, color2);
     mesh2.SetIndices(triangleIndices, MeshTopology::Triangles);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
     ShaderBuilder testFBuilder = ShaderBuilder(false);
     ShaderObject testV = testVBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(glslVersion)
     .AddInput(0, SH_VEC3, "aPos")
-    .SetMain("gl_Position = vec4(aPos, 1.0);").Build();
+    .AddInput(1, SH_VEC4, "aColor")
+    .AddOutput(SH_VEC4, "colorOut")
+    .SetMain("colorOut = aColor;"
+    "gl_Position = vec4(aPos, 1.0);").Build();
     ShaderObject testF = testFBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(glslVersion)
+    .AddInput(SH_VEC4, "colorOut")
     .AddOutput(SH_VEC4, "FragColor")
-    .SetMain("FragColor = vec4(1.0, 0.0, 0.0, 1.0);").Build();
-    ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF}, true);
+    .SetMain("FragColor = colorOut;").Build();
+    ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF});
     MeshRenderer meshRenderer = MeshRenderer();
     MeshRenderer meshRenderer2 = MeshRenderer();
     meshRenderer.SetMesh(mesh);
@@ -286,8 +298,11 @@ int main(int argc, char *argv[])
     meshRenderer2.SetShader(testShader);
     Renderer mainRenderer = Renderer();
     std::vector<MeshRenderer> meshRenderers = { meshRenderer, meshRenderer2 };
+    double initialRendererTime = glfwGetTime();
     mainRenderer.Prepare(meshRenderers);
-
+    double prepareTime = glfwGetTime() - initialRendererTime;
+    std::cout << "Time to prepare for meshes for batching: " << 1000*prepareTime << " (ms)\n";
+    std::cout << "Computed batches: " << mainRenderer.GetBatchesCount() << "\n";
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
     Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));

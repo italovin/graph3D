@@ -77,25 +77,25 @@ ShaderBuilder& ShaderBuilder::SetShaderType(GLenum shaderType){
 ShaderBuilder& ShaderBuilder::AddInput(GLSL_TYPE type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "in " << typeString << " " << inputName << ";";
+    attributesStream << "in " << typeString << " " << inputName << ";\n";
     return *this;
 }
 
 ShaderBuilder& ShaderBuilder::AddInput(int location, GLSL_TYPE type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "layout (location = " << location << ") in " << typeString << " " << inputName << ";";
+    attributesStream << "layout (location = " << location << ") in " << typeString << " " << inputName << ";\n";
     return *this;
 }
 ShaderBuilder& ShaderBuilder::AddUniform(GLSL_TYPE type, const std::string &uniformName){
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "uniform " << typeString << " " << uniformName << ";";
+    attributesStream << "uniform " << typeString << " " << uniformName << ";\n";
     return *this;
 }
 ShaderBuilder& ShaderBuilder::AddOutput(GLSL_TYPE type, const std::string & outputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "out " << typeString << " " << outputName << ";";
+    attributesStream << "out " << typeString << " " << outputName << ";\n";
     return *this;
 }
 
