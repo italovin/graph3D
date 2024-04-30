@@ -53,11 +53,13 @@ void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
         GLboolean normalized;
         int locations = attribute.LocationsCount();
         switch(attribute.type){
-            case ShaderDataType::Float:
-            case ShaderDataType::Float2:
-            case ShaderDataType::Float3:
-            case ShaderDataType::Float4: type = GL_FLOAT; break;
-            case ShaderDataType::Int: type = GL_INT; break;
+            case MeshAttributeType::Float: type = GL_FLOAT; break;
+            case MeshAttributeType::Int: type = GL_INT; break;
+            case MeshAttributeType::UnsignedInt: type = GL_UNSIGNED_INT; break;
+            case MeshAttributeType::Byte: type = GL_BYTE; break;
+            case MeshAttributeType::UnsignedByte: type = GL_UNSIGNED_BYTE; break;
+            case MeshAttributeType::Short: type = GL_SHORT; break;
+            case MeshAttributeType::UnsignedShort: type = GL_UNSIGNED_SHORT; break;
             default: type = GL_FLOAT;
         }
         normalized = attribute.normalized ? GL_TRUE : GL_FALSE;
@@ -74,7 +76,22 @@ void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
 void Renderer::BufferSubData(Batch &batch, const std::vector<unsigned int> &offsets, const std::vector<MeshAttributeData> &attributesDatas){
     int index = 0;
     for(auto &&buffer : batch.buffers){
-        glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, attributesDatas[index].data.data());
+        switch(attributesDatas[index].attribute.type){
+            case MeshAttributeType::Float:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<float>>(attributesDatas[index].data).data()); break;
+            case MeshAttributeType::Int:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<int>>(attributesDatas[index].data).data()); break;
+            case MeshAttributeType::UnsignedInt:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<unsigned int>>(attributesDatas[index].data).data()); break;
+            case MeshAttributeType::Byte:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<char>>(attributesDatas[index].data).data()); break;
+            case MeshAttributeType::UnsignedByte:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<unsigned char>>(attributesDatas[index].data).data()); break;
+            case MeshAttributeType::Short:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<short>>(attributesDatas[index].data).data()); break;
+            case MeshAttributeType::UnsignedShort:
+            glNamedBufferSubData(buffer.name, offsets[index], attributesDatas[index].dataSize, std::get<std::vector<unsigned short>>(attributesDatas[index].data).data()); break;
+        }
         index++;
     }
 }

@@ -260,20 +260,20 @@ int main(int argc, char *argv[])
     std::vector<unsigned int> triangleIndices = {
         0, 1, 2
     };
-    std::vector<float> color1 = {1.0f, 0.0f, 0.0f, 1.0f,
-    1.0f, 0.0f, 0.0f, 1.0f,
-    1.0f, 0.0f, 0.0f, 1.0f};
-    std::vector<float> color2 = {0.0f, 0.0f, 1.0f, 1.0f,
-    0.0f, 0.0f, 1.0f, 1.0f,
-    0.0f, 0.0f, 1.0f, 1.0f};
+    std::vector<unsigned char> color1 = {255, 0, 0, 255,
+    255, 0, 0, 255,
+    255, 0, 0, 255};
+    std::vector<unsigned char> color2 = {0, 0, 255, 255,
+    0, 0, 255, 255,
+    0, 0, 255, 255};
     std::vector<float> triangle2 = {-1.0f, -0.5f, 0.0f,
     -0.5f, -0.5f, 0.0f,
     -0.75f, 0.0f, 0.0f};
-    mesh.PushAttribute("pos", ShaderDataType::Float3, false, triangle);
-    mesh.PushAttribute("color", ShaderDataType::Float4, false, color1);
+    mesh.PushAttribute("pos", MeshAttributeFormat::Vec3, false, triangle);
+    mesh.PushAttribute("color", MeshAttributeFormat::Vec4, true, color1);
     mesh.SetIndices(triangleIndices, MeshTopology::Triangles);
-    mesh2.PushAttribute("pos", ShaderDataType::Float3, false, triangle2);
-    mesh2.PushAttribute("color", ShaderDataType::Float4, false, color2);
+    mesh2.PushAttribute("pos", MeshAttributeFormat::Vec3, false, triangle2);
+    mesh2.PushAttribute("color", MeshAttributeFormat::Vec4, true, color2);
     mesh2.SetIndices(triangleIndices, MeshTopology::Triangles);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
     ShaderBuilder testFBuilder = ShaderBuilder(false);
