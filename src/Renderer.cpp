@@ -17,13 +17,11 @@ const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     glCreateBuffers(buffersSizes.size(), newBuffers.data());
     Batch newBatch;
     for(int i = 0; i < buffersSizes.size(); i++){
-        Buffer buffer = {.name = newBuffers[i], .bufferSize = buffersSizes[i], .stride = strides[i],
-        .bindingPoint = i};
-        newBatch.buffers.push_back(buffer);
+        newBatch.buffers.emplace_back(newBuffers[i], buffersSizes[i], strides[i], i);
     }
     GLuint newIndicesBuffer;
     glCreateBuffers(1, &newIndicesBuffer);
-    Buffer indicesBuffer = {.name = newIndicesBuffer, .bufferSize = indicesBufferSize};
+    Buffer indicesBuffer(newIndicesBuffer, indicesBufferSize, 0, 0);
     newBatch.vao = newVao;
     newBatch.indiceBuffer = indicesBuffer;
     newBatch.indicesCounts = indicesCounts;
@@ -105,19 +103,20 @@ void Renderer::SetBatchIndicesInfo(Batch &batch, const std::vector<int> &indices
     batch.baseVertices = baseVertices;
 }
 
-void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
+void Renderer::Prepare(std::vector<MeshRenderer> &&meshRenderers){
     auto comparationFunction = [](const MeshRenderer &a, const MeshRenderer &b){
         return a.GetShader().GetHandle() < b.GetShader().GetHandle();
     };
-    std::sort(meshRenderers.begin(), meshRenderers.end(), comparationFunction);
+    std::vector<MeshRenderer> _meshRenderers(std::move(meshRenderers));
+    std::sort(_meshRenderers.begin(), _meshRenderers.end(), comparationFunction);
     std::vector<std::vector<MeshRenderer>> meshRenderersGroups;
 
-    decltype(meshRenderers.end()) upper;
+    decltype(_meshRenderers.end()) upper;
 
-    for(auto lower = meshRenderers.begin(); lower != meshRenderers.end(); lower = upper)
+    for(auto lower = _meshRenderers.begin(); lower != _meshRenderers.end(); lower = upper)
     {
         // get the upper position of all elements with the same ID
-        upper = std::upper_bound(meshRenderers.begin(), meshRenderers.end(), *lower, comparationFunction);
+        upper = std::upper_bound(_meshRenderers.begin(), _meshRenderers.end(), *lower, comparationFunction);
 
         // add those elements as a group to the output vector
         meshRenderersGroups.emplace_back(lower, upper);
@@ -128,19 +127,27 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
             return (m.GetMesh().GetLayout() == group[0].GetMesh().GetLayout())
             && (m.GetMesh().GetTopology() == group[0].GetMesh().GetTopology());  
         })){
-            std::vector<unsigned int> buffersSizes = std::vector<unsigned int>(group[0].GetMesh().GetAttributesCount());
-            std::vector<int> strides = std::vector<int>(group[0].GetMesh().GetAttributesCount());
-            std::vector<std::vector<unsigned int>> dataOffsetsMatrix = std::vector<std::vector<unsigned int>>(group.size());
-            std::vector<unsigned int> indicesOffsets = std::vector<unsigned int>();
-            std::vector<int> baseVertices = std::vector<int>();
-            std::vector<int> indicesCounts = std::vector<int>();
+            int renderersCount = group.size();
+            int attributesCount = group[0].GetMesh().GetAttributesCount();
+            std::vector<unsigned int> buffersSizes = std::vector<unsigned int>(attributesCount);
+            std::vector<int> strides = std::vector<int>(attributesCount);
+            std::vector<std::vector<unsigned int>> dataOffsetsMatrix(renderersCount);
+            std::vector<unsigned int> indicesOffsets;
+            indicesOffsets.reserve(renderersCount);
+            std::vector<int> baseVertices;
+            baseVertices.reserve(renderersCount);
+            std::vector<int> indicesCounts;
+            indicesCounts.reserve(renderersCount);
+
+            //Temp auxiliary variables
             int indicesSize = 0;
             int rendererIndex = 0;
             int indicesOffset = 0;
             int baseVertex = 0;
-            std::vector<int> dataOffsets = std::vector<int>(group[0].GetMesh().GetAttributesCount());
+            std::vector<int> dataOffsets = std::vector<int>(attributesCount);
             for(auto &&renderer : group){
-                Mesh mesh = renderer.GetMesh();
+                const Mesh& mesh = renderer.GetMesh();
+                int a = sizeof(mesh);
                 indicesSize += mesh.GetIndicesSize();
                 indicesOffsets.push_back(indicesOffset);
                 indicesOffset += indicesSize;
@@ -149,18 +156,19 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
                 baseVertex += mesh.GetIndicesCount();
 
                 std::vector<int> attributesDataSizes = mesh.GetAttributesDatasSizes();
-                
+                std::vector<int> attributesSizes = mesh.GetAttributesSizes();
                 for(int i = 0; i < buffersSizes.size(); i++){
                     if(rendererIndex == 0){
-                        strides[i] = mesh.GetLayout().attributes[i].AttributeDataSize();
+                        strides[i] = attributesSizes[i];
                     }
                     buffersSizes[i] += attributesDataSizes[i];
-                    dataOffsetsMatrix[rendererIndex].push_back(dataOffsets[i]);
+                    dataOffsetsMatrix[rendererIndex].emplace_back(dataOffsets[i]);
                     dataOffsets[i] += attributesDataSizes[i];
                 }
                 rendererIndex++;
             }
-            Batch createdBatch = CreateBatch(buffersSizes, strides, indicesSize, group[0].GetMesh().GetTopology(), group[0].GetShader(),
+            const MeshRenderer& auxGlobalRenderer = group[0];
+            Batch createdBatch = CreateBatch(buffersSizes, strides, indicesSize, auxGlobalRenderer.GetMesh().GetTopology(), auxGlobalRenderer.GetShader(),
             indicesCounts, baseVertices);
             StartBatch(createdBatch);
             
@@ -170,7 +178,7 @@ void Renderer::Prepare(std::vector<MeshRenderer> &meshRenderers){
                 BufferSubData(createdBatch, offsets, mesh.GetAttributesDatas());
                 BufferIndices(createdBatch, indicesOffsets[i], mesh.GetIndices());
             }
-            MeshLayout layout = group[0].GetMesh().GetLayout();
+            MeshLayout layout = auxGlobalRenderer.GetMesh().GetLayout();
             SetupBatchLayout(createdBatch, layout);
         }
     }

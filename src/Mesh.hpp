@@ -24,10 +24,17 @@ struct MeshAttribute{
     MeshAttributeType type;
     MeshAttributeFormat format;
     bool normalized;
+
+    MeshAttribute() = default;
+
+    MeshAttribute(const std::string &name, MeshAttributeType type, MeshAttributeFormat format, bool normalized):
+    name(name), type(type), format(format), normalized(normalized){
+    }
+
     bool operator == (const MeshAttribute &attribute) const{
         return (attribute.type == type) && (attribute.normalized == normalized);
     }
-    int LocationsCount() const{
+    static int LocationsCount(MeshAttributeFormat format){
         switch(format){
             case MeshAttributeFormat::Vec1:
             case MeshAttributeFormat::Vec2:
@@ -38,7 +45,10 @@ struct MeshAttribute{
             default: return 1;
         }
     }
-    int ScalarElementsCount() const{
+    int LocationsCount() const{
+        return LocationsCount(format);
+    }
+    static int ScalarElementsCount(MeshAttributeFormat format){
         switch(format){
             case MeshAttributeFormat::Vec1: return 1;
             case MeshAttributeFormat::Vec2: return 2;
@@ -49,8 +59,11 @@ struct MeshAttribute{
             default: return 1;
         }
     }
-    int AttributeDataSize() const{
-        int scalars = ScalarElementsCount();
+    int ScalarElementsCount() const{
+        return ScalarElementsCount(format);
+    }
+    static int AttributeDataSize(MeshAttributeType type, MeshAttributeFormat format){
+        int scalars = ScalarElementsCount(format);
         switch(type){
             case MeshAttributeType::Float: return scalars * sizeof(float);
             case MeshAttributeType::Int: return scalars * sizeof(int);
@@ -61,6 +74,9 @@ struct MeshAttribute{
             case MeshAttributeType::UnsignedShort: return scalars * sizeof(unsigned short);
             default: return 0;
         }
+    }
+    int AttributeDataSize() const{
+        return AttributeDataSize(type, format);
     }
 };
 struct MeshLayout{
@@ -86,6 +102,22 @@ struct MeshAttributeData{
     std::vector<unsigned char>, std::vector<short>, std::vector<unsigned short>> data;
     int dataSize;
     MeshAttribute attribute;
+
+    MeshAttributeData() = default;
+    MeshAttributeData(const std::vector<float> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
+    MeshAttributeData(const std::vector<int> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
+    MeshAttributeData(const std::vector<unsigned int> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
+    MeshAttributeData(const std::vector<char> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
+    MeshAttributeData(const std::vector<unsigned char> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
+    MeshAttributeData(const std::vector<short> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
+    MeshAttributeData(const std::vector<unsigned short> &&data, int dataSize, const MeshAttribute &attribute):
+    data(data), dataSize(dataSize), attribute(attribute){}
 };
 
 class Mesh{
@@ -97,20 +129,32 @@ private:
     MeshLayout layout;
     template <typename T>
     bool PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+    std::vector<T> &&data);
+    template <typename T>
+    bool PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
     const std::vector<T> &data);
 public:
     ~Mesh();
     
     void SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology);
+    void SetIndices(std::vector<unsigned int> &&indices, MeshTopology topology);
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<float> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<float> &&data);
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<int> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<int> &&data);
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data);
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<char> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<char> &&data);
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data);
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<short> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<short> &&data);    
     bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data);    
     int GetAttributesCount() const;
-    std::vector<int> GetAttributesDatasSizes();
+    std::vector<int> GetAttributesSizes() const;
+    std::vector<int> GetAttributesDatasSizes() const;
     const std::vector<MeshAttributeData> &GetAttributesDatas();
     int GetTotalAttributesDataSize();
     const std::vector<unsigned int> &GetIndices();

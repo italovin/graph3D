@@ -11,6 +11,10 @@ private:
         unsigned int bufferSize;
         int stride;
         int bindingPoint;
+
+        Buffer() = default;
+        Buffer(GLuint name, unsigned int bufferSize, int stride, int bindingPoint):
+        name(name), bufferSize(bufferSize), stride(stride), bindingPoint(bindingPoint){}
     };
     struct Batch{
         VertexArray vao;
@@ -34,7 +38,7 @@ private:
     void BufferIndices(Batch &batch, unsigned int offset, const std::vector<unsigned int> &indices);
     void SetBatchIndicesInfo(Batch &batch, const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices);
 public:
-    void Prepare(std::vector<MeshRenderer> &meshRenderers);
+    void Prepare(std::vector<MeshRenderer> &&meshRenderers);
     void Draw();
     int GetBatchesCount();
 };

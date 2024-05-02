@@ -36,32 +36,42 @@ ShaderProgram::ShaderProgram(bool debugInfo){
     handle = glCreateProgram();
 }
 ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects){
+    ShaderProgram(std::vector<ShaderObject>(shaderObjects));
+}
+ShaderProgram::ShaderProgram(std::vector<ShaderObject> &&shaderObjects){
     debugInfo = false;
     handle = glCreateProgram();
     for (auto &&shaderObject : shaderObjects)
     {
-        AttachShaderObject(shaderObject);
+        AttachShaderObject(std::move(shaderObject));
     }
     Link();
     for (auto &&shaderObject : shaderObjects)
     {
-        DetachShaderObject(shaderObject);
+        DetachShaderObject(std::move(shaderObject));
     }
 }
 ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects, bool debugInfo){
+    ShaderProgram(std::vector<ShaderObject>(shaderObjects), debugInfo);
+}
+ShaderProgram::ShaderProgram(std::vector<ShaderObject> &&shaderObjects, bool debugInfo){
     this->debugInfo = debugInfo;
     handle = glCreateProgram();
     for (auto &&shaderObject : shaderObjects)
     {
-        AttachShaderObject(shaderObject);
+        AttachShaderObject(std::move(shaderObject));
     }
     Link();
     for (auto &&shaderObject : shaderObjects)
     {
-        DetachShaderObject(shaderObject);
+        DetachShaderObject(std::move(shaderObject));
     }
 }
 void ShaderProgram::AttachShaderObject(const ShaderObject &shaderObject)
+{
+    glAttachShader(handle, shaderObject.GetHandle());
+}
+void ShaderProgram::AttachShaderObject(ShaderObject &&shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());
 }
@@ -113,6 +123,10 @@ void ShaderProgram::SetMat4Float(const std::string &name, const glm::mat4 &matri
         glProgramUniformMatrix4fv(handle, uniforms.at(name).location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 void ShaderProgram::DetachShaderObject(const ShaderObject &shaderObject)
+{
+    glDetachShader(handle, shaderObject.GetHandle());
+}
+void ShaderProgram::DetachShaderObject(ShaderObject &&shaderObject)
 {
     glDetachShader(handle, shaderObject.GetHandle());
 }

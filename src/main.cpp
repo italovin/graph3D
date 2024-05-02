@@ -269,10 +269,10 @@ int main(int argc, char *argv[])
     std::vector<float> triangle2 = {-1.0f, -0.5f, 0.0f,
     -0.5f, -0.5f, 0.0f,
     -0.75f, 0.0f, 0.0f};
-    mesh.PushAttribute("pos", MeshAttributeFormat::Vec3, false, triangle);
+    mesh.PushAttribute("pos", MeshAttributeFormat::Vec3, false, std::move(triangle));
     mesh.PushAttribute("color", MeshAttributeFormat::Vec4, true, color1);
     mesh.SetIndices(triangleIndices, MeshTopology::Triangles);
-    mesh2.PushAttribute("pos", MeshAttributeFormat::Vec3, false, triangle2);
+    mesh2.PushAttribute("pos", MeshAttributeFormat::Vec3, false, std::move(triangle2));
     mesh2.PushAttribute("color", MeshAttributeFormat::Vec4, true, color2);
     mesh2.SetIndices(triangleIndices, MeshTopology::Triangles);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
@@ -297,9 +297,8 @@ int main(int argc, char *argv[])
     meshRenderer2.SetMesh(mesh2);
     meshRenderer2.SetShader(testShader);
     Renderer mainRenderer = Renderer();
-    std::vector<MeshRenderer> meshRenderers = { meshRenderer, meshRenderer2 };
     double initialRendererTime = glfwGetTime();
-    mainRenderer.Prepare(meshRenderers);
+    mainRenderer.Prepare(std::vector<MeshRenderer>{ meshRenderer, meshRenderer2 });
     double prepareTime = glfwGetTime() - initialRendererTime;
     std::cout << "Time to prepare for meshes for batching: " << 1000*prepareTime << " (ms)\n";
     std::cout << "Computed batches: " << mainRenderer.GetBatchesCount() << "\n";
