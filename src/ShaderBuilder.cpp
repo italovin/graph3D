@@ -57,6 +57,11 @@ ShaderBuilder& ShaderBuilder::AddUniform(ShaderDataType type, const std::string 
     attributesStream << "uniform " << typeString << " " << uniformName << ";\n";
     return *this;
 }
+ShaderBuilder& ShaderBuilder::AddUniformBlock(const std::string &body, const std::string &uniformName){
+    attributesStream << "layout (std140) uniform " << uniformName << "{\n" << body << "};\n";
+    return *this;
+}
+
 ShaderBuilder& ShaderBuilder::AddOutput(ShaderDataType type, const std::string & outputName)
 {
     std::string typeString = GLSLTypeToString(type);

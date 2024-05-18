@@ -34,6 +34,12 @@ int main(int argc, char *argv[])
     window.MakeContextCurrent();
     Input::RegisterWindow(window);
 
+    GLint size;
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &size);
+    std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << size << " bytes." << std::endl;
+    GLint size2;
+    glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &size2);
+    std::cout << "GL_MAX_SHADER_STORAGE_BLOCK_SIZE is " << size2 << " bytes." << std::endl;
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     GLint no_of_extensions = 0;
@@ -215,7 +221,7 @@ int main(int argc, char *argv[])
             indices[i++] = (y + 1) * (t_steps+1) + x;
         }
     }
-    SceneObject graph = SceneObject(1);
+    /*SceneObject graph = SceneObject(1);
     //std::cout << indices.size()*sizeof(GLuint) << std::endl;
     GLsizei parametersSize = parameters.size()*sizeof(GLfloat);
     GLsizei indicesSize = indices.size()*sizeof(GLuint);
@@ -225,39 +231,50 @@ int main(int argc, char *argv[])
     graph.AttachVertexBuffer(0, 0, 0, 2*sizeof(float));
     graph.AttachElementBuffer(0);
     graph.SetIndicesInfo(indices.size(), parametersSize);
-    graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);
+    graph.SetAttribute(0, 0, 2, GL_FLOAT, GL_FALSE, 0);*/
 
+    Ref<Mesh> graphMesh = CreateRef<Mesh>();
+    graphMesh->PushAttribute("modelID", MeshAttributeFormat::Vec1, false, std::vector<unsigned char>
+    (parameters.size()/2, 0), true);
+    graphMesh->PushAttribute("params", MeshAttributeFormat::Vec2, false, parameters);
+    graphMesh->SetIndices(indices, MeshTopology::Lines);
     
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(glslVersion)
-    .AddInput(0, ShaderDataType::Float2, "params")
+    .AddInput(0, ShaderDataType::Int, "aModel")
+    .AddInput(1, ShaderDataType::Float2, "params")
     .AddUniform(ShaderDataType::Mat4, "mvp")
     .AddUniform(ShaderDataType::Float, timeString)
+    .AddUniformBlock("mat4 mvps[1];", "mvpMatrices")
     .SetMain("float " + var1 + "= params.x;"
     "float " + var2 + "= params.y;"
     "float x =" + equationX + ";"
     "float y =" + equationY + ";"
     "float z =" + equationZ + ";"
-    + "gl_Position = mvp*vec4(x, z, y, 1.0);").Build();
+    + "gl_Position = mvps[aModel]*vec4(x, z, y, 1.0);").Build();
     ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(glslVersion)
     .AddOutput(ShaderDataType::Float4, "FragColor")
     .AddUniform(ShaderDataType::Float, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
-    ShaderProgram shader = ShaderProgram(std::vector<ShaderObject>{graphVertexShader, graphFragmentShader});
-    shader.SetFloat("red", 1.0f);
+    Ref<ShaderProgram> graphShader = CreateRef<ShaderProgram>(std::vector<ShaderObject>
+    {graphVertexShader, graphFragmentShader});
+    graphShader->SetFloat("red", 1.0f);
+    graphShader->SetBlockBinding("mvpMatrices", 3);
+    MeshRenderer graphRenderer = MeshRenderer();
+    graphRenderer.SetMesh(graphMesh);
+    graphRenderer.SetShader(graphShader);
+    WorldObject graph = WorldObject();
+    graph.SetMeshRenderer(std::move(graphRenderer));
 
-    graph.SetShader(shader);
-    glm::mat4 projection = window.GetProjectionMatrix();
-
-    Mesh mesh = Mesh();
-    Mesh mesh2 = Mesh();
+    Ref<Mesh> mesh = CreateRef<Mesh>();
+    Ref<Mesh> mesh2 = CreateRef<Mesh>();
     std::vector<float> triangle = {-0.5f, -0.5f, 0.0f,
      0.5f, -0.5f, 0.0f,
      0.0f,  0.5f, 0.0f};
-    std::vector<unsigned int> triangleIndices = {
+    std::vector<unsigned short> triangleIndices = {
         0, 1, 2
     };
     std::vector<unsigned char> color1 = {255, 0, 0, 255,
@@ -269,45 +286,60 @@ int main(int argc, char *argv[])
     std::vector<float> triangle2 = {-1.0f, -0.5f, 0.0f,
     -0.5f, -0.5f, 0.0f,
     -0.75f, 0.0f, 0.0f};
-    mesh.PushAttribute("pos", MeshAttributeFormat::Vec3, false, std::move(triangle));
-    mesh.PushAttribute("color", MeshAttributeFormat::Vec4, true, color1);
-    mesh.SetIndices(triangleIndices, MeshTopology::Triangles);
-    mesh2.PushAttribute("pos", MeshAttributeFormat::Vec3, false, std::move(triangle2));
-    mesh2.PushAttribute("color", MeshAttributeFormat::Vec4, true, color2);
-    mesh2.SetIndices(triangleIndices, MeshTopology::Triangles);
+    std::vector<unsigned char> model1(3, 0);
+    std::vector<unsigned char> model2(3, 1);
+    mesh->PushAttribute("modelID", MeshAttributeFormat::Vec1, false, model1, true);
+    mesh->PushAttribute("pos", MeshAttributeFormat::Vec3, false, triangle);
+    mesh->PushAttribute("color", MeshAttributeFormat::Vec4, true, color1);
+    mesh->SetIndices(triangleIndices, MeshTopology::Triangles);
+    mesh2->PushAttribute("modelID", MeshAttributeFormat::Vec1, false, model2, true);
+    mesh2->PushAttribute("pos", MeshAttributeFormat::Vec3, false, triangle);
+    mesh2->PushAttribute("color", MeshAttributeFormat::Vec4, true, color2);
+    mesh2->SetIndices(triangleIndices, MeshTopology::Triangles);
     ShaderBuilder testVBuilder = ShaderBuilder(false);
     ShaderBuilder testFBuilder = ShaderBuilder(false);
     ShaderObject testV = testVBuilder.SetShaderType(GL_VERTEX_SHADER)
     .SetVersion(glslVersion)
-    .AddInput(0, ShaderDataType::Float3, "aPos")
-    .AddInput(1, ShaderDataType::Float4, "aColor")
+    .AddInput(0, ShaderDataType::Int, "aModel")
+    .AddInput(1, ShaderDataType::Float3, "aPos")
+    .AddInput(2, ShaderDataType::Float4, "aColor")
     .AddOutput(ShaderDataType::Float4, "colorOut")
+    .AddUniformBlock("mat4 mvps[2];", "mvpMatrices")
     .SetMain("colorOut = aColor;"
-    "gl_Position = vec4(aPos, 1.0);").Build();
+    "gl_Position = mvps[aModel]*vec4(aPos, 1.0);").Build();
     ShaderObject testF = testFBuilder.SetShaderType(GL_FRAGMENT_SHADER)
     .SetVersion(glslVersion)
     .AddInput(ShaderDataType::Float4, "colorOut")
     .AddOutput(ShaderDataType::Float4, "FragColor")
     .SetMain("FragColor = colorOut;").Build();
-    ShaderProgram testShader = ShaderProgram(std::vector<ShaderObject>{testV, testF});
+    Ref<ShaderProgram> testShader = CreateRef<ShaderProgram>(std::vector<ShaderObject>{testV, testF});
+    testShader->SetBlockBinding("mvpMatrices", 3);
     MeshRenderer meshRenderer = MeshRenderer();
     MeshRenderer meshRenderer2 = MeshRenderer();
     meshRenderer.SetMesh(mesh);
     meshRenderer.SetShader(testShader);
     meshRenderer2.SetMesh(mesh2);
     meshRenderer2.SetShader(testShader);
-    Renderer mainRenderer = Renderer();
-    double initialRendererTime = glfwGetTime();
-    mainRenderer.Prepare(std::vector<MeshRenderer>{ meshRenderer, meshRenderer2 });
-    double prepareTime = glfwGetTime() - initialRendererTime;
-    std::cout << "Time to prepare for meshes for batching: " << 1000*prepareTime << " (ms)\n";
-    std::cout << "Computed batches: " << mainRenderer.GetBatchesCount() << "\n";
+    WorldObject tri1 = WorldObject();
+    tri1.SetMeshRenderer(std::move(meshRenderer));
+    WorldObject tri2 = WorldObject();
+    tri2.GetTransform()->position = glm::vec3(0, 1, 0);
+    tri2.SetMeshRenderer(std::move(meshRenderer2));
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
     Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
     Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
     Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
-
+    Renderer mainRenderer = Renderer();
+    mainRenderer.SetMVPBindingPoint(3);
+    mainRenderer.SetMainCamera(std::addressof(mainCamera));
+    glm::mat4 projection = window.GetProjectionMatrix();
+    mainRenderer.SetProjection(projection);
+    double initialRendererTime = glfwGetTime();
+    mainRenderer.Prepare({ graph, tri1, tri2 });
+    double prepareTime = glfwGetTime() - initialRendererTime;
+    std::cout << "Time to prepare for meshes for batching: " << 1000*prepareTime << " (ms)\n";
+    std::cout << "Computed batches: " << mainRenderer.GetBatchesCount() << "\n";
     glClearColor(0, 0, 0, 1);
     double time = 0;
     double lastTime = 0;
@@ -385,14 +417,15 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
         /* Render here */
 
-        graph.transform.eulerAngles(glm::vec3(0, 30*time, 0));
-        
-        shader.SetFloat("time", time);
-        glm::mat4 model = graph.GetModelMatrix();
+        graph.GetTransform()->eulerAngles(glm::vec3(0, 30*time, 0));
+        graph.GetMeshRenderer().GetShader()->SetFloat("time", time);
+
+        tri1.GetTransform()->eulerAngles(glm::vec3(0, -30*time, 0));
+        /*glm::mat4 model = graphGetModelMatrix();
         glm::mat4 view = mainCamera.GetViewMatrix();
         glm::mat4 mvp = projection*view*model;
         graph.Shader().SetMat4Float("mvp", mvp);
-        graph.DrawLines();
+        graph.DrawLines();*/
         mainRenderer.Draw();
         /* Swap front and back buffers */
         glfwSwapBuffers(window.GetHandle());

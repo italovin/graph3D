@@ -1,3 +1,5 @@
+#ifndef TRANSFORM_H
+#define TRANSFORM_H
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -19,8 +21,8 @@ public:
         rotation = glm::normalize(quatX * quatY * quatZ);
         this->_eulerAngles = eulerAngles;
     }
-    Transform();
     glm::vec3 Right();
     glm::vec3 Up();
     glm::vec3 Forward();
 };
+#endif

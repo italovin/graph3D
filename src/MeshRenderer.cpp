@@ -1,21 +1,17 @@
 #include "MeshRenderer.hpp"
 
-const Mesh &MeshRenderer::GetMesh() const{
-    return *mesh;
-}
-
-std::shared_ptr<Mesh> MeshRenderer::GetMeshRef() const{
+const Ref<Mesh> &MeshRenderer::GetMesh() const{
     return mesh;
 }
 
-const ShaderProgram &MeshRenderer::GetShader() const{
-    return *shader;
+const Ref<ShaderProgram> &MeshRenderer::GetShader() const{
+    return shader;
 }
 
-void MeshRenderer::SetMesh(const Mesh &mesh){
-    this->mesh = std::make_shared<Mesh>(mesh);
+void MeshRenderer::SetMesh(const Ref<Mesh> &mesh){
+    this->mesh = mesh;
 }
 
-void MeshRenderer::SetShader(const ShaderProgram &shader){
-    this->shader = std::make_shared<ShaderProgram>(shader);
+void MeshRenderer::SetShader(const Ref<ShaderProgram> &shader){
+    this->shader = shader;
 }

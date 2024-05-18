@@ -19,12 +19,16 @@ enum class MeshAttributeType{
     Float, Int, UnsignedInt, Byte, UnsignedByte, Short, UnsignedShort
 };
 
+enum class MeshIndexType{
+    UnsignedInt, UnsignedShort
+};
+
 struct MeshAttribute{
     std::string name;
     MeshAttributeType type;
     MeshAttributeFormat format;
     bool normalized;
-
+    bool interpretAsInt = false;
     MeshAttribute() = default;
 
     MeshAttribute(const std::string &name, MeshAttributeType type, MeshAttributeFormat format, bool normalized):
@@ -120,47 +124,56 @@ struct MeshAttributeData{
     data(data), dataSize(dataSize), attribute(attribute){}
 };
 
+struct MeshIndexData{
+    std::variant<std::vector<unsigned int>, std::vector<unsigned short>> indices;
+    MeshIndexType type;
+};
+
 class Mesh{
 private:
-    std::vector<unsigned int> indices;
+    MeshIndexData indicesData;
     MeshTopology topology;
     std::vector<MeshAttributeData> attributesData;
     int verticesCount = 0;
     MeshLayout layout;
     template <typename T>
     bool PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
-    std::vector<T> &&data);
+    std::vector<T> &&data, bool interpretAsInt);
     template <typename T>
     bool PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
-    const std::vector<T> &data);
+    const std::vector<T> &data, bool interpretAsInt);
+    
 public:
     ~Mesh();
     
+    void SetIndices(const std::vector<unsigned short> &indices, MeshTopology topology);
+    void SetIndices(std::vector<unsigned short> &&indices, MeshTopology toplogy);
     void SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology);
     void SetIndices(std::vector<unsigned int> &&indices, MeshTopology topology);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<float> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<float> &&data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<int> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<int> &&data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<char> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<char> &&data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<short> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<short> &&data);    
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data);
-    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data);    
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt = false);    
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt = false);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt = false);    
     int GetAttributesCount() const;
     std::vector<int> GetAttributesSizes() const;
     std::vector<int> GetAttributesDatasSizes() const;
     const std::vector<MeshAttributeData> &GetAttributesDatas();
     int GetTotalAttributesDataSize();
-    const std::vector<unsigned int> &GetIndices();
+    const MeshIndexData &GetIndices();
     int GetIndicesCount() const;
     int GetIndicesSize() const;
     const MeshLayout &GetLayout() const;
     MeshTopology GetTopology() const;
+    MeshIndexType GetIndicesType() const;
 };
 #endif

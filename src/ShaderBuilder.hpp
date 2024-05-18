@@ -5,6 +5,10 @@
 #include "ShaderObject.hpp"
 #include "ShaderTypes.hpp"
 
+enum class ShaderLayoutStandard{
+    std140, std430
+};
+
 class ShaderBuilder {
 private:
     bool clearOnBuild = false;
@@ -21,6 +25,7 @@ public:
     ShaderBuilder& AddInput(ShaderDataType type, const std::string &inputName);
     ShaderBuilder& AddInput(int location, ShaderDataType type, const std::string &inputName);
     ShaderBuilder& AddUniform(ShaderDataType type, const std::string &uniformName);
+    ShaderBuilder& AddUniformBlock(const std::string &body, const std::string &uniformName);
     ShaderBuilder& AddOutput(ShaderDataType type, const std::string &outputName);
     ShaderBuilder& SetMain(const std::string &body);
     ShaderObject Build();

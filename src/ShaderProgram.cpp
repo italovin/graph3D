@@ -122,6 +122,10 @@ void ShaderProgram::SetMat4Float(const std::string &name, const glm::mat4 &matri
     if(uniforms.count(name) > 0)    
         glProgramUniformMatrix4fv(handle, uniforms.at(name).location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
+void ShaderProgram::SetBlockBinding(const std::string &name, unsigned int bindingPoint) const{
+    unsigned int index = glGetUniformBlockIndex(handle, name.c_str());   
+    glUniformBlockBinding(handle, index, bindingPoint);
+}
 void ShaderProgram::DetachShaderObject(const ShaderObject &shaderObject)
 {
     glDetachShader(handle, shaderObject.GetHandle());

@@ -20,7 +20,6 @@ private:
     bool debugInfo;
     std::unordered_map<std::string, uniform_info> uniforms;
     void GetUniformsInfo();
-    bool CheckUniform(const std::string &name);
 public:
     ShaderProgram();
     ShaderProgram(bool debugInfo);
@@ -39,6 +38,7 @@ public:
     void SetFloat(const std::string &name, float value) const;
     void SetDouble(const std::string &name, double value) const;
     void SetMat4Float(const std::string &name, const glm::mat4 &matrix) const;
+    void SetBlockBinding(const std::string &name, unsigned int bindingPoint) const;
     void DetachShaderObject(const ShaderObject &shaderObject);
     void DetachShaderObject(ShaderObject &&shaderObject);
     //This method will detach the shader and delete it, then shader cannot be attached to other program

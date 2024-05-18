@@ -1,3 +1,5 @@
+#ifndef CAMERA_H
+#define CAMERA_H
 #include "Transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/glm.hpp"
@@ -12,3 +14,4 @@ public:
     Camera(const glm::vec3 &position, const glm::vec3 &eulerAngles);
     glm::mat4 GetViewMatrix() const;
 };
+#endif

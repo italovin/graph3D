@@ -1,18 +1,18 @@
 #ifndef MESH_RENDERER_H
 #define MESH_RENDERER_H
 #include <memory>
+#include "Base.hpp"
 #include "Mesh.hpp"
 #include "ShaderProgram.hpp"
 
 class MeshRenderer{
 private:
-    std::shared_ptr<Mesh> mesh;
-    std::shared_ptr<ShaderProgram> shader;
+    Ref<Mesh> mesh;
+    Ref<ShaderProgram> shader;
 public:
-    const Mesh &GetMesh() const;
-    std::shared_ptr<Mesh> GetMeshRef() const;
-    const ShaderProgram &GetShader() const;
-    void SetMesh(const Mesh &mesh);
-    void SetShader(const ShaderProgram &shader);
+    const Ref<Mesh> &GetMesh() const;
+    const Ref<ShaderProgram> &GetShader() const;
+    void SetMesh(const Ref<Mesh> &mesh);
+    void SetShader(const Ref<ShaderProgram> &shader);
 };
 #endif

@@ -9,8 +9,16 @@ GLenum Renderer::GetDrawMode(MeshTopology topology){
     }
 }
 
-Renderer::Batch Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
-unsigned int indicesBufferSize, MeshTopology topology, const ShaderProgram &shader,
+GLenum Renderer::GetIndicesType(MeshIndexType type){
+    switch(type){
+        case MeshIndexType::UnsignedInt: return GL_UNSIGNED_INT;
+        case MeshIndexType::UnsignedShort: return GL_UNSIGNED_SHORT;
+        default: return GL_UNSIGNED_INT;
+    }
+}
+
+Renderer::Batch &Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
+unsigned int indicesBufferSize, MeshTopology topology, MeshIndexType type, const ShaderProgram &shader,
 const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     VertexArray newVao = VertexArray();
     std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
@@ -29,9 +37,43 @@ const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     newBatch.topology = topology;
     newBatch.shader = shader;
     newBatch.mode = GetDrawMode(topology);
+    newBatch.indicesType = GetIndicesType(type);
     newBatch.indicesOffsetInBuffer = std::vector<int>(indicesCounts.size(), 0);
     batches.push_back(newBatch);
-    return newBatch;
+    return batches.back();
+}
+
+Renderer::Batch &Renderer::CreateBatchWithMVP(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
+unsigned int indicesBufferSize, unsigned int mvpBufferSize, const std::vector<Ref<Transform>> &transforms,
+MeshTopology topology, MeshIndexType type, const ShaderProgram &shader,
+const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
+    VertexArray newVao = VertexArray();
+    std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
+    glCreateBuffers(buffersSizes.size(), newBuffers.data());
+    Batch newBatch;
+    for(int i = 0; i < buffersSizes.size(); i++){
+        newBatch.buffers.emplace_back(newBuffers[i], buffersSizes[i], strides[i], i);
+    }
+    GLuint newIndicesBuffer;
+    glCreateBuffers(1, &newIndicesBuffer);
+    Buffer indicesBuffer(newIndicesBuffer, indicesBufferSize, 0, 0);
+    GLuint newMVPUniformBuffer;
+    glCreateBuffers(1, &newMVPUniformBuffer);
+    Buffer MVPUniformBuffer(newMVPUniformBuffer, mvpBufferSize, 0, this->mvpDefaultBindingPoint);
+    newBatch.vao = newVao;
+    newBatch.indiceBuffer = indicesBuffer;
+    newBatch.indicesCounts = indicesCounts;
+    newBatch.baseVertices = baseVertices;
+    newBatch.topology = topology;
+    newBatch.shader = shader;
+    newBatch.mode = GetDrawMode(topology);
+    newBatch.indicesType = GetIndicesType(type);
+    newBatch.indicesOffsetInBuffer = std::vector<int>(indicesCounts.size(), 0);
+    newBatch.mvpUniformBuffer = MVPUniformBuffer;
+    newBatch.transforms = transforms;
+    newBatch.mvps = std::vector<glm::mat4>(transforms.size());
+    batches.push_back(newBatch);
+    return batches.back();
 }
 
 void Renderer::StartBatch(Batch &batch){
@@ -41,6 +83,11 @@ void Renderer::StartBatch(Batch &batch){
     }
     glNamedBufferStorage(batch.indiceBuffer.name, batch.indiceBuffer.bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     glVertexArrayElementBuffer(batch.vao.GetHandle(), batch.indiceBuffer.name);
+}
+
+void Renderer::StartMVPBuffer(Batch &batch){
+    glNamedBufferStorage(batch.mvpUniformBuffer.name, batch.mvpUniformBuffer.bufferSize, batch.mvps.data(), GL_DYNAMIC_STORAGE_BIT);
+    glBindBufferBase(GL_UNIFORM_BUFFER, batch.mvpUniformBuffer.bindingPoint, batch.mvpUniformBuffer.name);
 }
 
 void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
@@ -62,7 +109,11 @@ void Renderer::SetupBatchLayout(Batch &batch, MeshLayout &layout){
         }
         normalized = attribute.normalized ? GL_TRUE : GL_FALSE;
         for(int i = 0; i < locations; i++){
-            glVertexArrayAttribFormat(batch.vao.GetHandle(), locationsOffset + i, attribute.ScalarElementsCount(), type, normalized, 0);
+            if(attribute.interpretAsInt){
+                glVertexArrayAttribIFormat(batch.vao.GetHandle(), locationsOffset + i, attribute.ScalarElementsCount(), type, 0);
+            } else{
+                glVertexArrayAttribFormat(batch.vao.GetHandle(), locationsOffset + i, attribute.ScalarElementsCount(), type, normalized, 0);
+            }
             glEnableVertexArrayAttrib(batch.vao.GetHandle(), locationsOffset + i);
             glVertexArrayAttribBinding(batch.vao.GetHandle(), locationsOffset + i, bindingPoint);
         }
@@ -94,8 +145,15 @@ void Renderer::BufferSubData(Batch &batch, const std::vector<unsigned int> &offs
     }
 }
 
-void Renderer::BufferIndices(Batch &batch, unsigned int offset, const std::vector<unsigned int> &indices){
-    glNamedBufferSubData(batch.indiceBuffer.name, offset, sizeof(unsigned int)*indices.size(), indices.data());
+void Renderer::BufferIndices(Batch &batch, unsigned int offset, const MeshIndexData &indicesData){
+    if(indicesData.type == MeshIndexType::UnsignedInt)
+        glNamedBufferSubData(batch.indiceBuffer.name, offset, sizeof(unsigned int)*std::get<std::vector<unsigned int>>(indicesData.indices).size(), std::get<std::vector<unsigned int>>(indicesData.indices).data());
+    else if(indicesData.type == MeshIndexType::UnsignedShort)
+        glNamedBufferSubData(batch.indiceBuffer.name, offset, sizeof(unsigned short)*std::get<std::vector<unsigned short>>(indicesData.indices).size(), std::get<std::vector<unsigned short>>(indicesData.indices).data());
+}
+
+void Renderer::BufferSubDataMVPs(Batch &batch){
+    glNamedBufferSubData(batch.mvpUniformBuffer.name, 0, sizeof(glm::mat4)*batch.mvps.size(), batch.mvps.data());
 }
 
 void Renderer::SetBatchIndicesInfo(Batch &batch, const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
@@ -105,7 +163,7 @@ void Renderer::SetBatchIndicesInfo(Batch &batch, const std::vector<int> &indices
 
 void Renderer::Prepare(std::vector<MeshRenderer> &&meshRenderers){
     auto comparationFunction = [](const MeshRenderer &a, const MeshRenderer &b){
-        return a.GetShader().GetHandle() < b.GetShader().GetHandle();
+        return a.GetShader()->GetHandle() < b.GetShader()->GetHandle();
     };
     std::vector<MeshRenderer> _meshRenderers(std::move(meshRenderers));
     std::sort(_meshRenderers.begin(), _meshRenderers.end(), comparationFunction);
@@ -124,11 +182,11 @@ void Renderer::Prepare(std::vector<MeshRenderer> &&meshRenderers){
     for (auto &&group : meshRenderersGroups)
     {
         if(std::all_of(group.begin(), group.end(), [&](MeshRenderer m){
-            return (m.GetMesh().GetLayout() == group[0].GetMesh().GetLayout())
-            && (m.GetMesh().GetTopology() == group[0].GetMesh().GetTopology());  
+            return (m.GetMesh()->GetLayout() == group[0].GetMesh()->GetLayout())
+            && (m.GetMesh()->GetTopology() == group[0].GetMesh()->GetTopology());  
         })){
             int renderersCount = group.size();
-            int attributesCount = group[0].GetMesh().GetAttributesCount();
+            int attributesCount = group[0].GetMesh()->GetAttributesCount();
             std::vector<unsigned int> buffersSizes = std::vector<unsigned int>(attributesCount);
             std::vector<int> strides = std::vector<int>(attributesCount);
             std::vector<std::vector<unsigned int>> dataOffsetsMatrix(renderersCount);
@@ -146,17 +204,17 @@ void Renderer::Prepare(std::vector<MeshRenderer> &&meshRenderers){
             int baseVertex = 0;
             std::vector<int> dataOffsets = std::vector<int>(attributesCount);
             for(auto &&renderer : group){
-                const Mesh& mesh = renderer.GetMesh();
+                auto& mesh = renderer.GetMesh();
                 int a = sizeof(mesh);
-                indicesSize += mesh.GetIndicesSize();
+                indicesSize += mesh->GetIndicesSize();
                 indicesOffsets.push_back(indicesOffset);
                 indicesOffset += indicesSize;
-                indicesCounts.push_back(mesh.GetIndicesCount());
+                indicesCounts.push_back(mesh->GetIndicesCount());
                 baseVertices.push_back(baseVertex);
-                baseVertex += mesh.GetIndicesCount();
+                baseVertex += mesh->GetIndicesCount();
 
-                std::vector<int> attributesDataSizes = mesh.GetAttributesDatasSizes();
-                std::vector<int> attributesSizes = mesh.GetAttributesSizes();
+                std::vector<int> attributesDataSizes = mesh->GetAttributesDatasSizes();
+                std::vector<int> attributesSizes = mesh->GetAttributesSizes();
                 for(int i = 0; i < buffersSizes.size(); i++){
                     if(rendererIndex == 0){
                         strides[i] = attributesSizes[i];
@@ -168,28 +226,148 @@ void Renderer::Prepare(std::vector<MeshRenderer> &&meshRenderers){
                 rendererIndex++;
             }
             const MeshRenderer& auxGlobalRenderer = group[0];
-            Batch createdBatch = CreateBatch(buffersSizes, strides, indicesSize, auxGlobalRenderer.GetMesh().GetTopology(), auxGlobalRenderer.GetShader(),
+            Batch createdBatch = CreateBatch(buffersSizes, strides, indicesSize, auxGlobalRenderer.GetMesh()->GetTopology(), auxGlobalRenderer.GetMesh()->GetIndicesType(),
+            *(auxGlobalRenderer.GetShader()),
             indicesCounts, baseVertices);
             StartBatch(createdBatch);
             
             for(int i = 0; i < group.size(); i++){
                 auto offsets = dataOffsetsMatrix[i];
-                Mesh mesh = group[i].GetMesh();
-                BufferSubData(createdBatch, offsets, mesh.GetAttributesDatas());
-                BufferIndices(createdBatch, indicesOffsets[i], mesh.GetIndices());
+                auto& mesh = group[i].GetMesh();
+                BufferSubData(createdBatch, offsets, mesh->GetAttributesDatas());
+                BufferIndices(createdBatch, indicesOffsets[i], mesh->GetIndices());
             }
-            MeshLayout layout = auxGlobalRenderer.GetMesh().GetLayout();
+            MeshLayout layout = auxGlobalRenderer.GetMesh()->GetLayout();
             SetupBatchLayout(createdBatch, layout);
         }
     }
 }
 
+void Renderer::Prepare(std::vector<WorldObject> &&worldObjects){
+    if(camera == nullptr){
+        return;
+    }
+    auto comparationFunction = [](const WorldObject &a, const WorldObject &b){
+        return a.GetMeshRenderer().GetShader()->GetHandle() < b.GetMeshRenderer().GetShader()->GetHandle();
+    };
+    std::sort(worldObjects.begin(), worldObjects.end(), comparationFunction);
+    std::vector<std::vector<WorldObject>> worldObjectsGroups;
+
+    decltype(worldObjects.end()) upper;
+
+    for(auto lower = worldObjects.begin(); lower != worldObjects.end(); lower = upper)
+    {
+        // get the upper position of all elements with the same ID
+        upper = std::upper_bound(worldObjects.begin(), worldObjects.end(), *lower, comparationFunction);
+
+        // add those elements as a group to the output vector
+        worldObjectsGroups.emplace_back(lower, upper);
+    }
+    for (auto &&group : worldObjectsGroups)
+    {
+        if(std::all_of(group.begin(), group.end(), [&](WorldObject m){
+            return (m.GetMeshRenderer().GetMesh()->GetLayout() == group[0].GetMeshRenderer().GetMesh()->GetLayout())
+            && (m.GetMeshRenderer().GetMesh()->GetTopology() == group[0].GetMeshRenderer().GetMesh()->GetTopology());  
+        })){
+            int worldObjectsCount = group.size();
+            auto auxGlobalRenderer = group[0].GetMeshRenderer();
+            int attributesCount = auxGlobalRenderer.GetMesh()->GetAttributesCount();
+            std::vector<unsigned int> buffersSizes(attributesCount);
+            std::vector<int> strides(attributesCount);
+            std::vector<std::vector<unsigned int>> dataOffsetsMatrix(worldObjectsCount);
+            std::vector<unsigned int> indicesOffsets;
+            indicesOffsets.reserve(worldObjectsCount);
+            std::vector<int> baseVertices;
+            baseVertices.reserve(worldObjectsCount);
+            std::vector<int> indicesCounts;
+            indicesCounts.reserve(worldObjectsCount);
+
+            //Temp auxiliary variables
+            int indicesSize = 0;
+            int rendererIndex = 0;
+            int indicesOffset = 0;
+            int baseVertex = 0;
+            std::vector<int> dataOffsets(attributesCount);
+            std::vector<glm::mat4> mvps;
+            mvps.reserve(worldObjectsCount);
+            std::vector<Ref<Transform>> transforms;
+            transforms.reserve(worldObjectsCount);
+            for(auto &&worldObject : group){
+                auto& mesh = worldObject.GetMeshRenderer().GetMesh();
+                indicesSize += mesh->GetIndicesSize();
+                indicesOffsets.push_back(indicesOffset);
+                indicesOffset += indicesSize;
+                indicesCounts.push_back(mesh->GetIndicesCount());
+                baseVertices.push_back(baseVertex);
+                baseVertex += mesh->GetIndicesCount();
+
+                std::vector<int> attributesDataSizes = mesh->GetAttributesDatasSizes();
+                std::vector<int> attributesSizes = mesh->GetAttributesSizes();
+                for(int i = 0; i < buffersSizes.size(); i++){
+                    if(rendererIndex == 0){
+                        strides[i] = attributesSizes[i];
+                    }
+                    buffersSizes[i] += attributesDataSizes[i];
+                    dataOffsetsMatrix[rendererIndex].emplace_back(dataOffsets[i]);
+                    dataOffsets[i] += attributesDataSizes[i];
+                }
+                auto objectTransform = worldObject.GetTransform();
+                transforms.push_back(objectTransform);
+                glm::mat4 model = glm::mat4(1.0f);
+                glm::mat4 scl = glm::scale(model, objectTransform->scale);
+                glm::mat4 rot = glm::mat4_cast(objectTransform->rotation);
+                glm::mat4 trn = glm::translate(model, objectTransform->position);
+                model = trn*rot*scl;
+                mvps.emplace_back(projectionMatrix * camera->GetViewMatrix() * model);
+                rendererIndex++;
+            }
+            auto auxGlobalMesh = auxGlobalRenderer.GetMesh();
+            Batch &createdBatch = CreateBatchWithMVP(buffersSizes, strides, indicesSize, sizeof(glm::mat4)*mvps.size(),
+            transforms, auxGlobalMesh->GetTopology(), auxGlobalMesh->GetIndicesType(),
+            *(auxGlobalRenderer.GetShader()), indicesCounts, baseVertices);
+            createdBatch.mvps = mvps;
+            StartBatch(createdBatch);
+            StartMVPBuffer(createdBatch);
+            for(int i = 0; i < group.size(); i++){
+                auto offsets = dataOffsetsMatrix[i];
+                auto& mesh = group[i].GetMeshRenderer().GetMesh();
+                BufferSubData(createdBatch, offsets, mesh->GetAttributesDatas());
+                BufferIndices(createdBatch, indicesOffsets[i], mesh->GetIndices());
+            }
+            MeshLayout layout = auxGlobalMesh->GetLayout();
+            SetupBatchLayout(createdBatch, layout);
+        }
+    }
+}
+
+void Renderer::SetMVPBindingPoint(int bindingPoint){
+    this->mvpDefaultBindingPoint = bindingPoint;
+}
+
+void Renderer::SetProjection(const glm::mat4 &projectionMatrix){
+    this->projectionMatrix = projectionMatrix;
+}
+
+void Renderer::SetMainCamera(Camera *mainCamera){
+    this->camera = mainCamera;
+}
+
 void Renderer::Draw(){
     for(auto &&batch : batches){
+        for(int i = 0; i < batch.transforms.size(); i++){
+            auto& transform = batch.transforms[i];
+            glm::mat4 model = glm::mat4(1.0f);
+            glm::mat4 scl = glm::scale(model, transform->scale);
+            glm::mat4 rot = glm::mat4_cast(transform->rotation);
+            glm::mat4 trn = glm::translate(model, transform->position);
+            model = trn*rot*scl;
+            batch.mvps[i] = projectionMatrix * camera->GetViewMatrix() * model;
+        }
+        BufferSubDataMVPs(batch);
         batch.shader.Use();
         batch.vao.Bind();
         glMultiDrawElementsBaseVertex(batch.mode, batch.indicesCounts.data(), 
-        GL_UNSIGNED_INT, reinterpret_cast<GLvoid **>(batch.indicesOffsetInBuffer.data()), 
+        batch.indicesType, reinterpret_cast<GLvoid **>(batch.indicesOffsetInBuffer.data()), 
         batch.indicesCounts.size(), batch.baseVertices.data());
     }
 }
