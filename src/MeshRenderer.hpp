@@ -3,16 +3,16 @@
 #include <memory>
 #include "Base.hpp"
 #include "Mesh.hpp"
-#include "ShaderProgram.hpp"
+#include "Shader.hpp"
 
 class MeshRenderer{
 private:
     Ref<Mesh> mesh;
-    Ref<ShaderProgram> shader;
+    Ref<Shader> shader;
 public:
     const Ref<Mesh> &GetMesh() const;
-    const Ref<ShaderProgram> &GetShader() const;
+    const Ref<Shader> &GetShader() const;
     void SetMesh(const Ref<Mesh> &mesh);
-    void SetShader(const Ref<ShaderProgram> &shader);
+    void SetShader(const Ref<Shader> &shader);
 };
 #endif

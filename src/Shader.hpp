@@ -7,26 +7,29 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "ShaderObject.hpp"
+#include "Resource.hpp"
 
 struct uniform_info
 { 
 	GLint location;
 	GLsizei count;
+    GLenum type;
 };
 
-class ShaderProgram {
+class Shader : public Resource {
 private:
     GLuint handle;
     bool debugInfo;
     std::unordered_map<std::string, uniform_info> uniforms;
     void GetUniformsInfo();
+
 public:
-    ShaderProgram();
-    ShaderProgram(bool debugInfo);
-    ShaderProgram(const std::vector<ShaderObject> &shaderObjects);
-    ShaderProgram(std::vector<ShaderObject> &&shaderObjects);
-    ShaderProgram(const std::vector<ShaderObject> &shaderObjects, bool debugInfo);
-    ShaderProgram(std::vector<ShaderObject> &&shaderObjects, bool debugInfo);
+    Shader();
+    Shader(bool debugInfo);
+    Shader(const std::vector<ShaderObject> &shaderObjects);
+    Shader(std::vector<ShaderObject> &&shaderObjects);
+    Shader(const std::vector<ShaderObject> &shaderObjects, bool debugInfo);
+    Shader(std::vector<ShaderObject> &&shaderObjects, bool debugInfo);
     void AttachShaderObject(const ShaderObject &shaderObject);
     void AttachShaderObject(ShaderObject &&shaderObject);
     void Create();

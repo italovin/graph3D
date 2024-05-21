@@ -1,6 +1,6 @@
-#include "ShaderProgram.hpp"
+#include "Shader.hpp"
 
-void ShaderProgram::GetUniformsInfo(){
+void Shader::GetUniformsInfo(){
     GLint uniform_count = 0;
     glGetProgramiv(handle, GL_ACTIVE_UNIFORMS, &uniform_count);
 
@@ -21,24 +21,25 @@ void ShaderProgram::GetUniformsInfo(){
             uniform_info uniform_info = {};
             uniform_info.location = glGetUniformLocation(handle, uniform_name.get());
             uniform_info.count = count;
+            uniform_info.type = type;
             uniforms.emplace(std::make_pair(std::string(uniform_name.get(), length), uniform_info));
         }
     }
 }
 
-ShaderProgram::ShaderProgram(){
+Shader::Shader(){
     debugInfo = false;
     handle = glCreateProgram();
 }
 
-ShaderProgram::ShaderProgram(bool debugInfo){
+Shader::Shader(bool debugInfo){
     this->debugInfo = debugInfo;
     handle = glCreateProgram();
 }
-ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects){
-    ShaderProgram(std::vector<ShaderObject>(shaderObjects));
+Shader::Shader(const std::vector<ShaderObject> &shaderObjects){
+    Shader(std::vector<ShaderObject>(shaderObjects));
 }
-ShaderProgram::ShaderProgram(std::vector<ShaderObject> &&shaderObjects){
+Shader::Shader(std::vector<ShaderObject> &&shaderObjects){
     debugInfo = false;
     handle = glCreateProgram();
     for (auto &&shaderObject : shaderObjects)
@@ -51,10 +52,10 @@ ShaderProgram::ShaderProgram(std::vector<ShaderObject> &&shaderObjects){
         DetachShaderObject(std::move(shaderObject));
     }
 }
-ShaderProgram::ShaderProgram(const std::vector<ShaderObject> &shaderObjects, bool debugInfo){
-    ShaderProgram(std::vector<ShaderObject>(shaderObjects), debugInfo);
+Shader::Shader(const std::vector<ShaderObject> &shaderObjects, bool debugInfo){
+    Shader(std::vector<ShaderObject>(shaderObjects), debugInfo);
 }
-ShaderProgram::ShaderProgram(std::vector<ShaderObject> &&shaderObjects, bool debugInfo){
+Shader::Shader(std::vector<ShaderObject> &&shaderObjects, bool debugInfo){
     this->debugInfo = debugInfo;
     handle = glCreateProgram();
     for (auto &&shaderObject : shaderObjects)
@@ -67,18 +68,18 @@ ShaderProgram::ShaderProgram(std::vector<ShaderObject> &&shaderObjects, bool deb
         DetachShaderObject(std::move(shaderObject));
     }
 }
-void ShaderProgram::AttachShaderObject(const ShaderObject &shaderObject)
+void Shader::AttachShaderObject(const ShaderObject &shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());
 }
-void ShaderProgram::AttachShaderObject(ShaderObject &&shaderObject)
+void Shader::AttachShaderObject(ShaderObject &&shaderObject)
 {
     glAttachShader(handle, shaderObject.GetHandle());
 }
-void ShaderProgram::Create(){
+void Shader::Create(){
     handle = glCreateProgram();
 }
-void ShaderProgram::Link(){
+void Shader::Link(){
     glLinkProgram(handle);
     if(debugInfo){
         GLint success;
@@ -96,45 +97,45 @@ void ShaderProgram::Link(){
     }
     GetUniformsInfo();
 }
-void ShaderProgram::Use(){
+void Shader::Use(){
     glUseProgram(handle);
 }
-GLuint ShaderProgram::GetHandle() const{
+GLuint Shader::GetHandle() const{
     return handle;
 }
-void ShaderProgram::SetBool(const std::string &name, bool value) const {
+void Shader::SetBool(const std::string &name, bool value) const {
     if(uniforms.count(name) > 0)
         glProgramUniform1i(handle, uniforms.at(name).location, (int)value);
 }
-void ShaderProgram::SetInt(const std::string &name, int value) const{
+void Shader::SetInt(const std::string &name, int value) const{
     if(uniforms.count(name) > 0) 
         glProgramUniform1i(handle, uniforms.at(name).location, value); 
 }
-void ShaderProgram::SetFloat(const std::string &name, float value) const{
+void Shader::SetFloat(const std::string &name, float value) const{
     if(uniforms.count(name) > 0)
         glProgramUniform1f(handle, uniforms.at(name).location, value); 
 }
-void ShaderProgram::SetDouble(const std::string &name, double value) const{
+void Shader::SetDouble(const std::string &name, double value) const{
     if(uniforms.count(name) > 0)
         glProgramUniform1d(handle, uniforms.at(name).location, value);
 }
-void ShaderProgram::SetMat4Float(const std::string &name, const glm::mat4 &matrix) const{
+void Shader::SetMat4Float(const std::string &name, const glm::mat4 &matrix) const{
     if(uniforms.count(name) > 0)    
         glProgramUniformMatrix4fv(handle, uniforms.at(name).location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
-void ShaderProgram::SetBlockBinding(const std::string &name, unsigned int bindingPoint) const{
+void Shader::SetBlockBinding(const std::string &name, unsigned int bindingPoint) const{
     unsigned int index = glGetUniformBlockIndex(handle, name.c_str());   
     glUniformBlockBinding(handle, index, bindingPoint);
 }
-void ShaderProgram::DetachShaderObject(const ShaderObject &shaderObject)
+void Shader::DetachShaderObject(const ShaderObject &shaderObject)
 {
     glDetachShader(handle, shaderObject.GetHandle());
 }
-void ShaderProgram::DetachShaderObject(ShaderObject &&shaderObject)
+void Shader::DetachShaderObject(ShaderObject &&shaderObject)
 {
     glDetachShader(handle, shaderObject.GetHandle());
 }
-void ShaderProgram::RemoveShaderObject(const ShaderObject &shaderObject){
+void Shader::RemoveShaderObject(const ShaderObject &shaderObject){
     DetachShaderObject(shaderObject);
     shaderObject.Delete();
 }

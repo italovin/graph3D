@@ -4,7 +4,7 @@ Mesh::~Mesh(){
 }
 
 template <typename T>
-bool Mesh::PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+bool Mesh::PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
 std::vector<T> &&data, bool interpretAsInt){
     std::div_t verticesDiv = std::div(data.size(), MeshAttribute::ScalarElementsCount(format));
     if(verticesDiv.rem > 0 || (verticesCount > 0 && verticesCount != verticesDiv.quot)){
@@ -14,6 +14,7 @@ std::vector<T> &&data, bool interpretAsInt){
     }
     MeshAttribute meshAttribute;
     meshAttribute.name = name;
+    meshAttribute.location = location;
     meshAttribute.type = type;
     meshAttribute.format = format;
     meshAttribute.normalized = normalized;
@@ -25,9 +26,9 @@ std::vector<T> &&data, bool interpretAsInt){
 }
 
 template <typename T>
-bool Mesh::PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+bool Mesh::PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
 const std::vector<T> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, type, normalized, std::vector<T>(data), interpretAsInt);
+    return PushAttributeBase(name, location, format, type, normalized, std::vector<T>(data), interpretAsInt);
 }
 
 void Mesh::SetIndices(const std::vector<unsigned short> &indices, MeshTopology topology){
@@ -48,60 +49,60 @@ void Mesh::SetIndices(std::vector<unsigned int> &&indices, MeshTopology topology
     this->topology = topology;
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Float, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Float, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Float, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Float, normalized, std::move(data), interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Int, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Int, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Int, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Int, normalized, std::move(data), interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::UnsignedInt, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedInt, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::UnsignedInt, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedInt, normalized, std::move(data), interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Byte, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Byte, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Byte, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Byte, normalized, std::move(data), interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::UnsignedByte, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedByte, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::UnsignedByte, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedByte, normalized, std::move(data), interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Short, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Short, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::Short, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::Short, normalized, std::move(data), interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::UnsignedShort, normalized, data, interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedShort, normalized, data, interpretAsInt);
 }
 
-bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt){
-    return PushAttributeBase(name, format, MeshAttributeType::UnsignedShort, normalized, std::move(data), interpretAsInt);
+bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt){
+    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedShort, normalized, std::move(data), interpretAsInt);
 }
 
 int Mesh::GetAttributesCount() const{
@@ -164,4 +165,8 @@ MeshTopology Mesh::GetTopology() const{
 
 MeshIndexType Mesh::GetIndicesType() const{
     return indicesData.type;
+}
+
+int Mesh::GetVerticesCount() const{
+    return verticesCount;
 }
