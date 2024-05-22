@@ -17,15 +17,9 @@ GLenum Renderer::GetIndicesType(MeshIndexType type){
     }
 }
 
-void Renderer::AuxBindEboFunction(GLuint ebo)
-{
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-}
-
-Renderer::Batch &Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides,
-                                       unsigned int indicesBufferSize, MeshTopology topology, MeshIndexType type, const Shader &shader,
-                                       const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices)
-{
+Renderer::Batch &Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
+unsigned int indicesBufferSize, MeshTopology topology, MeshIndexType type, const Shader &shader,
+const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     VertexArray newVao = VertexArray();
     std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
     glCreateBuffers(buffersSizes.size(), newBuffers.data());
@@ -44,7 +38,7 @@ Renderer::Batch &Renderer::CreateBatch(const std::vector<unsigned int> &buffersS
     newBatch.shader = shader;
     newBatch.mode = GetDrawMode(topology);
     newBatch.indicesType = GetIndicesType(type);
-    newBatch.indicesOffsetInBuffer = std::vector<int>(indicesCounts.size(), 0);
+    newBatch.indicesOffsetInBuffer = std::vector<int*>(indicesCounts.size(), nullptr);
     batches.push_back(newBatch);
     return batches.back();
 }
@@ -81,7 +75,7 @@ const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
     newBatch.shader = shader;
     newBatch.mode = GetDrawMode(topology);
     newBatch.indicesType = GetIndicesType(type);
-    newBatch.indicesOffsetInBuffer = std::vector<int>(indicesCounts.size(), 0);
+    newBatch.indicesOffsetInBuffer = std::vector<int*>(indicesCounts.size(), nullptr);
     newBatch.modelsIndicesBuffer = modelsIndicesBuffer;
     newBatch.mvpUniformBuffer = MVPUniformBuffer;
     newBatch.transforms = transforms;
@@ -390,14 +384,7 @@ void Renderer::Prepare(entt::registry &registry){
     }
 }
 
-void Renderer::SetupDrawEnvironment(int version)
-{
-    if(version < 450)
-        auxBindEBOFunction = [](GLuint ebo){glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);};
-}
-
-void Renderer::SetMVPBindingPoint(int bindingPoint)
-{
+void Renderer::SetMVPBindingPoint(int bindingPoint){
     this->mvpDefaultBindingPoint = bindingPoint;
 }
 
@@ -428,10 +415,6 @@ void Renderer::Draw(){
         glBindBufferBase(GL_UNIFORM_BUFFER, batch.mvpUniformBuffer.bindingPoint, batch.mvpUniformBuffer.name);
         batch.shader.Use();
         batch.vao.Bind();
-
-        //For older GL, this function calls a bind for batch EBO, this fix the retrieve of EBO info
-        auxBindEBOFunction(batch.indiceBuffer.name);
-
         glMultiDrawElementsBaseVertex(batch.mode, batch.indicesCounts.data(), 
         batch.indicesType, reinterpret_cast<GLvoid **>(batch.indicesOffsetInBuffer.data()), 
         batch.indicesCounts.size(), batch.baseVertices.data());
