@@ -17,9 +17,15 @@ GLenum Renderer::GetIndicesType(MeshIndexType type){
     }
 }
 
-Renderer::Batch &Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides, 
-unsigned int indicesBufferSize, MeshTopology topology, MeshIndexType type, const Shader &shader,
-const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices){
+void Renderer::AuxBindEboFunction(GLuint ebo)
+{
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+}
+
+Renderer::Batch &Renderer::CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides,
+                                       unsigned int indicesBufferSize, MeshTopology topology, MeshIndexType type, const Shader &shader,
+                                       const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices)
+{
     VertexArray newVao = VertexArray();
     std::vector<GLuint> newBuffers = std::vector<GLuint>(buffersSizes.size());
     glCreateBuffers(buffersSizes.size(), newBuffers.data());
@@ -384,7 +390,14 @@ void Renderer::Prepare(entt::registry &registry){
     }
 }
 
-void Renderer::SetMVPBindingPoint(int bindingPoint){
+void Renderer::SetupDrawEnvironment(int version)
+{
+    if(version < 450)
+        auxBindEBOFunction = [](GLuint ebo){glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);};
+}
+
+void Renderer::SetMVPBindingPoint(int bindingPoint)
+{
     this->mvpDefaultBindingPoint = bindingPoint;
 }
 
@@ -415,6 +428,10 @@ void Renderer::Draw(){
         glBindBufferBase(GL_UNIFORM_BUFFER, batch.mvpUniformBuffer.bindingPoint, batch.mvpUniformBuffer.name);
         batch.shader.Use();
         batch.vao.Bind();
+
+        //For older GL, this function calls a bind for batch EBO, this fix the retrieve of EBO info
+        auxBindEBOFunction(batch.indiceBuffer.name);
+
         glMultiDrawElementsBaseVertex(batch.mode, batch.indicesCounts.data(), 
         batch.indicesType, reinterpret_cast<GLvoid **>(batch.indicesOffsetInBuffer.data()), 
         batch.indicesCounts.size(), batch.baseVertices.data());

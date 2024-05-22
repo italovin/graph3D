@@ -10,7 +10,8 @@
 
 class Renderer{
 private:
-    
+    std::function<void(GLuint)> auxBindEBOFunction = [](GLuint ebo){}; //This helps fix the DSA EBO binding for older GL versions
+    void AuxBindEboFunction(GLuint ebo);
     Camera* camera;
     glm::mat4 projectionMatrix = glm::mat4(1.0f);
     int mvpDefaultBindingPoint;
@@ -36,7 +37,6 @@ private:
         GLenum mode; //must be equivalent to topology
         std::vector<int> indicesOffsetInBuffer; //must be a vector with zeros
         GLenum indicesType;
-        int modelsCount;
         Buffer modelsIndicesBuffer;
         Buffer mvpUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
@@ -64,6 +64,8 @@ private:
     void BufferSubDataMVPs(Batch &batch);
     void SetBatchIndicesInfo(Batch &batch, const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices);
 public:
+    //GLSL version integer compatible
+    void SetupDrawEnvironment(int version);
     void SetMVPBindingPoint(int bindingPoint);
     void SetModelsIndicesLocation(int location);
     void SetProjection(const glm::mat4 &projectionMatrix);

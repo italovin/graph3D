@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
         return -1;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
     const int WIDTH = 800; 
     const int HEIGHT = 600;
 
@@ -306,6 +306,7 @@ int main(int argc, char *argv[])
     Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
     Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
     Renderer mainRenderer = Renderer();
+    mainRenderer.SetupDrawEnvironment(glslVersion);
     mainRenderer.SetMVPBindingPoint(3);
     mainRenderer.SetModelsIndicesLocation(6);
     mainRenderer.SetMainCamera(std::addressof(mainCamera));
@@ -326,9 +327,7 @@ int main(int argc, char *argv[])
 
     mainCamera = freeCamera;
     bool isFreeCamera = true;
-    auto &t1 = sceneRegistry.get<TransformComponent>(tri1);
-    auto &t2 = sceneRegistry.get<TransformComponent>(tri2);
-    auto &t3 = sceneRegistry.get<TransformComponent>(graph);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window.GetHandle()))
     {
