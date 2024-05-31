@@ -107,7 +107,8 @@ struct MeshLayout{
 struct MeshAttributeData{
     std::variant<std::vector<float>, std::vector<int>, std::vector<unsigned int>, std::vector<char>, 
     std::vector<unsigned char>, std::vector<short>, std::vector<unsigned short>> data;
-    int dataSize;
+    //Attribute data size in bytes
+    int dataSize = 0;
     MeshAttribute attribute;
 
     MeshAttributeData() = default;
@@ -129,7 +130,14 @@ struct MeshAttributeData{
 
 struct MeshIndexData{
     std::variant<std::vector<unsigned int>, std::vector<unsigned short>> indices;
+    //Indices data size in bytes
+    int indicesSize = 0;
     MeshIndexType type;
+    MeshIndexData() = default;
+    MeshIndexData(const std::vector<unsigned int> &&indices, int indicesSize, MeshIndexType type):
+    indices(indices), indicesSize(indicesSize), type(type){}
+    MeshIndexData(const std::vector<unsigned short> &&indices, int indicesSize, MeshIndexType type):
+    indices(indices), indicesSize(indicesSize), type(type){}
 };
 
 class Mesh : public Resource{

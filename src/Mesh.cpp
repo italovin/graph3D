@@ -36,7 +36,7 @@ void Mesh::SetIndices(const std::vector<unsigned short> &indices, MeshTopology t
 }
 
 void Mesh::SetIndices(std::vector<unsigned short> &&indices, MeshTopology topology){
-    this->indicesData = MeshIndexData { .indices = std::move(indices), .type = MeshIndexType::UnsignedShort};
+    this->indicesData = MeshIndexData(std::move(indices), sizeof(unsigned short)*indices.size(), MeshIndexType::UnsignedShort);
     this->topology = topology;
 }
 
@@ -45,7 +45,7 @@ void Mesh::SetIndices(const std::vector<unsigned int> &indices, MeshTopology top
 }
 
 void Mesh::SetIndices(std::vector<unsigned int> &&indices, MeshTopology topology){
-    this->indicesData = MeshIndexData { .indices = std::move(indices), .type = MeshIndexType::UnsignedInt};
+    this->indicesData = MeshIndexData(std::move(indices), sizeof(unsigned int)*indices.size(), MeshIndexType::UnsignedInt);
     this->topology = topology;
 }
 

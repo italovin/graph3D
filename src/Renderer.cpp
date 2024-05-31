@@ -225,28 +225,6 @@ void Renderer::Prepare(entt::registry &registry){
 
         int attributesCount = meshGlobalLayout.attributes.size();
 
-        std::vector<GLsizeiptr> attributesBuffersSizes(attributesCount);
-        std::vector<GLsizei> attributesStrides(attributesCount);
-
-        //Each vector in dataOffsetsMatrix have attributesCount size
-        std::vector<std::vector<GLintptr>> dataOffsetsMatrix(objectsCount);
-
-        //Offsets for indices SubData
-        std::vector<GLintptr> indicesOffsets;
-        indicesOffsets.reserve(objectsCount);
-
-        std::vector<int> baseVertices;
-        baseVertices.reserve(objectsCount);
-
-        std::vector<int> indicesCounts;
-        indicesCounts.reserve(objectsCount);
-
-        std::vector<GLintptr> modelsIndexerAttributeOffsets;
-        modelsIndexerAttributeOffsets.reserve(objectsCount);
-
-        std::vector<int> modelsIndexerVerticesCounts;
-        modelsIndexerVerticesCounts.reserve(objectsCount);
-
         //Combines meshes attributes in a single data vector
         std::vector<MeshAttributeData> attributesBatchedChunks(attributesCount);
         for(int i = 0; i < attributesBatchedChunks.size(); i++){ 
@@ -280,15 +258,10 @@ void Renderer::Prepare(entt::registry &registry){
         }
 
         //Temp auxiliary variables
-        int indicesSize = 0;
-        int verticesCountSize = 0;
         int rendererIndex = 0;
-        int indicesOffset = 0;
         int baseVertex = 0;
         unsigned int firstIndex = 0;
         unsigned int baseInstance = 0;
-        int modelsIndicesOffset = 0;
-        std::vector<GLintptr> dataOffsets(attributesCount);
 
         renderGroup.mvps.reserve(objectsCount);
         renderGroup.transforms.reserve(objectsCount);
@@ -342,6 +315,7 @@ void Renderer::Prepare(entt::registry &registry){
 
             {
                 auto& indicesData = mesh->GetIndices();
+                indicesBatchedChunk.indicesSize += indicesData.indicesSize;
                 switch(indicesData.type){
                     case MeshIndexType::UnsignedInt:
                     std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).insert(
@@ -367,27 +341,11 @@ void Renderer::Prepare(entt::registry &registry){
             };
             commands.emplace_back(std::move(meshCmd));
 
-            indicesSize += mesh->GetIndicesSize();
-            indicesOffsets.emplace_back(indicesOffset);
-            indicesOffset += indicesSize;
-            indicesCounts.emplace_back(mesh->GetIndicesCount());
-
-            baseVertices.emplace_back(baseVertex);
             //Base vertex is offset of vertices, not of indices
             baseVertex += mesh->GetVerticesCount();
             firstIndex += mesh->GetIndicesCount();
             baseInstance += instanceCount;
 
-            std::vector<int> attributesDataSizes = mesh->GetAttributesDatasSizes();
-            std::vector<int> attributesSizes = mesh->GetAttributesSizes();
-            for(int i = 0; i < attributesBuffersSizes.size(); i++){
-                if(rendererIndex == 0){
-                    attributesStrides[i] = attributesSizes[i];
-                }
-                attributesBuffersSizes[i] += attributesDataSizes[i];
-                dataOffsetsMatrix[rendererIndex].emplace_back(dataOffsets[i]);
-                dataOffsets[i] += attributesDataSizes[i];
-            }
             auto& objectTransform = object.second;
             renderGroup.transforms.emplace_back(objectTransform);
             glm::mat4 model = glm::mat4(1.0f);
@@ -449,6 +407,7 @@ void Renderer::Prepare(entt::registry &registry){
 
             {
                 auto& indicesData = mesh->GetIndices();
+                indicesBatchedChunk.indicesSize += indicesData.indicesSize;
                 switch(indicesData.type){
                     case MeshIndexType::UnsignedInt:
                     std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).insert(
@@ -472,28 +431,11 @@ void Renderer::Prepare(entt::registry &registry){
             };
             commands.emplace_back(std::move(meshCmd));
 
-            indicesSize += mesh->GetIndicesSize();
-            indicesOffsets.emplace_back(indicesOffset);
-            indicesOffset += indicesSize;
-            indicesCounts.emplace_back(mesh->GetIndicesCount());
-
-            baseVertices.emplace_back(baseVertex);
             //Base vertex is offset of vertices, not of indices
             baseVertex += mesh->GetVerticesCount();
             firstIndex += mesh->GetIndicesCount();
             baseInstance += instanceCount;
 
-            std::vector<int> attributesDataSizes = mesh->GetAttributesDatasSizes();
-            std::vector<int> attributesSizes = mesh->GetAttributesSizes();
-            for(int i = 0; i < attributesBuffersSizes.size(); i++){
-                if(rendererIndex == 0){
-                    attributesStrides[i] = attributesSizes[i];
-                }
-                attributesBuffersSizes[i] += attributesDataSizes[i];
-                dataOffsetsMatrix[rendererIndex].emplace_back(dataOffsets[i]);
-                dataOffsets[i] += attributesDataSizes[i];
-            }
-            rendererIndex++;
             for(auto &&object : instanceGroup){
                 auto& objectTransform = object.second;
                 renderGroup.transforms.emplace_back(objectTransform);
@@ -504,6 +446,7 @@ void Renderer::Prepare(entt::registry &registry){
                 model = trn*rot*scl;
                 renderGroup.mvps.emplace_back(projectionMatrix * camera->GetViewMatrix() * model);
             }
+            rendererIndex++;
         }
         
         std::vector<GLuint> attributesBuffersNames(attributesCount); 
@@ -511,13 +454,13 @@ void Renderer::Prepare(entt::registry &registry){
         std::vector<Buffer> attributesBuffers(attributesCount);
         for(int i = 0; i < attributesBuffers.size(); i++){
             renderGroup.attributesBuffers.emplace_back(attributesBuffersNames[i],
-            attributesBuffersSizes[i], attributesStrides[i], i);
+            attributesBatchedChunks[i].dataSize, attributesBatchedChunks[i].attribute.AttributeDataSize(), i);
         }
 
         GLuint indicesBufferName = 0;
         glCreateBuffers(1, std::addressof(indicesBufferName));
         renderGroup.indicesBuffer.name = indicesBufferName;
-        renderGroup.indicesBuffer.bufferSize = indicesSize;
+        renderGroup.indicesBuffer.bufferSize = indicesBatchedChunk.indicesSize;
 
         GLuint objectIndexBufferName = 0;
         glCreateBuffers(1, std::addressof(objectIndexBufferName));
@@ -556,9 +499,9 @@ void Renderer::Prepare(entt::registry &registry){
         
         switch(indicesBatchedChunk.type){
             case MeshIndexType::UnsignedInt:
-            glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesBatchedChunk.indicesSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
             case MeshIndexType::UnsignedShort:
-            glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesSize, std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesBatchedChunk.indicesSize, std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
         }
 
         {
