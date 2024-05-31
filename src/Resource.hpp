@@ -2,13 +2,12 @@
 #define RESOURCE_H
 #include <random>
 #include <uuid_v4/uuid_v4.h>
+#include "RandomHelper.hpp"
 
 using ResourceHandle = UUIDv4::UUID;
 
 class Resource{
-private:
-    UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator;
 public:
-    ResourceHandle resourceHandle = uuidGenerator.getUUID();
+    ResourceHandle resourceHandle = RandomHelper::UUIDGenerator.getUUID();
 };
 #endif

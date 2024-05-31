@@ -38,7 +38,8 @@ struct MeshAttribute{
     }
 
     bool operator == (const MeshAttribute &attribute) const{
-        return (attribute.type == type) && (attribute.normalized == normalized);
+        return (attribute.type == type) && (attribute.format == format)
+        &&(attribute.normalized == normalized) && (attribute.interpretAsInt == interpretAsInt);
     }
     static int LocationsCount(MeshAttributeFormat format){
         switch(format){
@@ -131,7 +132,7 @@ struct MeshIndexData{
     MeshIndexType type;
 };
 
-class Mesh : Resource{
+class Mesh : public Resource{
 private:
     MeshIndexData indicesData;
     MeshTopology topology;
@@ -172,7 +173,7 @@ public:
     const std::vector<MeshAttributeData> &GetAttributesDatas();
     int GetTotalAttributesDataSize();
     const MeshIndexData &GetIndices();
-    int GetIndicesCount() const;
+    unsigned int GetIndicesCount() const;
     int GetIndicesSize() const;
     const MeshLayout &GetLayout() const;
     MeshTopology GetTopology() const;

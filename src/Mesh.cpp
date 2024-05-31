@@ -142,7 +142,7 @@ const MeshIndexData &Mesh::GetIndices(){
     return indicesData;
 }
 
-int Mesh::GetIndicesCount() const{
+unsigned int Mesh::GetIndicesCount() const{
     auto type = GetIndicesType();
     switch(type){
         case MeshIndexType::UnsignedInt: return std::get<std::vector<unsigned int>>(indicesData.indices).size();
@@ -152,7 +152,12 @@ int Mesh::GetIndicesCount() const{
 }
 
 int Mesh::GetIndicesSize() const{
-    return sizeof(unsigned int)*GetIndicesCount();
+    auto type = GetIndicesType();
+    switch(type){
+        case MeshIndexType::UnsignedInt: return sizeof(unsigned int)*GetIndicesCount();
+        case MeshIndexType::UnsignedShort: return sizeof(unsigned short)*GetIndicesCount();
+        default: return 0;
+    }
 }
 
 const MeshLayout &Mesh::GetLayout() const{

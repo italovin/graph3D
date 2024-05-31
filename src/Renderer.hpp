@@ -5,69 +5,64 @@
 #include "Camera.hpp"
 #include "Components.hpp"
 #include "Entity.hpp"
+#include <map>
 #include <algorithm>
-#include <boolinq/boolinq.h>
+#include <oneapi/tbb/parallel_for.h>
+#include <chrono>
 
 class Renderer{
 private:
     Camera* camera;
     glm::mat4 projectionMatrix = glm::mat4(1.0f);
-    int mvpDefaultBindingPoint;
-    int modelsIndicesDefaultLocation;
+    int mvpDefaultBindingPoint = 0;
+    int objectsIndexerDefaultLocation = 0;
     struct Buffer{
-        GLuint name;
-        unsigned int bufferSize;
-        int stride;
-        int bindingPoint;
+        GLuint name = 0;
+        unsigned int bufferSize = 0;
+        int stride = 0;
+        int bindingPoint = 0;
 
         Buffer() = default;
         Buffer(GLuint name, unsigned int bufferSize, int stride, int bindingPoint):
         name(name), bufferSize(bufferSize), stride(stride), bindingPoint(bindingPoint){}
     };
-    struct Batch{
+    struct DrawElementsIndirectCommand{
+        unsigned int  count;
+        unsigned int  instanceCount;
+        unsigned int  firstIndex;
+        int           baseVertex;
+        unsigned int  baseInstance;
+    // Optional user-defined data goes here - if nothing, stride is 0
+    };
+    struct DrawCmdBuffer : Buffer{
+        GLsizei commandsCount;
+    };
+    struct RenderGroup{
         VertexArray vao;
-        std::vector<Buffer> attributesBuffers; //For while, each buffer is a attribute
-        Buffer indiceBuffer;
-        std::vector<int> indicesCounts;
-        std::vector<int> baseVertices;
-        MeshTopology topology;
         Shader shader;
-        GLenum mode; //must be equivalent to topology
-        std::vector<int*> indicesOffsetInBuffer; //must be a vector with null pointers in this implementation
-        GLenum indicesType;
-        Buffer modelsIndicesBuffer;
-        Buffer mvpUniformBuffer;
+        std::vector<Buffer> attributesBuffers;
+        Buffer indicesBuffer;
+        Buffer objectIndexerBuffer;
+        Buffer mvpsUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
         std::vector<glm::mat4> mvps;
+        GLenum mode; //Equivalent to Topology
+        GLenum indicesType; //
+        DrawCmdBuffer drawCmdBuffer;
     };
-    std::vector<Batch> batches;
-    Batch &CreateBatch(const std::vector<unsigned int> &buffersSizes, const std::vector<int> &strides,
-    unsigned int indicesBufferSize, MeshTopology topology, MeshIndexType type, const Shader &shader,
-    const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices);
-    Batch &CreateBatchWithMVP(const std::vector<unsigned int> &attributesBuffersSizes, const std::vector<int> &strides,
-    unsigned int indicesBufferSize, unsigned int mvpBufferSize, unsigned int modelsIndicesBufferSize,
-    const std::vector<std::reference_wrapper<TransformComponent>> &transforms, 
-    MeshTopology topology, MeshIndexType type, const Shader &shader,
-    const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices);
+    std::vector<RenderGroup> renderGroups;
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
-    void StartBatch(Batch &batch);
-    void StartModelsIndicesBuffer(Batch &batch);
-    void StartMVPBuffer(Batch &batch);
-    void SetupBatchLayout(Batch &batch, MeshLayout &layout);
-    void SetupModelsIndicesAttribute(Batch &batch);
-    void BufferSubData(Batch &batch, const std::vector<unsigned int> &offsets, const std::vector<MeshAttributeData> &attributesDatas);
-    void BufferIndices(Batch &batch, unsigned int offset, const MeshIndexData &indicesData);
-    void BufferModelsIndices(Batch &batch, unsigned int offset, int index, unsigned int count);
-    void BufferSubDataMVPs(Batch &batch);
-    void SetBatchIndicesInfo(Batch &batch, const std::vector<int> &indicesCounts, const std::vector<int> &baseVertices);
+    void BufferSubDataMVPs(RenderGroup &renderGroup);
+    void SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout);
+    void BindRenderGroupAttributesBuffers(RenderGroup &renderGroup);
 public:
     void SetMVPBindingPoint(int bindingPoint);
-    void SetModelsIndicesLocation(int location);
+    void SetObjectsIndexerLocation(int location);
     void SetProjection(const glm::mat4 &projectionMatrix);
     void SetMainCamera(Camera *mainCamera);
     void Prepare(entt::registry &registry);
     void Draw();
-    int GetBatchesCount();
+    int GetDrawGroupsCount();
 };
 #endif

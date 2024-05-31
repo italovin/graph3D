@@ -5,9 +5,8 @@
 class Entity;
 
 class Scene{
-private:
-    entt::registry registry;
 public:
+    entt::registry registry;
     Entity CreateEntity();
 };
 #endif
