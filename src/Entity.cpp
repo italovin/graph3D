@@ -1,7 +1,5 @@
 #include "Entity.hpp"
 
-Entity::Entity(entt::entity handle, Scene * scene)
+Entity::Entity(entt::entity handle, Scene *scene):handle(handle),scene(scene)
 {
-    this->handle = handle;
-    this->scene = scene;
 }

@@ -294,19 +294,24 @@ int main(int argc, char *argv[])
     .SetMain("FragColor = colorOut;").Build();
     Ref<Shader> testShader = CreateRef<Shader>(std::vector<ShaderObject>{testV, testF}, true);
     testShader->SetBlockBinding("mvpMatrices", 3);
-    entt::registry sceneRegistry;
-    entt::entity quad1 = sceneRegistry.create();
-    entt::entity tri2 = sceneRegistry.create();
-    entt::entity quad2 = sceneRegistry.create();
-    entt::entity graph = sceneRegistry.create();
-    sceneRegistry.emplace<MeshRendererComponent>(quad1, mesh, testShader);
-    sceneRegistry.emplace<MeshRendererComponent>(tri2, mesh2, testShader);
-    sceneRegistry.emplace<MeshRendererComponent>(quad2, mesh, testShader);
-    sceneRegistry.emplace<MeshRendererComponent>(graph, graphMesh, graphShader);
-    sceneRegistry.emplace<TransformComponent>(quad1, glm::vec3(0, 0, 0));
-    sceneRegistry.emplace<TransformComponent>(tri2, glm::vec3(0, 1, 0));
-    sceneRegistry.emplace<TransformComponent>(quad2, glm::vec3(0, -1, 0));
-    sceneRegistry.emplace<TransformComponent>(graph, glm::vec3(0, 0, 0));
+
+    Scene mainScene;
+    Entity quad1 = mainScene.CreateEntity();
+    Entity tri1 = mainScene.CreateEntity();
+    Entity quad2 = mainScene.CreateEntity();
+    Entity graph = mainScene.CreateEntity();
+
+    quad1.AddComponent<MeshRendererComponent>(mesh, testShader);
+    quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+
+    tri1.AddComponent<MeshRendererComponent>(mesh2, testShader);
+    tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
+
+    quad2.AddComponent<MeshRendererComponent>(mesh, testShader);
+    quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
+
+    graph.AddComponent<MeshRendererComponent>(graphMesh, graphShader);
+    graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
     
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
@@ -321,7 +326,7 @@ int main(int argc, char *argv[])
     glm::mat4 projection = window.GetProjectionMatrix();
     mainRenderer.SetProjection(projection);
     double initialRendererTime = glfwGetTime();
-    mainRenderer.Prepare(sceneRegistry);
+    mainRenderer.Prepare(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;
     std::cout << "Time to prepare for meshes for grouping: " << 1000*prepareTime << " (ms)\n";
     std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n";
@@ -405,9 +410,9 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         /* Render here */
 
-        sceneRegistry.get<TransformComponent>(quad1).eulerAngles(glm::vec3(0, 30*time, 0));
-        sceneRegistry.get<MeshRendererComponent>(graph).shader->SetFloat("time", time);
-        sceneRegistry.get<TransformComponent>(graph).eulerAngles(glm::vec3(0, -30*time, 0));
+        quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
+        graph.GetComponent<MeshRendererComponent>().shader->SetFloat("time", time);
+        graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
         
         mainRenderer.Draw();
         /* Swap front and back buffers */
