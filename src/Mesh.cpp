@@ -160,6 +160,15 @@ int Mesh::GetIndicesSize() const{
     }
 }
 
+int Mesh::GetIndicesTypeSize(MeshIndexType type)
+{
+    switch(type){
+        case MeshIndexType::UnsignedInt: return sizeof(unsigned int);
+        case MeshIndexType::UnsignedShort: return sizeof(unsigned short);
+        default: return 0;
+    }
+}
+
 const MeshLayout &Mesh::GetLayout() const{
     return layout;
 }

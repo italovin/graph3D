@@ -35,9 +35,10 @@ int main(int argc, char *argv[])
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &size);
     std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << size << " bytes." << std::endl;
     GLint size2;
-    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &size2);
+    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &size2);
     std::cout << "GL_MAX_VERTEX_UNIFORM_VECTORS is " << size2 << std::endl;
     std::cout << glGetString(GL_VERSION) << std::endl;
+    std::cout << glGetString(GL_VENDOR) << std::endl;
 
     GLint no_of_extensions = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
@@ -325,6 +326,7 @@ int main(int argc, char *argv[])
     mainRenderer.SetMainCamera(std::addressof(mainCamera));
     glm::mat4 projection = window.GetProjectionMatrix();
     mainRenderer.SetProjection(projection);
+    mainRenderer.SetAPIVersion(GLApiVersionStruct::GetVersionFromInteger(glslVersion));
     double initialRendererTime = glfwGetTime();
     mainRenderer.Prepare(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;

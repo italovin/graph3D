@@ -183,6 +183,7 @@ public:
     const MeshIndexData &GetIndices();
     unsigned int GetIndicesCount() const;
     int GetIndicesSize() const;
+    static int GetIndicesTypeSize(MeshIndexType type);
     const MeshLayout &GetLayout() const;
     MeshTopology GetTopology() const;
     MeshIndexType GetIndicesType() const;

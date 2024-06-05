@@ -222,6 +222,8 @@ void Renderer::Prepare(entt::registry &registry){
 
         renderGroup.mode = GetDrawMode(meshGlobalTopology);
         renderGroup.indicesType = GetIndicesType(meshGlobalIndicesType);
+        renderGroup.indicesTypeEnum = meshGlobalIndicesType;
+        renderGroup.indicesTypeSize = Mesh::GetIndicesTypeSize(renderGroup.indicesTypeEnum);
 
         int attributesCount = meshGlobalLayout.attributes.size();
 
@@ -448,7 +450,7 @@ void Renderer::Prepare(entt::registry &registry){
             }
             rendererIndex++;
         }
-        
+        renderGroup.commands = commands;
         std::vector<GLuint> attributesBuffersNames(attributesCount); 
         glCreateBuffers(attributesCount, attributesBuffersNames.data());
         std::vector<Buffer> attributesBuffers(attributesCount);
@@ -549,6 +551,43 @@ void Renderer::SetMainCamera(Camera *mainCamera){
     this->camera = mainCamera;
 }
 
+void Renderer::SetDrawFunction(){
+    if(version >= GLApiVersion::V400){
+        DrawFunction = &Renderer::DrawFunctionIndirect;
+    } else {
+        DrawFunction = &Renderer::DrawFunctionNonIndirect;
+    }
+}
+
+void Renderer::DrawFunctionIndirect(RenderGroup &renderGroup){
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, renderGroup.drawCmdBuffer.name);
+    glMultiDrawElementsIndirect(
+        renderGroup.mode,
+        renderGroup.indicesType,
+        static_cast<GLvoid *>(0),
+        renderGroup.drawCmdBuffer.commandsCount,
+        0);
+}
+
+void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
+    for(auto&& command : renderGroup.commands){
+        glDrawElementsInstancedBaseVertexBaseInstance(
+        renderGroup.mode,
+        command.count,
+        renderGroup.indicesType,
+        reinterpret_cast<GLvoid *>(command.firstIndex*renderGroup.indicesTypeSize),
+        command.instanceCount,
+        command.baseVertex,
+        command.baseInstance
+        );
+    }
+}
+
+void Renderer::SetAPIVersion(GLApiVersion version){
+    this->version = version;
+    SetDrawFunction();
+}
+
 void Renderer::Draw(){
     for(auto &&renderGroup : renderGroups){
         renderGroup.shader.Use();
@@ -567,13 +606,7 @@ void Renderer::Draw(){
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         BufferSubDataMVPs(renderGroup);
         
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, renderGroup.drawCmdBuffer.name);
-        glMultiDrawElementsIndirect(renderGroup.mode, renderGroup.indicesType, static_cast<GLvoid *>(0), renderGroup.drawCmdBuffer.commandsCount,
-        0);
-        /*glMultiDrawElementsBaseVertex(batch.mode, batch.indicesCounts.data(), 
-        batch.indicesType, reinterpret_cast<GLvoid **>(batch.indicesOffsetInBuffer.data()), 
-        batch.indicesCounts.size(), batch.baseVertices.data());*/
-        //////
+        (this->*DrawFunction)(renderGroup);
     }
 }
 
