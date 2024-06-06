@@ -221,9 +221,9 @@ void Renderer::Prepare(entt::registry &registry){
         }
 
         renderGroup.mode = GetDrawMode(meshGlobalTopology);
-        renderGroup.indicesType = GetIndicesType(meshGlobalIndicesType);
-        renderGroup.indicesTypeEnum = meshGlobalIndicesType;
-        renderGroup.indicesTypeSize = Mesh::GetIndicesTypeSize(renderGroup.indicesTypeEnum);
+        renderGroup.type = GetIndicesType(meshGlobalIndicesType);
+        renderGroup.indicesType = meshGlobalIndicesType;
+        renderGroup.indicesTypeSize = Mesh::GetIndicesTypeSize(renderGroup.indicesType);
 
         int attributesCount = meshGlobalLayout.attributes.size();
 
@@ -552,10 +552,9 @@ void Renderer::SetMainCamera(Camera *mainCamera){
 }
 
 void Renderer::SetDrawFunction(){
+    // If supports, use indirect drawing
     if(version >= GLApiVersion::V400){
         DrawFunction = &Renderer::DrawFunctionIndirect;
-    } else {
-        DrawFunction = &Renderer::DrawFunctionNonIndirect;
     }
 }
 
@@ -563,7 +562,7 @@ void Renderer::DrawFunctionIndirect(RenderGroup &renderGroup){
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, renderGroup.drawCmdBuffer.name);
     glMultiDrawElementsIndirect(
         renderGroup.mode,
-        renderGroup.indicesType,
+        renderGroup.type,
         static_cast<GLvoid *>(0),
         renderGroup.drawCmdBuffer.commandsCount,
         0);
@@ -574,7 +573,7 @@ void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
         glDrawElementsInstancedBaseVertexBaseInstance(
         renderGroup.mode,
         command.count,
-        renderGroup.indicesType,
+        renderGroup.type,
         reinterpret_cast<GLvoid *>(command.firstIndex*renderGroup.indicesTypeSize),
         command.instanceCount,
         command.baseVertex,
@@ -585,7 +584,7 @@ void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
 
 void Renderer::SetAPIVersion(GLApiVersion version){
     this->version = version;
-    SetDrawFunction();
+    //SetDrawFunction();
 }
 
 void Renderer::Draw(){

@@ -48,14 +48,14 @@ private:
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
         std::vector<glm::mat4> mvps;
         GLenum mode; //Equivalent to Topology
-        GLenum indicesType; //
-        MeshIndexType indicesTypeEnum;
+        MeshTopology topology;
+        GLenum type; //Equivalent to Indices Type
+        MeshIndexType indicesType;
         int indicesTypeSize;
         DrawCmdBuffer drawCmdBuffer;
         std::vector<DrawElementsIndirectCommand> commands;
     };
     std::vector<RenderGroup> renderGroups;
-    void (Renderer::*DrawFunction)(RenderGroup&) = nullptr;
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
@@ -64,6 +64,8 @@ private:
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();
+    //Defaulft drawing is direct type
+    void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;
 public:
     void SetMVPBindingPoint(int bindingPoint);
     void SetObjectsIndexerLocation(int location);
