@@ -57,7 +57,6 @@ private:
         std::vector<DrawElementsIndirectCommand> commands;
     };
     std::vector<RenderGroup> renderGroups;
-    void (Renderer::*DrawFunction)(RenderGroup&) = nullptr;
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
@@ -66,6 +65,8 @@ private:
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();
+    //Defaulft drawing is direct type
+    void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;
     // Performs grouping operations for batching and instancing
     void PrepareRenderGroups(entt::registry &registry);
     // Executes the drawing at update call
