@@ -3,14 +3,13 @@
 #include <GL/glew.h>
 #include <string>
 #include <unordered_map>
-#include <memory>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "ShaderObject.hpp"
 #include "Resource.hpp"
 
 struct uniform_info
-{ 
+{
 	GLint location;
 	GLsizei count;
     GLenum type;

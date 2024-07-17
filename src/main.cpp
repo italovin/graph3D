@@ -1,5 +1,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "Components.hpp"
 #include "ShaderBuilder.hpp"
 #include "Input.hpp"
 #include "Renderer.hpp"
@@ -15,7 +16,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    const int WIDTH = 800; 
+    const int WIDTH = 800;
     const int HEIGHT = 600;
 
     /* Create a windowed mode window and its OpenGL context */
@@ -53,10 +54,10 @@ int main(int argc, char *argv[])
         std::cout << "Failed to start GLEW" << std::endl;
         return -1;
     }
-       
+
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
-    
+
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(GLDebugCallback, nullptr);
 
@@ -76,7 +77,7 @@ int main(int argc, char *argv[])
     max_s = M_PI;
     max_t = 2*M_PI;
     bool perfomanceCounter = true;
-    
+
     for(int i = 1; i < argc; i++){
         std::string argvString = argv[i];
         if(argvString == "-x" && i < argc - 1){
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
             } else if(flag == "false" || flag == "0"){
                 perfomanceCounter = false;
                 continue;
-            } 
+            }
         }
     }
     if(min_s > max_s){
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
     Ref<Mesh> graphMesh = CreateRef<Mesh>();
     graphMesh->PushAttribute("params", 0, MeshAttributeFormat::Vec2, false, parameters);
     graphMesh->SetIndices(indices, MeshTopology::Lines);
-    
+
     ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
     ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
     ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
@@ -301,6 +302,15 @@ int main(int argc, char *argv[])
     Entity tri1 = mainScene.CreateEntity();
     Entity quad2 = mainScene.CreateEntity();
     Entity graph = mainScene.CreateEntity();
+    Entity mainCamera = mainScene.CreateEntity();
+    // Rotation Euler angles +X = Look Down; +Y = Look Right
+    // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
+    TransformComponent freeCameraTransform;
+    freeCameraTransform.position = glm::vec3(0, 0, 3);
+    freeCameraTransform.eulerAngles(glm::vec3(0, 180, 0));
+    TransformComponent topDownCameraTransform;
+    topDownCameraTransform.position = glm::vec3(0, 5, 0);
+    topDownCameraTransform.eulerAngles(glm::vec3(90, 0, 0));
 
     quad1.AddComponent<MeshRendererComponent>(mesh, testShader);
     quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
@@ -313,28 +323,23 @@ int main(int argc, char *argv[])
 
     graph.AddComponent<MeshRendererComponent>(graphMesh, graphShader);
     graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
-    
-    // Rotation Euler angles +X = Look Down; +Y = Look Right
-    // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
-    Camera mainCamera = Camera(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0));
-    Camera freeCamera = Camera(glm::vec3(0, 0, 3), glm::vec3(0, 180, 0));
-    Camera topDownCamera = Camera(glm::vec3(0, 5, 0), glm::vec3(90, 0, 0));
+
+    mainCamera.AddComponent<CameraComponent>().isMain = true;
+
     Renderer mainRenderer = Renderer();
 
     mainRenderer.SetMVPBindingPoint(3);
     mainRenderer.SetObjectsIndexerLocation(6);
-    mainRenderer.SetMainCamera(std::addressof(mainCamera));
-    glm::mat4 projection = window.GetProjectionMatrix();
-    mainRenderer.SetProjection(projection);
+    mainRenderer.SetMainWindow(std::addressof(window));
     mainRenderer.SetAPIVersion(GLApiVersionStruct::GetVersionFromInteger(glslVersion));
     double initialRendererTime = glfwGetTime();
-    mainRenderer.Prepare(mainScene.registry);
+    mainRenderer.Start(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;
     std::cout << "Time to prepare for meshes for grouping: " << 1000*prepareTime << " (ms)\n";
     std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n";
 
     glClearColor(0, 0, 0, 1);
-    glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_DEPTH_TEST);
 
     double time = 0;
     double lastTime = 0;
@@ -343,7 +348,7 @@ int main(int argc, char *argv[])
     double minDeltaTime = 0;
     unsigned long ticks = 0;
 
-    mainCamera = freeCamera;
+    mainCamera.transform = freeCameraTransform;
     bool isFreeCamera = true;
 
     /* Loop until the user closes the window */
@@ -352,7 +357,7 @@ int main(int argc, char *argv[])
         time = glfwGetTime();
         deltaTime = time - lastTime;
         lastTime = time;
-        
+
         if(perfomanceCounter){
             if(minDeltaTime == 0){
                 minDeltaTime = deltaTime;
@@ -378,33 +383,32 @@ int main(int argc, char *argv[])
             glfwSetWindowShouldClose(window.GetHandle(), true);
         }
 
-        
         if(isFreeCamera){
-            glm::vec3 up = freeCamera.transform.Up();
-            glm::vec3 right = freeCamera.transform.Right();
-            glm::vec3 forward = freeCamera.transform.Forward();
+            glm::vec3 up = freeCameraTransform.Up();
+            glm::vec3 right = freeCameraTransform.Right();
+            glm::vec3 forward = freeCameraTransform.Forward();
             float cameraSpeed = static_cast<float>(1.5 * deltaTime);
-            
+
             float horizontalKeyboard = Input::GetAxis(KEYB_AXIS_HORIZONTAL);
             float verticalKeyboard = Input::GetAxis(KEYB_AXIS_VERTICAL);
             if (Input::GetKeyHeld(GLFW_KEY_SPACE)){
-                freeCamera.transform.position += cameraSpeed * up;
+                freeCameraTransform.position += cameraSpeed * up;
             }
             int jid = GLFW_JOYSTICK_1;
             float horizontalJoystick = Input::GetJoystickAxisLeftX(jid);
             float verticalJoystick = Input::GetJoystickAxisLeftY(jid);
             float horizontal = glm::abs(horizontalKeyboard) > glm::abs(horizontalJoystick) ? horizontalKeyboard:horizontalJoystick;
             float vertical = glm::abs(verticalKeyboard) > glm::abs(verticalJoystick) ? verticalKeyboard:verticalJoystick;
-            freeCamera.transform.position += cameraSpeed * right * horizontal;
-            freeCamera.transform.position += cameraSpeed * forward * vertical;
-            mainCamera = freeCamera;
+            freeCameraTransform.position += cameraSpeed * right * horizontal;
+            freeCameraTransform.position += cameraSpeed * forward * vertical;
             float factor = 0.01f;
             glm::quat qPitch = glm::angleAxis(-factor*Input::GetMouseDeltaY(), glm::vec3(1, 0, 0));
             glm::quat qYaw = glm::angleAxis(factor*Input::GetMouseDeltaX(), glm::vec3(0, 1, 0));
-            freeCamera.transform.rotation =  qYaw * freeCamera.transform.rotation;
-            freeCamera.transform.rotation = freeCamera.transform.rotation * qPitch;
+            freeCameraTransform.rotation =  qYaw * freeCameraTransform.rotation;
+            freeCameraTransform.rotation = freeCameraTransform.rotation * qPitch;
+            mainCamera.transform = freeCameraTransform;
         } else {
-            mainCamera = topDownCamera;
+            mainCamera.transform = topDownCameraTransform;
         }
         if (Input::GetKeyDown(GLFW_KEY_T)){
             isFreeCamera = !isFreeCamera;
@@ -415,15 +419,15 @@ int main(int argc, char *argv[])
         quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
         graph.GetComponent<MeshRendererComponent>().shader->SetFloat("time", time);
         graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
-        
-        mainRenderer.Draw();
+
+        mainRenderer.Update(mainScene.registry, deltaTime);
         /* Swap front and back buffers */
         glfwSwapBuffers(window.GetHandle());
 
         /* Poll for and process events */
         glfwPollEvents();
     }
-
+    glfwDestroyWindow(window.GetHandle());
     glfwTerminate();
     return 0;
 }

@@ -3,17 +3,19 @@
 #include "Base.hpp"
 #include "GLApiVersions.hpp"
 #include "VertexArray.hpp"
-#include "Camera.hpp"
 #include "Components.hpp"
 #include "Entity.hpp"
+#include "System.hpp"
+#include "Window.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 #include <map>
 #include <algorithm>
 #include <chrono>
+#include <memory>
 
-class Renderer{
+class Renderer : public System{
 private:
-    Camera* camera = nullptr;
-    glm::mat4 projectionMatrix = glm::mat4(1.0f);
+    Window* mainWindow = nullptr;
     int mvpDefaultBindingPoint = 0;
     int objectsIndexerDefaultLocation = 0;
     GLApiVersion version = GLApiVersion::V330;
@@ -47,8 +49,8 @@ private:
         Buffer mvpsUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
         std::vector<glm::mat4> mvps;
-        GLenum mode; //Equivalent to Topology
-        GLenum indicesType; //
+        GLenum mode; // Equivalent to Topology
+        GLenum indicesType; // Equivalent to mesh indices data type
         MeshIndexType indicesTypeEnum;
         int indicesTypeSize;
         DrawCmdBuffer drawCmdBuffer;
@@ -64,14 +66,17 @@ private:
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();
+    // Performs grouping operations for batching and instancing
+    void PrepareRenderGroups(entt::registry &registry);
+    // Executes the drawing at update call
+    void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform);
 public:
     void SetMVPBindingPoint(int bindingPoint);
     void SetObjectsIndexerLocation(int location);
-    void SetProjection(const glm::mat4 &projectionMatrix);
-    void SetMainCamera(Camera *mainCamera);
     void SetAPIVersion(GLApiVersion version);
-    void Prepare(entt::registry &registry);
-    void Draw();
+    void SetMainWindow(Window *mainWindow);
+    void Start(entt::registry &registry) override;
+    void Update(entt::registry &registry, float deltaTime) override;
     int GetDrawGroupsCount();
 };
 #endif

@@ -59,14 +59,10 @@ void Window::SetMouseButtonCallback(GLFWmousebuttonfun callback){
     glfwSetMouseButtonCallback(handle, callback);
 }
 
-glm::mat4 Window::GetProjectionMatrix() const{
-    glm::mat4 projection = glm::mat4(1.0f);
-    projection = glm::perspectiveLH(glm::radians(45.0f), (float)width/height, 0.1f, 100.0f);
-    return projection;
+int Window::GetWidth() const{
+    return this->width;
 }
 
-glm::mat4 Window::GetProjectionMatrix(float fovy, float near, float far) const{
-    glm::mat4 projection = glm::mat4(1.0f);
-    projection = glm::perspectiveLH(glm::radians(fovy), (float)width/height, near, far);
-    return projection;
+int Window::GetHeight() const{
+    return this->height;
 }

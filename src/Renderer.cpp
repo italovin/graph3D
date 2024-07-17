@@ -80,51 +80,19 @@ void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup)
     glVertexArrayElementBuffer(renderGroup.vao.GetHandle(), renderGroup.indicesBuffer.name);
 }
 
-void Renderer::Prepare(entt::registry &registry){
-    if(camera == nullptr){
-        return;
-    }
-    auto view = registry.view<MeshRendererComponent, TransformComponent>();
+void Renderer::PrepareRenderGroups(entt::registry &registry){
+    auto renderableView = registry.view<MeshRendererComponent, TransformComponent>();
 
     using Renderable = std::pair<std::reference_wrapper<MeshRendererComponent>,
     std::reference_wrapper<TransformComponent>>;
     std::vector<Renderable> componentsPairs;
-    componentsPairs.reserve(view.size_hint());
-    for(auto entity : view){
-        auto &meshRenderer = view.get<MeshRendererComponent>(entity);
-        auto &transform = view.get<TransformComponent>(entity);
+    componentsPairs.reserve(renderableView.size_hint());
+    for(auto entity : renderableView){
+        auto &meshRenderer = renderableView.get<MeshRendererComponent>(entity);
+        auto &transform = renderableView.get<TransformComponent>(entity);
         componentsPairs.emplace_back(meshRenderer, transform);
     }
-    /*
-    auto worldObjectsGroupsLinq = boolinq::from(componentsPairs)
-    .groupBy([](const std::pair<std::reference_wrapper<MeshRendererComponent>,
-    std::reference_wrapper<TransformComponent>> &pair){
-        return std::pair<ResourceHandle, ResourceHandle>
-        {pair.first.get().shader->resourceHandle, pair.first.get().mesh->resourceHandle} ;
-    });
-    auto worldObjectsGroups = worldObjectsGroupsLinq
-    .where([](const auto &groupPair){
-        return groupPair.second.count() >= 2;
-    })
-    .select([](const auto &group){
-        return group.second;
-    })
-    .toStdVector();
 
-
-
-    auto batchesPerShaderLinq = boolinq::from(componentsPairs)
-    .groupBy([](const std::pair<std::reference_wrapper<MeshRendererComponent>,
-    std::reference_wrapper<TransformComponent>> &pair){
-        return pair.first.get().shader->resourceHandle;
-    })
-    .where([](const auto &groupPair){
-        return groupPair.second.count() > 1;
-    })
-    .selectMany([](const auto &a){
-        return a.second.toStdVector();
-    });
-    auto s = batchesPerShaderLinq.toStdVector();*/
     struct ShaderGroup{
         Shader shader;
         std::vector<Renderable> batchGroup;
@@ -171,7 +139,7 @@ void Renderer::Prepare(entt::registry &registry){
         renderGroup.shader = shaderGroup.shader;
         MeshLayout layout;
         std::vector<DrawElementsIndirectCommand> commands;
-        
+
         auto& batchGroup = shaderGroup.GetBatchGroup();
         auto& instancesGroups = shaderGroup.GetInstancesGroups();
         size_t objectsCount = batchGroup.size();
@@ -179,7 +147,7 @@ void Renderer::Prepare(entt::registry &registry){
         if(!std::all_of(batchGroup.begin(), batchGroup.end(), [&](Renderable pair){
             return (pair.first.get().mesh->GetLayout() == batchGroup[0].first.get().mesh->GetLayout())
             && (pair.first.get().mesh->GetTopology() == batchGroup[0].first.get().mesh->GetTopology()
-            && (pair.first.get().mesh->GetIndicesType() == batchGroup[0].first.get().mesh->GetIndicesType()));  
+            && (pair.first.get().mesh->GetIndicesType() == batchGroup[0].first.get().mesh->GetIndicesType()));
         })){
             return;
         }
@@ -188,7 +156,7 @@ void Renderer::Prepare(entt::registry &registry){
             if(!std::all_of(instanceGroup.begin(), instanceGroup.end(), [&](Renderable pair){
             return (pair.first.get().mesh->GetLayout() == instanceGroup[0].first.get().mesh->GetLayout())
             && (pair.first.get().mesh->GetTopology() == instanceGroup[0].first.get().mesh->GetTopology())
-            && (pair.first.get().mesh->GetIndicesType() == instanceGroup[0].first.get().mesh->GetIndicesType());  
+            && (pair.first.get().mesh->GetIndicesType() == instanceGroup[0].first.get().mesh->GetIndicesType());
             })){
                 return;
             }
@@ -229,7 +197,7 @@ void Renderer::Prepare(entt::registry &registry){
 
         //Combines meshes attributes in a single data vector
         std::vector<MeshAttributeData> attributesBatchedChunks(attributesCount);
-        for(int i = 0; i < attributesBatchedChunks.size(); i++){ 
+        for(int i = 0; i < attributesBatchedChunks.size(); i++){
             attributesBatchedChunks[i].attribute = meshGlobalLayout.attributes[i];
             switch(attributesBatchedChunks[i].attribute.type){
                 case MeshAttributeType::Float:
@@ -256,7 +224,7 @@ void Renderer::Prepare(entt::registry &registry){
             case MeshIndexType::UnsignedInt:
             indicesBatchedChunk.indices = std::vector<unsigned int>(); break;
             case MeshIndexType::UnsignedShort:
-            indicesBatchedChunk.indices = std::vector<unsigned short>(); break; 
+            indicesBatchedChunk.indices = std::vector<unsigned short>(); break;
         }
 
         //Temp auxiliary variables
@@ -350,15 +318,10 @@ void Renderer::Prepare(entt::registry &registry){
 
             auto& objectTransform = object.second;
             renderGroup.transforms.emplace_back(objectTransform);
-            glm::mat4 model = glm::mat4(1.0f);
-            glm::mat4 scl = glm::scale(model, objectTransform.get().scale);
-            glm::mat4 rot = glm::mat4_cast(objectTransform.get().rotation);
-            glm::mat4 trn = glm::translate(model, objectTransform.get().position);
-            model = trn*rot*scl;
-            renderGroup.mvps.emplace_back(projectionMatrix * camera->GetViewMatrix() * model);
+            renderGroup.mvps.emplace_back(glm::mat4(1.0f));
             rendererIndex++;
         }
-        
+
         for(auto &&instanceGroup : instancesGroups){
             //All meshes in instance groups are the same
             auto& mesh = instanceGroup[0].first.get().mesh;
@@ -441,17 +404,12 @@ void Renderer::Prepare(entt::registry &registry){
             for(auto &&object : instanceGroup){
                 auto& objectTransform = object.second;
                 renderGroup.transforms.emplace_back(objectTransform);
-                glm::mat4 model = glm::mat4(1.0f);
-                glm::mat4 scl = glm::scale(model, objectTransform.get().scale);
-                glm::mat4 rot = glm::mat4_cast(objectTransform.get().rotation);
-                glm::mat4 trn = glm::translate(model, objectTransform.get().position);
-                model = trn*rot*scl;
-                renderGroup.mvps.emplace_back(projectionMatrix * camera->GetViewMatrix() * model);
+                renderGroup.mvps.emplace_back(glm::mat4(1.0f));
             }
             rendererIndex++;
         }
         renderGroup.commands = commands;
-        std::vector<GLuint> attributesBuffersNames(attributesCount); 
+        std::vector<GLuint> attributesBuffersNames(attributesCount);
         glCreateBuffers(attributesCount, attributesBuffersNames.data());
         std::vector<Buffer> attributesBuffers(attributesCount);
         for(int i = 0; i < attributesBuffers.size(); i++){
@@ -477,7 +435,7 @@ void Renderer::Prepare(entt::registry &registry){
         renderGroup.mvpsUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.mvps.size();
         renderGroup.mvpsUniformBuffer.stride = sizeof(glm::mat4);
         renderGroup.mvpsUniformBuffer.bindingPoint = this->mvpDefaultBindingPoint;
-        
+
         int index = 0;
         for(auto &&buffer : renderGroup.attributesBuffers){
             switch(attributesBatchedChunks[index].attribute.type){
@@ -498,7 +456,7 @@ void Renderer::Prepare(entt::registry &registry){
             }
             index++;
         }
-        
+
         switch(indicesBatchedChunk.type){
             case MeshIndexType::UnsignedInt:
             glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesBatchedChunk.indicesSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
@@ -526,10 +484,10 @@ void Renderer::Prepare(entt::registry &registry){
         GLsizeiptr drawCmdBufferSize = sizeof(DrawElementsIndirectCommand) * commands.size();
         renderGroup.drawCmdBuffer.bufferSize = drawCmdBufferSize;
         glNamedBufferStorage(drawCmdBuffer,
-                     drawCmdBufferSize, 
+                     drawCmdBufferSize,
                      commands.data(),
                      GL_DYNAMIC_STORAGE_BIT);
-        
+
         renderGroup.drawCmdBuffer.commandsCount = commands.size();
         this->renderGroups.emplace_back(renderGroup);
     }
@@ -543,20 +501,9 @@ void Renderer::SetObjectsIndexerLocation(int location){
     this->objectsIndexerDefaultLocation = location;
 }
 
-void Renderer::SetProjection(const glm::mat4 &projectionMatrix){
-    this->projectionMatrix = projectionMatrix;
-}
-
-void Renderer::SetMainCamera(Camera *mainCamera){
-    this->camera = mainCamera;
-}
-
 void Renderer::SetDrawFunction(){
-    if(version >= GLApiVersion::V400){
-        DrawFunction = &Renderer::DrawFunctionIndirect;
-    } else {
-        DrawFunction = &Renderer::DrawFunctionNonIndirect;
-    }
+    DrawFunction = version >= GLApiVersion::V400 ?
+    &Renderer::DrawFunctionIndirect : &Renderer::DrawFunctionNonIndirect;
 }
 
 void Renderer::DrawFunctionIndirect(RenderGroup &renderGroup){
@@ -588,24 +535,63 @@ void Renderer::SetAPIVersion(GLApiVersion version){
     SetDrawFunction();
 }
 
-void Renderer::Draw(){
+void Renderer::SetMainWindow(Window *mainWindow){
+    this->mainWindow = mainWindow;
+}
+
+void Renderer::Start(entt::registry &registry){
+    PrepareRenderGroups(registry);
+}
+
+void Renderer::Update(entt::registry &registry, float deltaTime){
+    auto cameraView = registry.view<CameraComponent, TransformComponent>();
+
+    CameraComponent mainCamera;
+    TransformComponent mainCameraTransform;
+    for(auto entity : cameraView){
+        auto &camera = cameraView.get<CameraComponent>(entity);
+        auto &cameraTransform = cameraView.get<TransformComponent>(entity);
+        if(camera.autoAspect)
+            camera.aspectRatio = (float)mainWindow->GetWidth()/(float)mainWindow->GetHeight();
+        if(camera.isMain){
+            mainCamera = camera;
+            mainCameraTransform = cameraTransform;
+            break;
+        }
+    }
+    Draw(mainCamera, mainCameraTransform);
+}
+
+void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform){
+    glm::mat4 mainCameraProjection = mainCamera.isPerspective ?
+    glm::perspectiveLH(glm::radians(mainCamera.fieldOfView), mainCamera.aspectRatio,
+    mainCamera.nearPlane, mainCamera.farPlane) :
+    glm::orthoLH(-mainCamera.aspectRatio * mainCamera.orthographicSize, mainCamera.aspectRatio * mainCamera.orthographicSize, -mainCamera.orthographicSize, mainCamera.orthographicSize, mainCamera.nearPlane, mainCamera.farPlane);
+
+    glm::mat4 mainCameraView;
+    {
+        glm::mat4 rotate = glm::mat4_cast(glm::conjugate(mainCameraTransform.rotation));
+        glm::mat4 translate = glm::mat4(1.0f);
+        translate = glm::translate(translate, -mainCameraTransform.position);
+        mainCameraView = rotate * translate;
+    }
     for(auto &&renderGroup : renderGroups){
         renderGroup.shader.Use();
         renderGroup.vao.Bind();
 
         for(int i = 0; i < renderGroup.transforms.size(); i++){
-                auto& transform = renderGroup.transforms[i];
-                glm::mat4 model = glm::mat4(1.0f);
-                glm::mat4 scl = glm::scale(model, transform.get().scale);
-                glm::mat4 rot = glm::mat4_cast(transform.get().rotation);
-                glm::mat4 trn = glm::translate(model, transform.get().position);
-                model = trn*rot*scl;
-                renderGroup.mvps[i] = projectionMatrix * camera->GetViewMatrix() * model;
+            auto& transform = renderGroup.transforms[i];
+            glm::mat4 model = glm::mat4(1.0f);
+            glm::mat4 scl = glm::scale(model, transform.get().scale);
+            glm::mat4 rot = glm::mat4_cast(transform.get().rotation);
+            glm::mat4 trn = glm::translate(model, transform.get().position);
+            model = trn*rot*scl;
+            renderGroup.mvps[i] = mainCameraProjection * mainCameraView * model;
         }
 
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         BufferSubDataMVPs(renderGroup);
-        
+
         (this->*DrawFunction)(renderGroup);
     }
 }
