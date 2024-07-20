@@ -389,8 +389,8 @@ int main(int argc, char *argv[])
             glm::vec3 forward = freeCameraTransform.Forward();
             float cameraSpeed = static_cast<float>(1.5 * deltaTime);
 
-            float horizontalKeyboard = Input::GetAxis(KEYB_AXIS_HORIZONTAL);
-            float verticalKeyboard = Input::GetAxis(KEYB_AXIS_VERTICAL);
+            float horizontalKeyboard = Input::GetAxis(KeyboardAxis::Horizontal);
+            float verticalKeyboard = Input::GetAxis(KeyboardAxis::Vertical);
             if (Input::GetKeyHeld(GLFW_KEY_SPACE)){
                 freeCameraTransform.position += cameraSpeed * up;
             }

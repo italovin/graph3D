@@ -6,25 +6,25 @@
 #include <map>
 #include <iostream>
 
-enum KeyboardAxis{
-    KEYB_AXIS_HORIZONTAL,
-    KEYB_AXIS_VERTICAL
+enum class KeyboardAxis{
+    Horizontal,
+    Vertical
 };
 
-enum KeyState{
-    KEY_HELD, //key is helding down; in this state at second input update
-    KEY_DOWN, //key is down at exact input udpate or frame
-    KEY_UP, //key is up at exact input udpate or frame
-    KEY_RELEASE, //key is released for long
-    KEY_UNKNOWN //undefined state
+enum class KeyState{
+    Held, //key is helding down; in this state at second input update
+    Down, //key is down at exact input udpate or frame
+    Up, //key is up at exact input udpate or frame
+    Release, //key is released for long
+    Unknown //undefined state
 };
 
-enum MouseButtonState{
-    MOUSE_BTN_HELD,
-    MOUSE_BTN_DOWN,
-    MOUSE_BTN_UP,
-    MOUSE_BTN_RELEASE,
-    MOUSE_BTN_UNKNOWN
+enum class MouseButtonState{
+    Held,
+    Down,
+    Up,
+    Release,
+    Unknown
 };
 
 class Input{
