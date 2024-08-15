@@ -1,6 +1,7 @@
 #ifndef SHADER_BUILDER_H
 #define SHADER_BUILDER_H
 #include <map>
+#include <unordered_map>
 #include <sstream>
 #include "ShaderObject.hpp"
 #include "ShaderTypes.hpp"
