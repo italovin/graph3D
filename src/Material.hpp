@@ -22,11 +22,12 @@ struct MaterialParameter{
 class Material{
 private:
     std::unordered_map<std::string, MaterialParameter> parameters;
-    Ref<Shader> shader;
-public:
-    Material(Ref<Shader> shader);
-    void SetShader(Ref<Shader> shader);
     void AddParameter(const std::string &name, MaterialParameterType type);
+    void DeleteParameters();
+    MaterialParameterType GetParameterType(GLenum type);
+public:
+    Material(const Ref<Shader> &shader);
+    void SetShader(const Ref<Shader> &shader);
     void SetParameterMap(const std::string &name, Ref<Texture> value);
     void SetParameterFloat(const std::string &name, float value);
     void SetParameterBoolean(const std::string &name, bool value);

@@ -1,11 +1,43 @@
 #include "Material.hpp"
 
-void Material::AddParameter(const std::string &name, MaterialParameterType type){
+Material::Material(const Ref<Shader> &shader)
+{
+    SetShader(shader);
+}
+
+void Material::SetShader(const Ref<Shader> &shader)
+{
+    if(parameters.size() > 0)
+        DeleteParameters();
+    
+    auto uniforms = shader->GetUniforms();
+    for(auto &&uniform : uniforms){
+        AddParameter(uniform.first, GetParameterType(uniform.second.type));
+    }
+}
+
+void Material::AddParameter(const std::string &name, MaterialParameterType type)
+{
     MaterialParameter parameter;
     parameter.data = std::variant<Ref<Texture>, float, bool, glm::vec4>();
     parameter.type = type;
     parameters[name] = parameter;
 }
+
+void Material::DeleteParameters(){
+    parameters.clear();
+}
+
+MaterialParameterType Material::GetParameterType(GLenum type){
+    switch(type){
+        case GL_SAMPLER_2D_ARRAY: return MaterialParameterType::Map;
+        case GL_FLOAT: return MaterialParameterType::Float;
+        case GL_BOOL: return MaterialParameterType::Boolean;
+        case GL_FLOAT_VEC4: return MaterialParameterType::Vector4;
+        default: return MaterialParameterType::Vector4;
+    }
+}
+
 void Material::SetParameterMap(const std::string &name, Ref<Texture> value)
 {
     if(parameters.count(name) > 0)

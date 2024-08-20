@@ -45,5 +45,6 @@ public:
     void DetachShaderObject(ShaderObject &&shaderObject);
     //This method will detach the shader and delete it, then shader cannot be attached to other program
     void RemoveShaderObject(const ShaderObject &shaderObject);
+    std::unordered_map<std::string, uniform_info> GetUniforms();
 };
 #endif

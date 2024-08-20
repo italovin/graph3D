@@ -139,3 +139,8 @@ void Shader::RemoveShaderObject(const ShaderObject &shaderObject){
     DetachShaderObject(shaderObject);
     shaderObject.Delete();
 }
+
+std::unordered_map<std::string, uniform_info> Shader::GetUniforms()
+{
+    return this->uniforms;
+}
