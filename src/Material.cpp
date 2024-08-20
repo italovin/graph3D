@@ -16,6 +16,10 @@ void Material::SetShader(const Ref<Shader> &shader)
     }
 }
 
+Ref<Shader> Material::GetShader() const{
+    return this->shader;
+}
+
 void Material::AddParameter(const std::string &name, MaterialParameterType type)
 {
     MaterialParameter parameter;
