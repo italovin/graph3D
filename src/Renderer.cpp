@@ -108,7 +108,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
     std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderMap;
     for(auto &&x: componentsPairs){
-        shaderMap[x.first.get().shader->resourceHandle].emplace_back(std::move(x));
+        shaderMap[x.first.get().material->GetShader()->resourceHandle].emplace_back(std::move(x));
     }
     std::vector<std::vector<Renderable>> result;
     for(auto &&x: shaderMap){
@@ -116,7 +116,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     }
     for(auto &&group : result){
         ShaderGroup shaderGroup;
-        shaderGroup.shader = *(group[0].first.get().shader);
+        shaderGroup.shader = *(group[0].first.get().material->GetShader());
         std::unordered_map<ResourceHandle, std::vector<Renderable>> groupMap;
         for(auto &&x : group){
             groupMap[x.first.get().mesh->resourceHandle].emplace_back(std::move(x));

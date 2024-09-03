@@ -2,16 +2,16 @@
 #define COMPONENTS_H
 #include "BasicComponents.hpp"
 #include "Base.hpp"
-#include "Shader.hpp"
+#include "Material.hpp"
 #include "Mesh.hpp"
 
 struct MeshRendererComponent{
     // Reference to active mesh resource
     Ref<Mesh> mesh;
     // Reference to active shader program
-    Ref<Shader> shader;
-    MeshRendererComponent(const Ref<Mesh> &mesh, const Ref<Shader> &shader) :
-    mesh(mesh), shader(shader){}
+    Ref<Material> material;
+    MeshRendererComponent(const Ref<Mesh> &mesh, const Ref<Material> &material) :
+    mesh(mesh), material(material){}
 };
 
 struct CameraComponent{

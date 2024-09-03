@@ -1,22 +1,22 @@
 #include "Material.hpp"
 
-Material::Material(const Ref<Shader> &shader)
+Material::Material(Shader &shader)
 {
     SetShader(shader);
 }
 
-void Material::SetShader(const Ref<Shader> &shader)
+void Material::SetShader(Shader &shader)
 {
     if(parameters.size() > 0)
         DeleteParameters();
     
-    auto uniforms = shader->GetUniforms();
+    auto uniforms = shader.GetUniforms();
     for(auto &&uniform : uniforms){
         AddParameter(uniform.first, GetParameterType(uniform.second.type));
     }
 }
 
-Ref<Shader> Material::GetShader() const{
+std::optional<Shader&> Material::GetShader() const{
     return this->shader;
 }
 

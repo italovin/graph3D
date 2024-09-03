@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << size << " bytes." << std::endl;
     GLint size2;
     glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &size2);
-    std::cout << "GL_MAX_VERTEX_UNIFORM_VECTORS is " << size2 << std::endl;
+    std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << size2 << std::endl;
     std::cout << glGetString(GL_VERSION) << std::endl;
     std::cout << glGetString(GL_VENDOR) << std::endl;
 
