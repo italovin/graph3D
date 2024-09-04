@@ -3,6 +3,7 @@
 #include <map>
 #include <unordered_map>
 #include <sstream>
+#include <string>
 #include "ShaderObject.hpp"
 #include "ShaderTypes.hpp"
 
@@ -15,9 +16,9 @@ private:
     bool clearOnBuild = false;
     int version = 330;
     GLenum shaderType;
-    std::stringstream versionStream;
-    std::stringstream attributesStream;
-    std::stringstream mainStream;
+    std::string versionString;
+    std::string attributesString;
+    std::string mainString;
     const std::string GLSLTypeToString(ShaderDataType type);
 public:
     ShaderBuilder(bool clearOnBuild);

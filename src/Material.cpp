@@ -16,7 +16,7 @@ void Material::SetShader(Shader &shader)
     }
 }
 
-std::optional<Shader&> Material::GetShader() const{
+std::optional<std::reference_wrapper<Shader>> Material::GetShader() const{
     return this->shader;
 }
 

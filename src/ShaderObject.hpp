@@ -11,21 +11,16 @@ class ShaderObject {
 private:
     GLuint handle;
     GLenum shaderType;
-    std::string LoadShaderSourceCore(const char* shaderPath);
-    std::string LoadShaderSource(const char *shaderPath);
-    std::string LoadShaderSource(std::string shaderPath);
+    std::string LoadShaderSource(const std::string &shaderPath);
     void ConstructCore(GLenum shaderType);
     bool debugInfo;
 public:
     ShaderObject(GLenum shaderType);
-    ShaderObject(GLenum shaderType, const char *shaderPath);
-    ShaderObject(GLenum shaderType, const std::string &shaderPath);
     ShaderObject(GLenum shaderType, bool debugInfo);
-    ShaderObject(GLenum shaderType, const char *shaderPath, bool debugInfo);
+    ShaderObject(GLenum shaderType, const std::string &shaderPath);
     ShaderObject(GLenum shaderType, const std::string &shaderPath, bool debugInfo);
-    void CompileShaderObject(const std::string &source);
-    void SetupShaderObject(const char *shaderPath);
-    void SetupShaderObject(const std::string &shaderPath);
+    void Compile(const std::string &source);
+    void CompileFromPath(const std::string &shaderPath);
     GLuint GetHandle() const;
     GLenum GetType() const;
     //This method will leave the handle useless

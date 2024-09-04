@@ -30,7 +30,7 @@ ShaderBuilder& ShaderBuilder::SetVersion(int version){
     if(version == 0)
         version = 330;
     this->version = version;
-    versionStream << "#version " << version << "\n";
+    versionString += "#version " + std::to_string(version) + "\n";
     return *this;
 }
 
@@ -42,47 +42,47 @@ ShaderBuilder& ShaderBuilder::SetShaderType(GLenum shaderType){
 ShaderBuilder& ShaderBuilder::AddInput(ShaderDataType type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "in " << typeString << " " << inputName << ";\n";
+    attributesString += "in " + typeString + " " + inputName + ";\n";
     return *this;
 }
 
 ShaderBuilder& ShaderBuilder::AddInput(int location, ShaderDataType type, const std::string & inputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "layout (location = " << location << ") in " << typeString << " " << inputName << ";\n";
+    attributesString += "layout (location = " + std::to_string(location) + ") in " + typeString + " " + inputName + ";\n";
     return *this;
 }
 ShaderBuilder& ShaderBuilder::AddUniform(ShaderDataType type, const std::string &uniformName){
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "uniform " << typeString << " " << uniformName << ";\n";
+    attributesString += "uniform " + typeString + " " + uniformName + ";\n";
     return *this;
 }
 ShaderBuilder& ShaderBuilder::AddUniformBlock(const std::string &body, const std::string &uniformName){
-    attributesStream << "layout (std140) uniform " << uniformName << "{\n" << body << "};\n";
+    attributesString += "layout (std140) uniform " + uniformName + "{\n" + body + "};\n";
     return *this;
 }
 
 ShaderBuilder& ShaderBuilder::AddOutput(ShaderDataType type, const std::string & outputName)
 {
     std::string typeString = GLSLTypeToString(type);
-    attributesStream << "out " << typeString << " " << outputName << ";\n";
+    attributesString += "out " + typeString + " " + outputName + ";\n";
     return *this;
 }
 
 ShaderBuilder& ShaderBuilder::SetMain(const std::string &body){
-    mainStream = std::stringstream("void main(){\n" + body + "}\n");
+    mainString = "void main(){\n" + body + "}\n";
     return *this;
 }
 
 
 ShaderObject ShaderBuilder::Build(){
     ShaderObject shaderObject(shaderType);
-    std::string source = versionStream.str() + attributesStream.str() + mainStream.str();
-    shaderObject.CompileShaderObject(source);
+    std::string source = versionString + attributesString + mainString;
+    shaderObject.Compile(source);
     if(clearOnBuild){
-        versionStream = std::stringstream();
-        attributesStream = std::stringstream();
-        mainStream = std::stringstream();
+        versionString = std::string();
+        attributesString = std::string();
+        mainString = std::string();
     }
     return shaderObject;
 }

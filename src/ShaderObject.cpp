@@ -10,16 +10,10 @@ ShaderObject::ShaderObject(GLenum shaderType){
     ConstructCore(shaderType);
 }
 
-ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath){
-    debugInfo = false;
-    ConstructCore(shaderType);
-    SetupShaderObject(shaderPath);
-}
-
 ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath){
     debugInfo = false;
     ConstructCore(shaderType);
-    SetupShaderObject(shaderPath);
+    CompileFromPath(shaderPath);
 }
 
 ShaderObject::ShaderObject(GLenum shaderType, bool debugInfo){
@@ -27,21 +21,15 @@ ShaderObject::ShaderObject(GLenum shaderType, bool debugInfo){
     ConstructCore(shaderType);
 }
 
-ShaderObject::ShaderObject(GLenum shaderType, const char *shaderPath, bool debugInfo){
-    this->debugInfo = debugInfo;
-    ConstructCore(shaderType);
-    SetupShaderObject(shaderPath);
-}
-
 ShaderObject::ShaderObject(GLenum shaderType, const std::string &shaderPath, bool debugInfo){
     this->debugInfo = debugInfo;
     ConstructCore(shaderType);
-    SetupShaderObject(shaderPath);
+    CompileFromPath(shaderPath);
 }
 
-void ShaderObject::CompileShaderObject(const std::string &source){
-    const char * sourceData = source.data();
-    glShaderSource(handle, 1, &sourceData, NULL);
+void ShaderObject::Compile(const std::string &source){
+    const GLchar * sourceData = source.data();
+    glShaderSource(handle, 1, &sourceData, nullptr);
     glCompileShader(handle);
     if(debugInfo){
         int  success;
@@ -67,7 +55,7 @@ void ShaderObject::CompileShaderObject(const std::string &source){
     
 }
 
-std::string ShaderObject::LoadShaderSourceCore(const char *shaderPath){
+std::string ShaderObject::LoadShaderSource(const std::string &shaderPath){
     std::ifstream shaderFile;
     std::string shaderCodeString;
     shaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
@@ -87,19 +75,9 @@ std::string ShaderObject::LoadShaderSourceCore(const char *shaderPath){
     return shaderCodeString;
 }
 
-std::string ShaderObject::LoadShaderSource(const char *shaderPath){
-    return LoadShaderSourceCore(shaderPath);
-}
-std::string ShaderObject::LoadShaderSource(const std::string shaderPath){
-    return LoadShaderSourceCore(shaderPath.c_str());
-}
-void ShaderObject::SetupShaderObject(const char *shaderPath){
+void ShaderObject::CompileFromPath(const std::string &shaderPath){
     std::string source = LoadShaderSource(shaderPath);
-    CompileShaderObject(source);
-}
-void ShaderObject::SetupShaderObject(const std::string &shaderPath){
-    std::string source = LoadShaderSource(shaderPath);
-    CompileShaderObject(source);
+    Compile(source);
 }
 
 GLuint ShaderObject::GetHandle() const{

@@ -29,7 +29,7 @@ private:
 public:
     Material(Shader &shader);
     void SetShader(Shader &shader);
-    std::optional<Shader&> GetShader() const;
+    std::optional<std::reference_wrapper<Shader>> GetShader() const;
     void SetParameterMap(const std::string &name, Ref<Texture> value);
     void SetParameterFloat(const std::string &name, float value);
     void SetParameterBoolean(const std::string &name, bool value);
