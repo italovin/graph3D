@@ -1,6 +1,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <optional>
 #include "Shader.hpp"
 #include "ShaderTypes.hpp"
 
@@ -25,6 +26,8 @@ private:
     ShaderStageCode tesselationEvaluationShader;
     ShaderStageCode geometryShader;   
     const std::string GLSLTypeToString(ShaderDataType type);
+    void ProcessShaderStageCode(const ShaderStageCode &shaderStageCode, std::string &mainString,
+    std::string &outsideString, std::string &outsideStringOuts);
 public:
     void SetVertexToPipeline(bool enabled);
     void SetFragmentToPipeline(bool enabled);
@@ -36,5 +39,10 @@ public:
     void AddTesselationControlParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType);
     void AddTesselationEvaluationParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType);
     void AddGeometryParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType);
-    Shader Generate();
+    void SetVertexMain(const std::string &main);
+    void SetFragmentMain(const std::string &main);
+    void SetTesselationControlMain(const std::string &main);
+    void SetTesselationEvaluationMain(const std::string &main);
+    void SetGeometryMain(const std::string &main);
+    std::optional<Shader> Generate();
 };
