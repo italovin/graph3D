@@ -1,23 +1,18 @@
 #include "Material.hpp"
 
-Material::Material(Shader &shader)
-{
-    SetShader(shader);
-}
-
-void Material::SetShader(Shader &shader)
+Material::Material(ShaderCode &shaderCode)
 {
     if(parameters.size() > 0)
         DeleteParameters();
     
-    auto uniforms = shader.GetUniforms();
+    auto uniforms = shaderCode.GetFragmentUniforms();
     for(auto &&uniform : uniforms){
-        AddParameter(uniform.first, GetParameterType(uniform.second.type));
+        AddParameter(uniform.first, GetParameterType(uniform.second.dataType));
     }
 }
 
-std::optional<std::reference_wrapper<Shader>> Material::GetShader() const{
-    return this->shader;
+std::optional<std::reference_wrapper<ShaderCode>> Material::GetShaderCode() const{
+    return this->shaderCode;
 }
 
 void Material::AddParameter(const std::string &name, MaterialParameterType type)
@@ -32,12 +27,12 @@ void Material::DeleteParameters(){
     parameters.clear();
 }
 
-MaterialParameterType Material::GetParameterType(GLenum type){
+MaterialParameterType Material::GetParameterType(ShaderDataType type){
     switch(type){
-        case GL_SAMPLER_2D_ARRAY: return MaterialParameterType::Map;
-        case GL_FLOAT: return MaterialParameterType::Float;
-        case GL_BOOL: return MaterialParameterType::Boolean;
-        case GL_FLOAT_VEC4: return MaterialParameterType::Vector4;
+        case ShaderDataType::Sampler2DArray : return MaterialParameterType::Map;
+        case ShaderDataType::Float : return MaterialParameterType::Float;
+        case ShaderDataType::Bool : return MaterialParameterType::Boolean;
+        case ShaderDataType::Float4 : return MaterialParameterType::Vector4;
         default: return MaterialParameterType::Vector4;
     }
 }

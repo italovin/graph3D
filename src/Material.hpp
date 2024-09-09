@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include "Base.hpp"
 #include "Texture.hpp"
-#include "Shader.hpp"
+#include "ShaderCode.hpp"
 
 enum class MaterialParameterType{
     Map,
@@ -22,14 +22,14 @@ struct MaterialParameter{
 class Material : public Resource {
 private:
     std::unordered_map<std::string, MaterialParameter> parameters;
-    std::optional<std::reference_wrapper<Shader>> shader;
+    std::optional<std::reference_wrapper<ShaderCode>> shaderCode;
     void AddParameter(const std::string &name, MaterialParameterType type);
     void DeleteParameters();
-    MaterialParameterType GetParameterType(GLenum type);
+    MaterialParameterType GetParameterType(ShaderDataType type);
 public:
-    Material(Shader &shader);
-    void SetShader(Shader &shader);
-    std::optional<std::reference_wrapper<Shader>> GetShader() const;
+    Material() = delete;
+    Material(ShaderCode &shaderCode);
+    std::optional<std::reference_wrapper<ShaderCode>> GetShaderCode() const;
     void SetParameterMap(const std::string &name, Ref<Texture> value);
     void SetParameterFloat(const std::string &name, float value);
     void SetParameterBoolean(const std::string &name, bool value);

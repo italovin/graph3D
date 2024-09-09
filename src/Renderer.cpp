@@ -107,9 +107,23 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     std::vector<ShaderGroup> shaderGroups;
 
     std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderMap;
+    std::map<std::pair<ResourceHandle, int>, Shader> shaderCache; // (ShaderCodeId, Index)  - Shader
+    int shaderCodeCount = 0;
     for(auto &&x: componentsPairs){
-        if(x.first.get().material->GetShader().has_value())
-        shaderMap[x.first.get().material->GetShader().value().get().resourceHandle].emplace_back(std::move(x));
+        auto shaderCodeOpt = x.first.get().material->GetShaderCode();
+        if(!shaderCodeOpt.has_value()){
+            continue;
+        }
+        auto shaderCode = shaderCodeOpt.value();
+        if(shaderCache.count(std::make_pair(shaderCode.get().resourceHandle, ) == 0){
+            std::optional<Shader> shaderGenerated = shaderCode.get().Generate();
+            if(!shaderGenerated.has_value())
+                continue;
+            shaderCache[shaderCode.get().resourceHandle] = shaderGenerated.value();
+        }
+        if(shaderMap.count(shaderCode.value().get().resourceHandle) > 0){{
+            shaderMap[x.first.get().material->GetShader().value().get().resourceHandle].emplace_back(std::move(x));
+        }
     }
     std::vector<std::vector<Renderable>> result;
     for(auto &&x: shaderMap){

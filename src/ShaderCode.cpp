@@ -24,6 +24,10 @@ const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){
     }
 }
 
+void ShaderCode::SetVersion(int version){
+    this->version = version;
+}
+
 void ShaderCode::SetVertexToPipeline(bool enabled)
 {
     vertexShader.enabled = enabled;
@@ -49,44 +53,52 @@ void ShaderCode::SetGeometryToPipeline(bool enabled)
     geometryShader.enabled = enabled;
 }
 
-void ShaderCode::AddVertexParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType)
+void ShaderCode::AddVertexAttribute(const std::string &name, ShaderDataType dataType, std::optional<int> location)
 {
     ShaderCodeParameter parameter;
+    parameter.location = location;
     parameter.dataType = dataType;
-    parameter.qualifierType = qualifierType;
-    vertexShader.parameters[name] = parameter; 
+    vertexShader.inputs[name] = parameter; 
 }
 
-void ShaderCode::AddFragmentParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType)
+void ShaderCode::AddVertexOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
 {
     ShaderCodeParameter parameter;
+    parameter.location = location;
     parameter.dataType = dataType;
-    parameter.qualifierType = qualifierType;
-    fragmentShader.parameters[name] = parameter; 
+    vertexShader.outputs[name] = parameter; 
 }
 
-void ShaderCode::AddTesselationControlParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType)
+void ShaderCode::AddFragmentOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
 {
     ShaderCodeParameter parameter;
+    parameter.location = location;
     parameter.dataType = dataType;
-    parameter.qualifierType = qualifierType;
-    tesselationControlShader.parameters[name] = parameter; 
+    fragmentShader.outputs[name] = parameter; 
 }
 
-void ShaderCode::AddTesselationEvaluationParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType)
+void ShaderCode::AddTesselationControlOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
 {
     ShaderCodeParameter parameter;
+    parameter.location = location;
     parameter.dataType = dataType;
-    parameter.qualifierType = qualifierType;
-    tesselationEvaluationShader.parameters[name] = parameter; 
+    tesselationControlShader.outputs[name] = parameter; 
 }
 
-void ShaderCode::AddGeometryParameter(const std::string &name, ShaderDataType dataType, ShaderQualifierType qualifierType)
+void ShaderCode::AddTesselationEvaluationOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
 {
     ShaderCodeParameter parameter;
+    parameter.location = location;
     parameter.dataType = dataType;
-    parameter.qualifierType = qualifierType;
-    geometryShader.parameters[name] = parameter; 
+    tesselationEvaluationShader.outputs[name] = parameter; 
+}
+
+void ShaderCode::AddGeometryOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
+{
+    ShaderCodeParameter parameter;
+    parameter.location = location;
+    parameter.dataType = dataType;
+    geometryShader.outputs[name] = parameter; 
 }
 
 void ShaderCode::SetVertexMain(const std::string &main){
@@ -105,24 +117,34 @@ void ShaderCode::SetGeometryMain(const std::string &main){
     geometryShader.main = main;
 }
 
-void ShaderCode::ProcessShaderStageCode(const ShaderStageCode &shaderStageCode, std::string &mainString,
-std::string &outsideString, std::string &outsideStringOuts){
-    mainString = shaderStageCode.main;
-    for(auto &&parameter : shaderStageCode.parameters){
-        std::string qualifierString;
-        bool isInOut = false;
-        if(parameter.second.qualifierType == ShaderQualifierType::In_Out){
-            qualifierString = "in";
-            isInOut = true;
-        } else if(parameter.second.qualifierType == ShaderQualifierType::Uniform)
-            qualifierString = "uniform";
+void ShaderCode::ProcessVertexShaderCode(const ShaderStageCode &shaderStageCode, std::string &outsideString)
+{
+    for(auto &&input : shaderStageCode.inputs){
+        std::string locationString;
+        if(input.second.location.has_value())
+            locationString = "layout (location=" + std::to_string(input.second.location.value()) + ")";
         
-        outsideString += qualifierString + " " + GLSLTypeToString(parameter.second.dataType) +
-        + " " + parameter.first + ";";
-        if(isInOut){
-            outsideStringOuts += "out " + GLSLTypeToString(parameter.second.dataType) 
-            + " " + parameter.first + ";";
-        }
+        outsideString += locationString + "in " + GLSLTypeToString(input.second.dataType) 
+        + " " + input.first + ";\n";
+    }
+}
+
+void ShaderCode::ProcessShaderStageCode(const ShaderStageCode &shaderStageCode, std::string &mainString,
+std::string &outsideString, std::string &outsideStringIns){
+    mainString = shaderStageCode.main;
+    for(auto &&parameter : shaderStageCode.outputs){
+        std::string locationString;
+        if(parameter.second.location.has_value())
+            locationString = "layout (location=" + std::to_string(parameter.second.location.value()) + ")";
+        
+        outsideString += locationString + "out " + GLSLTypeToString(parameter.second.dataType) +
+        + " " + parameter.first + ";\n";
+        outsideStringIns += locationString + "in " + GLSLTypeToString(parameter.second.dataType) 
+        + " " + parameter.first + ";\n";
+    }
+    for(auto &&parameter : shaderStageCode.uniforms){
+        outsideString += "uniform " + GLSLTypeToString(parameter.second.dataType) +
+        + " " + parameter.first + ";\n";
     }
 }
 
@@ -154,35 +176,43 @@ std::optional<Shader> ShaderCode::Generate()
     if(fragmentShader.enabled)
         shaderObjects.emplace_back(ShaderObject(GL_FRAGMENT_SHADER));
 
-    std::string outsideStringOutsPrevious;
+    std::string outsideStringInsPrevious;
     for(int i = 0; i < shaderObjects.size(); i++){
         std::string versionString = "#version " + std::to_string(version) + "\n";
         std::string mainString;
         std::string outsideString;
-        std::string outsideStringOuts;
+        std::string outsideStringIns;
+        std::string shaderSource;
         if(shaderObjects[i].GetType() == GL_VERTEX_SHADER){
-            ProcessShaderStageCode(vertexShader, mainString, outsideString, outsideStringOuts);
+            ProcessVertexShaderCode(vertexShader, outsideString);
+            ProcessShaderStageCode(vertexShader, mainString, outsideString, outsideStringIns);
         } else if(shaderObjects[i].GetType() == GL_TESS_CONTROL_SHADER){
-            ProcessShaderStageCode(tesselationControlShader, mainString, outsideString, outsideStringOuts);
+            ProcessShaderStageCode(tesselationControlShader, mainString, outsideString, outsideStringIns);
         } else if(shaderObjects[i].GetType() == GL_TESS_EVALUATION_SHADER){
-            ProcessShaderStageCode(tesselationEvaluationShader, mainString, outsideString, outsideStringOuts);
+            ProcessShaderStageCode(tesselationEvaluationShader, mainString, outsideString, outsideStringIns);
         } else if(shaderObjects[i].GetType() == GL_GEOMETRY_SHADER){
-            ProcessShaderStageCode(geometryShader, mainString, outsideString, outsideStringOuts);
+            ProcessShaderStageCode(geometryShader, mainString, outsideString, outsideStringIns);
         } else if(shaderObjects[i].GetType() == GL_FRAGMENT_SHADER){
-            ProcessShaderStageCode(fragmentShader, mainString, outsideString, outsideStringOuts);
+            ProcessShaderStageCode(fragmentShader, mainString, outsideString, outsideStringIns);
         }
         if(i == 0){
-            std::string shaderSource = versionString + outsideString + 
+            shaderSource = versionString + outsideString + 
             "void main(){" +
             mainString + "}";
         } else {
-            std::string shaderSource = versionString + outsideString + outsideStringOutsPrevious + 
+            shaderSource = versionString + outsideString + outsideStringInsPrevious + 
             "void main(){" +
             mainString + "}";
         }
-        outsideStringOutsPrevious = outsideStringOuts;
+        outsideStringInsPrevious = outsideStringIns;
+
+        shaderObjects[i].Compile(shaderSource);
     }
     
     Shader shader = Shader(shaderObjects, false);
     return shader;
+}
+
+std::unordered_map<std::string, ShaderCodeParameter> ShaderCode::GetFragmentUniforms() const{
+    return fragmentShader.uniforms;
 }
