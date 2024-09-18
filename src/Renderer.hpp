@@ -49,6 +49,8 @@ private:
         Buffer mvpsUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
         std::vector<glm::mat4> mvps;
+        Buffer materialUniformBuffer;
+        std::vector<std::reference_wrapper<Material>> materials;
         GLenum mode; // Equivalent to Topology
         GLenum indicesType; // Equivalent to mesh indices data type
         MeshIndexType indicesTypeEnum;

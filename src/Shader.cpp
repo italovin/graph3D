@@ -32,28 +32,37 @@ Shader::Shader(){
     handle = glCreateProgram();
 }
 
+Shader::Shader(const Shader &other)
+{
+    handle = other.handle;
+    debugInfo = other.debugInfo;
+    uniforms = other.uniforms;
+}
+
+Shader &Shader::operator=(const Shader &other)
+{
+    handle = other.handle;
+    debugInfo = other.debugInfo;
+    uniforms = other.uniforms;
+    return *this;
+}
+
 Shader::Shader(bool debugInfo){
     this->debugInfo = debugInfo;
     handle = glCreateProgram();
 }
-Shader::Shader(const std::vector<ShaderObject> &shaderObjects){
-    Shader(std::vector<ShaderObject>(shaderObjects));
-}
-Shader::Shader(std::vector<ShaderObject> &&shaderObjects){
-    debugInfo = false;
+Shader::Shader(const std::vector<ShaderObject> &shaderObjects, bool debugInfo){
+    this->debugInfo = debugInfo;
     handle = glCreateProgram();
     for (auto &&shaderObject : shaderObjects)
     {
-        AttachShaderObject(std::move(shaderObject));
+        AttachShaderObject(shaderObject);
     }
     Link();
     for (auto &&shaderObject : shaderObjects)
     {
-        DetachShaderObject(std::move(shaderObject));
+        DetachShaderObject(shaderObject);
     }
-}
-Shader::Shader(const std::vector<ShaderObject> &shaderObjects, bool debugInfo){
-    Shader(std::vector<ShaderObject>(shaderObjects), debugInfo);
 }
 Shader::Shader(std::vector<ShaderObject> &&shaderObjects, bool debugInfo){
     this->debugInfo = debugInfo;

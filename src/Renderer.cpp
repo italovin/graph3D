@@ -107,33 +107,41 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     std::vector<ShaderGroup> shaderGroups;
 
     std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderMap;
-    std::map<std::pair<ResourceHandle, int>, Shader> shaderCache; // (ShaderCodeId, Index)  - Shader
-    int shaderCodeCount = 0;
+    std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderCodeMap;
+    std::unordered_map<ResourceHandle, Shader> shaderCache;
     for(auto &&x: componentsPairs){
         auto shaderCodeOpt = x.first.get().material->GetShaderCode();
         if(!shaderCodeOpt.has_value()){
             continue;
         }
         auto shaderCode = shaderCodeOpt.value();
-        if(shaderCache.count(std::make_pair(shaderCode.get().resourceHandle, ) == 0){
-            std::optional<Shader> shaderGenerated = shaderCode.get().Generate();
-            if(!shaderGenerated.has_value())
-                continue;
-            shaderCache[shaderCode.get().resourceHandle] = shaderGenerated.value();
+        shaderCodeMap[shaderCode.get().resourceHandle].emplace_back(std::move(x));
+    }
+    for(auto &&x : shaderCodeMap){
+        std::optional<Shader> shaderGeneratedOpt = x.second[0].first.get().material->GetShaderCode().value().get().Generate();
+        if(!shaderGeneratedOpt.has_value())
+            continue;
+        Shader shaderGeneratedGlobal = shaderGeneratedOpt.value();
+        std::vector<std::vector<Renderable>> shaderGeneratedGroups;
+        for(size_t i = 0; i < x.second.size(); i+=512){
+            std::vector<Renderable> vec(x.second.begin() + i, x.second.begin() + std::min(i+512, x.second.size()));
+            shaderGeneratedGroups.emplace_back(std::move(vec));
         }
-        if(shaderMap.count(shaderCode.value().get().resourceHandle) > 0){{
-            shaderMap[x.first.get().material->GetShader().value().get().resourceHandle].emplace_back(std::move(x));
+        for(auto &&group : shaderGeneratedGroups){
+            Shader shaderGenerated = shaderGeneratedGlobal;
+            // Setting shader mvp biding point;
+            shaderGenerated.SetBlockBinding("mvpMatrices", mvpDefaultBindingPoint);
+            for(auto &&x : group){
+                shaderMap[shaderGenerated.resourceHandle].emplace_back(std::move(x));
+                shaderCache[shaderGenerated.resourceHandle] = shaderGenerated;
+            }
         }
     }
-    std::vector<std::vector<Renderable>> result;
-    for(auto &&x: shaderMap){
-        result.emplace_back(std::move(x.second));
-    }
-    for(auto &&group : result){
+    for(auto &&group : shaderMap){
         ShaderGroup shaderGroup;
-        shaderGroup.shader = *(group[0].first.get().material->GetShader());
+        shaderGroup.shader = shaderCache[group.first];
         std::unordered_map<ResourceHandle, std::vector<Renderable>> groupMap;
-        for(auto &&x : group){
+        for(auto &&x : group.second){
             groupMap[x.first.get().mesh->resourceHandle].emplace_back(std::move(x));
         }
         std::vector<std::vector<Renderable>> groupByMeshes;
@@ -417,9 +425,13 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             baseInstance += instanceCount;
 
             for(auto &&object : instanceGroup){
+                //Transform
                 auto& objectTransform = object.second;
                 renderGroup.transforms.emplace_back(objectTransform);
                 renderGroup.mvps.emplace_back(glm::mat4(1.0f));
+                //Material
+                auto objectMaterial = object.first.get().material;
+                renderGroup.materials.emplace_back(*objectMaterial);
             }
             rendererIndex++;
         }
@@ -445,7 +457,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         renderGroup.objectIndexerBuffer.bindingPoint = attributesCount;
 
         GLuint mpvsUniformBufferName;
-        glCreateBuffers(1, &mpvsUniformBufferName);
+        glCreateBuffers(1, std::addressof(mpvsUniformBufferName));
         renderGroup.mvpsUniformBuffer.name = mpvsUniformBufferName;
         renderGroup.mvpsUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.mvps.size();
         renderGroup.mvpsUniformBuffer.stride = sizeof(glm::mat4);
@@ -606,6 +618,10 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
 
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         BufferSubDataMVPs(renderGroup);
+
+        for(int i = 0; i < renderGroup.materials.size(); i++){
+            
+        }
 
         (this->*DrawFunction)(renderGroup);
     }

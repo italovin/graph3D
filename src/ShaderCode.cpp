@@ -28,29 +28,15 @@ void ShaderCode::SetVersion(int version){
     this->version = version;
 }
 
-void ShaderCode::SetVertexToPipeline(bool enabled)
-{
-    vertexShader.enabled = enabled;
-}
-
-void ShaderCode::SetFragmentToPipeline(bool enabled)
-{
-    fragmentShader.enabled = enabled;
-}
-
-void ShaderCode::SetTesselationControlToPipeline(bool enabled)
-{
-    tesselationControlShader.enabled = enabled;
-}
-
-void ShaderCode::SetTesselationEvaluationToPipeline(bool enabled)
-{
-    tesselationEvaluationShader.enabled = enabled;
-}
-
-void ShaderCode::SetGeometryToPipeline(bool enabled)
-{
-    geometryShader.enabled = enabled;
+void ShaderCode::SetStageToPipeline(ShaderStage shaderStage, bool enabled){
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.enabled = enabled; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.enabled = enabled; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.enabled = enabled; break;
+        case ShaderStage::Geometry : geometryShader.enabled = enabled; break;
+        case ShaderStage::Fragment : fragmentShader.enabled = enabled; break;
+        default: return;
+    }
 }
 
 void ShaderCode::AddVertexAttribute(const std::string &name, ShaderDataType dataType, std::optional<int> location)
@@ -61,60 +47,54 @@ void ShaderCode::AddVertexAttribute(const std::string &name, ShaderDataType data
     vertexShader.inputs[name] = parameter; 
 }
 
-void ShaderCode::AddVertexOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
-{
+void ShaderCode::AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location){
     ShaderCodeParameter parameter;
     parameter.location = location;
     parameter.dataType = dataType;
-    vertexShader.outputs[name] = parameter; 
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.outputs[name] = parameter; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.outputs[name] = parameter; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.outputs[name] = parameter; break;
+        case ShaderStage::Geometry : geometryShader.outputs[name] = parameter; break;
+        case ShaderStage::Fragment : fragmentShader.outputs[name] = parameter; break;
+        default: return;
+    }
 }
 
-void ShaderCode::AddFragmentOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
-{
+void ShaderCode::AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location){
     ShaderCodeParameter parameter;
     parameter.location = location;
     parameter.dataType = dataType;
-    fragmentShader.outputs[name] = parameter; 
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.uniforms[name] = parameter; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.uniforms[name] = parameter; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.uniforms[name] = parameter; break;
+        case ShaderStage::Geometry : geometryShader.uniforms[name] = parameter; break;
+        case ShaderStage::Fragment : fragmentShader.uniforms[name] = parameter; break;
+        default: return;
+    }
 }
 
-void ShaderCode::AddTesselationControlOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
-{
-    ShaderCodeParameter parameter;
-    parameter.location = location;
-    parameter.dataType = dataType;
-    tesselationControlShader.outputs[name] = parameter; 
+void ShaderCode::AddUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body){
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.uniformBlocks[name] = body; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.uniformBlocks[name] = body; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.uniformBlocks[name] = body; break;
+        case ShaderStage::Geometry : geometryShader.uniformBlocks[name] = body; break;
+        case ShaderStage::Fragment : fragmentShader.uniformBlocks[name] = body; break;
+        default: return;
+    }
 }
 
-void ShaderCode::AddTesselationEvaluationOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
-{
-    ShaderCodeParameter parameter;
-    parameter.location = location;
-    parameter.dataType = dataType;
-    tesselationEvaluationShader.outputs[name] = parameter; 
-}
-
-void ShaderCode::AddGeometryOutput(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt)
-{
-    ShaderCodeParameter parameter;
-    parameter.location = location;
-    parameter.dataType = dataType;
-    geometryShader.outputs[name] = parameter; 
-}
-
-void ShaderCode::SetVertexMain(const std::string &main){
-    vertexShader.main = main;
-}
-void ShaderCode::SetFragmentMain(const std::string &main){
-    fragmentShader.main = main;
-}
-void ShaderCode::SetTesselationControlMain(const std::string &main){
-    tesselationControlShader.main = main;
-}
-void ShaderCode::SetTesselationEvaluationMain(const std::string &main){
-    tesselationEvaluationShader.main = main;
-}
-void ShaderCode::SetGeometryMain(const std::string &main){
-    geometryShader.main = main;
+void ShaderCode::SetMain(ShaderStage shaderStage, const std::string &main){
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.main = main; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.main = main; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.main = main; break;
+        case ShaderStage::Geometry : geometryShader.main = main; break;
+        case ShaderStage::Fragment : fragmentShader.main = main; break;
+        default: return;
+    }
 }
 
 void ShaderCode::ProcessVertexShaderCode(const ShaderStageCode &shaderStageCode, std::string &outsideString)
@@ -145,6 +125,9 @@ std::string &outsideString, std::string &outsideStringIns){
     for(auto &&parameter : shaderStageCode.uniforms){
         outsideString += "uniform " + GLSLTypeToString(parameter.second.dataType) +
         + " " + parameter.first + ";\n";
+    }
+    for(auto &&body : shaderStageCode.uniformBlocks){
+        outsideString += "layout (std140) uniform " + body.first + "{\n" + body.second + "};\n";
     }
 }
 
@@ -208,8 +191,10 @@ std::optional<Shader> ShaderCode::Generate()
 
         shaderObjects[i].Compile(shaderSource);
     }
-    
-    Shader shader = Shader(shaderObjects, false);
+    Shader shader(shaderObjects);
+    for(auto &&shaderObject : shaderObjects){
+        shaderObject.Delete();
+    }
     return shader;
 }
 

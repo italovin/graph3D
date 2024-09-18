@@ -1,6 +1,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "Components.hpp"
+#include "ShaderCode.hpp"
 #include "ShaderBuilder.hpp"
 #include "Input.hpp"
 #include "Renderer.hpp"
@@ -245,10 +246,10 @@ int main(int argc, char *argv[])
     .AddOutput(ShaderDataType::Float4, "FragColor")
     .AddUniform(ShaderDataType::Float, "red")
     .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
-    Ref<Shader> graphShader = CreateRef<Shader>(std::vector<ShaderObject>
-    {graphVertexShader, graphFragmentShader}, true);
-    graphShader->SetFloat("red", 1.0f);
-    graphShader->SetBlockBinding("mvpMatrices", 3);
+    //Ref<Shader> graphShader = CreateRef<Shader>(std::vector<ShaderObject>
+    //{graphVertexShader, graphFragmentShader}, true);
+    //graphShader->SetFloat("red", 1.0f);
+    //graphShader->SetBlockBinding("mvpMatrices", 3);
 
     Ref<Mesh> mesh = CreateRef<Mesh>();
     Ref<Mesh> mesh2 = CreateRef<Mesh>();
@@ -294,8 +295,22 @@ int main(int argc, char *argv[])
     .AddInput(ShaderDataType::Float4, "colorOut")
     .AddOutput(ShaderDataType::Float4, "FragColor")
     .SetMain("FragColor = colorOut;").Build();
-    Ref<Shader> testShader = CreateRef<Shader>(std::vector<ShaderObject>{testV, testF}, true);
-    testShader->SetBlockBinding("mvpMatrices", 3);
+    //Ref<Shader> testShader = CreateRef<Shader>(std::vector<ShaderObject>{testV, testF}, true);
+    //testShader->SetBlockBinding("mvpMatrices", 3);
+    ShaderCode shaderCodeTest = ShaderCode();
+    shaderCodeTest.SetVersion(glslVersion);
+    shaderCodeTest.SetStageToPipeline(ShaderStage::Vertex, true);
+    shaderCodeTest.AddVertexAttribute("aPos", ShaderDataType::Float3, 0);
+    shaderCodeTest.AddVertexAttribute("aColor", ShaderDataType::Float4, 1);
+    shaderCodeTest.AddVertexAttribute("aModel", ShaderDataType::Int, 6);
+    shaderCodeTest.AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
+    shaderCodeTest.AddUniformBlock(ShaderStage::Vertex, "mvpMatrices", "mat4 mvps[2];");
+    shaderCodeTest.SetMain(ShaderStage::Vertex, "colorOut = aColor;"
+    "gl_Position = mvps[aModel]*vec4(aPos, 1.0);");
+    shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
+    shaderCodeTest.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
+    shaderCodeTest.SetMain(ShaderStage::Fragment, "FragColor = colorOut;");
+    Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
 
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
@@ -312,16 +327,16 @@ int main(int argc, char *argv[])
     topDownCameraTransform.position = glm::vec3(0, 5, 0);
     topDownCameraTransform.eulerAngles(glm::vec3(90, 0, 0));
 
-    quad1.AddComponent<MeshRendererComponent>(mesh, testShader);
+    quad1.AddComponent<MeshRendererComponent>(mesh, materialTest);
     quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
-    tri1.AddComponent<MeshRendererComponent>(mesh2, testShader);
+    tri1.AddComponent<MeshRendererComponent>(mesh2, materialTest);
     tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
 
-    quad2.AddComponent<MeshRendererComponent>(mesh, testShader);
+    quad2.AddComponent<MeshRendererComponent>(mesh, materialTest);
     quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
 
-    graph.AddComponent<MeshRendererComponent>(graphMesh, graphShader);
+    //graph.AddComponent<MeshRendererComponent>(graphMesh, materialTest);
     graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
@@ -417,7 +432,7 @@ int main(int argc, char *argv[])
         /* Render here */
 
         quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
-        graph.GetComponent<MeshRendererComponent>().shader->SetFloat("time", time);
+        //graph.GetComponent<MeshRendererComponent>().shader->SetFloat("time", time);
         graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
 
         mainRenderer.Update(mainScene.registry, deltaTime);

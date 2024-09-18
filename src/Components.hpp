@@ -8,7 +8,7 @@
 struct MeshRendererComponent{
     // Reference to active mesh resource
     Ref<Mesh> mesh;
-    // Reference to active shader program
+    // Reference to active material
     Ref<Material> material;
     MeshRendererComponent(const Ref<Mesh> &mesh, const Ref<Material> &material) :
     mesh(mesh), material(material){}

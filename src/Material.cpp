@@ -2,6 +2,7 @@
 
 Material::Material(ShaderCode &shaderCode)
 {
+    this->shaderCode = shaderCode;
     if(parameters.size() > 0)
         DeleteParameters();
     

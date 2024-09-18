@@ -1,3 +1,5 @@
+#ifndef MATERIAL_H
+#define MATERIAL_H
 #include <unordered_map>
 #include <string>
 #include <variant>
@@ -21,6 +23,7 @@ struct MaterialParameter{
 
 class Material : public Resource {
 private:
+    bool changingBuffer = false;
     std::unordered_map<std::string, MaterialParameter> parameters;
     std::optional<std::reference_wrapper<ShaderCode>> shaderCode;
     void AddParameter(const std::string &name, MaterialParameterType type);
@@ -39,3 +42,4 @@ public:
     std::optional<bool> GetParameterBoolean(const std::string &name);
     std::optional<glm::vec4> GetParameterVector4(const std::string &name);
 };
+#endif

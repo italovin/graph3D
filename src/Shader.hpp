@@ -24,11 +24,11 @@ private:
 
 public:
     Shader();
+    Shader(const Shader& other);
+    Shader& operator=(const Shader& other);
     Shader(bool debugInfo);
-    Shader(const std::vector<ShaderObject> &shaderObjects);
-    Shader(std::vector<ShaderObject> &&shaderObjects);
-    Shader(const std::vector<ShaderObject> &shaderObjects, bool debugInfo);
-    Shader(std::vector<ShaderObject> &&shaderObjects, bool debugInfo);
+    Shader(const std::vector<ShaderObject> &shaderObjects, bool debugInfo = false);
+    Shader(std::vector<ShaderObject> &&shaderObjects, bool debugInfo = false);
     void AttachShaderObject(const ShaderObject &shaderObject);
     void AttachShaderObject(ShaderObject &&shaderObject);
     void Create();
