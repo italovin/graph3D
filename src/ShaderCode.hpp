@@ -18,6 +18,7 @@ enum class ShaderStage{
 struct ShaderCodeParameter{
     std::optional<int> location = std::nullopt;
     ShaderDataType dataType;
+    int arraySize = 0;
 };
 
 struct UniformBlock{
@@ -31,6 +32,11 @@ struct ShaderStageCode{
     // This map denotes the outputs parameters to send to next stage
     std::unordered_map<std::string, ShaderCodeParameter> outputs;
     std::unordered_map<std::string, ShaderCodeParameter> uniforms;
+    std::unordered_map<std::string, std::unordered_map<std::string, ShaderCodeParameter>> regularStructs;
+    // Designed for material parameters batching
+    std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> materialParametersStruct;
+    std::pair<std::string, std::string> materialParametersUniformBlock;
+    ////
     std::unordered_map<std::string, std::string> uniformBlocks;
     std::string main;
 };
@@ -54,9 +60,14 @@ public:
     void AddVertexAttribute(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
     void AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
     void AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
-    void AddUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
+    std::string CreateStruct(ShaderStage shaderStage, const std::string &structType, const std::string &name);
+    std::string DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType);
+    void AddMaterialParameterToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, ShaderDataType dataType);
+    void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
+    void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void SetMain(ShaderStage shaderStage, const std::string &main);
-    std::unordered_map<std::string, ShaderCodeParameter> GetFragmentUniforms() const;
+    std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
+    std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> GetMaterialParametersStruct(ShaderStage shaderStage) const;
     std::optional<Shader> Generate();
 };
 #endif

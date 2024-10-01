@@ -9,6 +9,7 @@
 #include "Texture.hpp"
 #include "ShaderCode.hpp"
 
+
 enum class MaterialParameterType{
     Map,
     Float,
@@ -25,8 +26,12 @@ class Material : public Resource {
 private:
     bool changingBuffer = false;
     std::unordered_map<std::string, MaterialParameter> parameters;
+    // Global parameters sets a uniform in the shader. The last material to set overrides the value
+    std::unordered_map<std::string, MaterialParameter> globalShaderParameters;
+    std::unordered_map<std::string, MaterialParameter> globalVertexShaderParameters;
     std::optional<std::reference_wrapper<ShaderCode>> shaderCode;
     void AddParameter(const std::string &name, MaterialParameterType type);
+    void AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert);
     void DeleteParameters();
     MaterialParameterType GetParameterType(ShaderDataType type);
 public:
@@ -41,5 +46,10 @@ public:
     std::optional<float> GetParameterFloat(const std::string &name);
     std::optional<bool> GetParameterBoolean(const std::string &name);
     std::optional<glm::vec4> GetParameterVector4(const std::string &name);
+    std::unordered_map<std::string, MaterialParameter> GetParameters() const;
+    void SetGlobalParameterMap(const std::string &name, Ref<Texture> value);
+    void SetGlobalParameterFloat(const std::string &name, float value);
+    void SetGlobalParameterBoolean(const std::string &name, bool value);
+    void SetGlobalParameterVector4(const std::string &name, glm::vec4 value);
 };
 #endif

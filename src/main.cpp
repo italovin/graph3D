@@ -5,6 +5,7 @@
 #include "ShaderBuilder.hpp"
 #include "Input.hpp"
 #include "Renderer.hpp"
+#include "ShaderTypes.hpp"
 #include <iostream>
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
@@ -304,7 +305,7 @@ int main(int argc, char *argv[])
     shaderCodeTest.AddVertexAttribute("aColor", ShaderDataType::Float4, 1);
     shaderCodeTest.AddVertexAttribute("aModel", ShaderDataType::Int, 6);
     shaderCodeTest.AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
-    shaderCodeTest.AddUniformBlock(ShaderStage::Vertex, "mvpMatrices", "mat4 mvps[2];");
+    shaderCodeTest.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
     shaderCodeTest.SetMain(ShaderStage::Vertex, "colorOut = aColor;"
     "gl_Position = mvps[aModel]*vec4(aPos, 1.0);");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);

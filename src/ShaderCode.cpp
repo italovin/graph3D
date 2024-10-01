@@ -75,13 +75,66 @@ void ShaderCode::AddUniform(ShaderStage shaderStage, const std::string &name, Sh
     }
 }
 
-void ShaderCode::AddUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body){
+std::string ShaderCode::CreateStruct(ShaderStage shaderStage, const std::string &structType, const std::string &name)
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.regularStructs[structType] = std::unordered_map<std::string, ShaderCodeParameter>(); return structType;
+        case ShaderStage::TesselationControl : tesselationControlShader.regularStructs[structType] = std::unordered_map<std::string, ShaderCodeParameter>(); return structType;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.regularStructs[structType] = std::unordered_map<std::string, ShaderCodeParameter>(); return structType;
+        case ShaderStage::Geometry : geometryShader.regularStructs[structType] = std::unordered_map<std::string, ShaderCodeParameter>(); return structType;
+        case ShaderStage::Fragment : fragmentShader.regularStructs[structType] = std::unordered_map<std::string, ShaderCodeParameter>(); return structType;
+        default: return std::string();
+    }
+    return structType;
+}
+
+std::string ShaderCode::DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType)
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.materialParametersStruct.first = structType; return structType;
+        case ShaderStage::TesselationControl : tesselationControlShader.materialParametersStruct.first = structType; return structType;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialParametersStruct.first = structType; return structType;
+        case ShaderStage::Geometry : geometryShader.materialParametersStruct.first = structType; return structType;
+        case ShaderStage::Fragment : fragmentShader.materialParametersStruct.first = structType; return structType;
+        default: return std::string();
+    }
+    return structType;
+}
+
+void ShaderCode::AddMaterialParameterToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, ShaderDataType dataType)
+{
+    ShaderCodeParameter parameter;
+    parameter.dataType = dataType;
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.materialParametersStruct.second[name] = parameter; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.materialParametersStruct.second[name] = parameter; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialParametersStruct.second[name] = parameter; break;
+        case ShaderStage::Geometry : geometryShader.materialParametersStruct.second[name] = parameter; break;
+        case ShaderStage::Fragment : fragmentShader.materialParametersStruct.second[name] = parameter; break;
+        default: return;
+    }
+}
+
+void ShaderCode::CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
+{
     switch(shaderStage){
         case ShaderStage::Vertex : vertexShader.uniformBlocks[name] = body; break;
         case ShaderStage::TesselationControl : tesselationControlShader.uniformBlocks[name] = body; break;
         case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.uniformBlocks[name] = body; break;
         case ShaderStage::Geometry : geometryShader.uniformBlocks[name] = body; break;
         case ShaderStage::Fragment : fragmentShader.uniformBlocks[name] = body; break;
+        default: return;
+    }
+}
+
+void ShaderCode::UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.materialParametersUniformBlock.first = name; vertexShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.materialParametersUniformBlock.first = name; tesselationControlShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::Geometry : geometryShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::Fragment : fragmentShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
         default: return;
     }
 }
@@ -102,7 +155,7 @@ void ShaderCode::ProcessVertexShaderCode(const ShaderStageCode &shaderStageCode,
     for(auto &&input : shaderStageCode.inputs){
         std::string locationString;
         if(input.second.location.has_value())
-            locationString = "layout (location=" + std::to_string(input.second.location.value()) + ")";
+            locationString = "layout (location=" + std::to_string(input.second.location.value()) + ") ";
         
         outsideString += locationString + "in " + GLSLTypeToString(input.second.dataType) 
         + " " + input.first + ";\n";
@@ -115,19 +168,34 @@ std::string &outsideString, std::string &outsideStringIns){
     for(auto &&parameter : shaderStageCode.outputs){
         std::string locationString;
         if(parameter.second.location.has_value())
-            locationString = "layout (location=" + std::to_string(parameter.second.location.value()) + ")";
+            locationString = "layout (location=" + std::to_string(parameter.second.location.value()) + ") ";
         
         outsideString += locationString + "out " + GLSLTypeToString(parameter.second.dataType) +
         + " " + parameter.first + ";\n";
         outsideStringIns += locationString + "in " + GLSLTypeToString(parameter.second.dataType) 
         + " " + parameter.first + ";\n";
     }
+
+    if(!shaderStageCode.materialParametersStruct.first.empty()){
+        outsideString += "struct " + shaderStageCode.materialParametersStruct.first + "{\n";
+        for(auto &&matParameter : shaderStageCode.materialParametersStruct.second){
+            outsideString += GLSLTypeToString(matParameter.second.dataType) + " " + matParameter.first + ";\n";
+        }
+        outsideString += "};\n";
+    }
+
+    if(!shaderStageCode.materialParametersUniformBlock.first.empty()){
+        outsideString += "layout (std140) uniform " + shaderStageCode.materialParametersUniformBlock.first + "{\n" + shaderStageCode.materialParametersUniformBlock.second + "};\n";
+    }
+
     for(auto &&parameter : shaderStageCode.uniforms){
         outsideString += "uniform " + GLSLTypeToString(parameter.second.dataType) +
         + " " + parameter.first + ";\n";
     }
-    for(auto &&body : shaderStageCode.uniformBlocks){
-        outsideString += "layout (std140) uniform " + body.first + "{\n" + body.second + "};\n";
+
+
+    for(auto &&uniformBlock : shaderStageCode.uniformBlocks){
+        outsideString += "layout (std140) uniform " + uniformBlock.first + "{\n" + uniformBlock.second + "};\n";
     }
 }
 
@@ -198,6 +266,25 @@ std::optional<Shader> ShaderCode::Generate()
     return shader;
 }
 
-std::unordered_map<std::string, ShaderCodeParameter> ShaderCode::GetFragmentUniforms() const{
-    return fragmentShader.uniforms;
+std::unordered_map<std::string, ShaderCodeParameter> ShaderCode::GetUniforms(ShaderStage shaderStage) const{
+    switch(shaderStage){
+        case ShaderStage::Vertex : return vertexShader.uniforms;
+        case ShaderStage::TesselationControl : return tesselationControlShader.uniforms;
+        case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.uniforms;
+        case ShaderStage::Geometry : return geometryShader.uniforms;
+        case ShaderStage::Fragment : return fragmentShader.uniforms;
+        default: return std::unordered_map<std::string, ShaderCodeParameter>();
+    }
+}
+
+std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> ShaderCode::GetMaterialParametersStruct(ShaderStage shaderStage) const
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : return vertexShader.materialParametersStruct;
+        case ShaderStage::TesselationControl : return tesselationControlShader.materialParametersStruct;
+        case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.materialParametersStruct;
+        case ShaderStage::Geometry : return geometryShader.materialParametersStruct;
+        case ShaderStage::Fragment : return fragmentShader.materialParametersStruct;
+        default: return std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>>();
+    }
 }

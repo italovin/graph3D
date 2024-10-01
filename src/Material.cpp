@@ -6,9 +6,17 @@ Material::Material(ShaderCode &shaderCode)
     if(parameters.size() > 0)
         DeleteParameters();
     
-    auto uniforms = shaderCode.GetFragmentUniforms();
-    for(auto &&uniform : uniforms){
-        AddParameter(uniform.first, GetParameterType(uniform.second.dataType));
+    auto materialParameters = shaderCode.GetMaterialParametersStruct(ShaderStage::Fragment);
+    auto materialGlobalParameters = shaderCode.GetUniforms(ShaderStage::Fragment);
+    auto materialGlobalVertexParameters = shaderCode.GetUniforms(ShaderStage::Vertex);
+    for(auto &&parameter : materialParameters.second){
+        AddParameter(parameter.first, GetParameterType(parameter.second.dataType));
+    }
+    for(auto &&parameter : materialGlobalParameters){
+        AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), true);
+    }
+    for(auto &&parameter : materialGlobalVertexParameters){
+        AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), false);
     }
 }
 
@@ -22,6 +30,17 @@ void Material::AddParameter(const std::string &name, MaterialParameterType type)
     parameter.data = std::variant<Ref<Texture>, float, bool, glm::vec4>();
     parameter.type = type;
     parameters[name] = parameter;
+}
+
+void Material::AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert)
+{
+    MaterialParameter globalParameter;
+    globalParameter.data = std::variant<Ref<Texture>, float, bool, glm::vec4>();
+    globalParameter.type = type;
+    if(isFragOrVert)
+        globalShaderParameters[name] = globalParameter;
+    else
+        globalVertexShaderParameters[name] = globalParameter;
 }
 
 void Material::DeleteParameters(){
@@ -88,4 +107,33 @@ std::optional<glm::vec4> Material::GetParameterVector4(const std::string &name)
     if(parameters.count(name) == 0)
         return std::nullopt;
     return std::get<glm::vec4>(parameters[name].data);
+}
+
+std::unordered_map<std::string, MaterialParameter> Material::GetParameters() const
+{
+    return this->parameters;
+}
+
+void Material::SetGlobalParameterMap(const std::string &name, Ref<Texture> value)
+{
+    if(globalShaderParameters.count(name) > 0)
+        globalShaderParameters[name].data = value;
+}
+
+void Material::SetGlobalParameterFloat(const std::string &name, float value)
+{
+    if(globalShaderParameters.count(name) > 0)
+        globalShaderParameters[name].data = value;
+}
+
+void Material::SetGlobalParameterBoolean(const std::string &name, bool value)
+{
+    if(globalShaderParameters.count(name) > 0)
+        globalShaderParameters[name].data = value;
+}
+
+void Material::SetGlobalParameterVector4(const std::string &name, glm::vec4 value)
+{
+    if(globalShaderParameters.count(name) > 0)
+        globalShaderParameters[name].data = value;
 }
