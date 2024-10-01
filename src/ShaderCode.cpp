@@ -288,3 +288,25 @@ std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> Sha
         default: return std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>>();
     }
 }
+
+void ShaderCode::SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose){
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.uniformBlockBindingPurposes[uniformBlockName] = purpose; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.uniformBlockBindingPurposes[uniformBlockName] = purpose; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.uniformBlockBindingPurposes[uniformBlockName] = purpose; break;
+        case ShaderStage::Geometry : geometryShader.uniformBlockBindingPurposes[uniformBlockName] = purpose; break;
+        case ShaderStage::Fragment : fragmentShader.uniformBlockBindingPurposes[uniformBlockName] = purpose; break;
+        default: break;
+    }
+}
+
+std::unordered_map<std::string, std::string> ShaderCode::GetBindingsPurposes(ShaderStage shaderStage) const{
+    switch(shaderStage){
+        case ShaderStage::Vertex : return vertexShader.uniformBlockBindingPurposes;
+        case ShaderStage::TesselationControl : return tesselationControlShader.uniformBlockBindingPurposes;
+        case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.uniformBlockBindingPurposes;
+        case ShaderStage::Geometry : return geometryShader.uniformBlockBindingPurposes;
+        case ShaderStage::Fragment : return fragmentShader.uniformBlockBindingPurposes;
+        default: return std::unordered_map<std::string, std::string>();
+    }
+}

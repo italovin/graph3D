@@ -1,6 +1,5 @@
 #ifndef SHADER_CODE_H
 #define SHADER_CODE_H
-#include <vector>
 #include <unordered_map>
 #include <string>
 #include <optional>
@@ -38,6 +37,8 @@ struct ShaderStageCode{
     std::pair<std::string, std::string> materialParametersUniformBlock;
     ////
     std::unordered_map<std::string, std::string> uniformBlocks;
+    ///
+    std::unordered_map<std::string, std::string> uniformBlockBindingPurposes;
     std::string main;
 };
 
@@ -68,6 +69,8 @@ public:
     void SetMain(ShaderStage shaderStage, const std::string &main);
     std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
     std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> GetMaterialParametersStruct(ShaderStage shaderStage) const;
+    void SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose);
+    std::unordered_map<std::string, std::string> GetBindingsPurposes(ShaderStage shaderStage) const;
     std::optional<Shader> Generate();
 };
 #endif

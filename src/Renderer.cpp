@@ -83,7 +83,6 @@ void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup)
 }
 
 void Renderer::PrepareRenderGroups(entt::registry &registry){
-    AddUBOBindingPurpose("mvps");
 
     auto renderableView = registry.view<MeshRendererComponent, TransformComponent>();
 
@@ -133,8 +132,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         }
         for(auto &&group : shaderGeneratedGroups){
             Shader shaderGenerated = shaderGeneratedGlobal;
-            // Setting shader mvp biding point;
-            shaderGenerated.SetBlockBinding("mvpsUBO", uboBindingsPurposes["mvps"]);
+            // Setting shader mvp binding point;
+            for(auto &&bindingPurpose : x.second[0].first.get().material->GetShaderCode().value().get().GetBindingsPurposes(ShaderStage::Vertex)){
+                AddUBOBindingPurpose(bindingPurpose.second);
+                shaderGenerated.SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
+            }
             for(auto &&x : group){
                 shaderMap[shaderGenerated.resourceHandle].emplace_back(std::move(x));
                 shaderCache[shaderGenerated.resourceHandle] = shaderGenerated;
@@ -613,8 +615,10 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
 int Renderer::AddUBOBindingPurpose(const std::string &purpose){
     int bindingPoint = uboBindingPointFree;
-    uboBindingsPurposes.emplace(purpose, bindingPoint);
-    uboBindingPointFree++;
+    if(uboBindingsPurposes.count(purpose) == 0){
+        uboBindingsPurposes.emplace(purpose, bindingPoint);
+        uboBindingPointFree++;
+    }
     return bindingPoint;
 }
 

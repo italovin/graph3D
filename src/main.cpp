@@ -306,6 +306,7 @@ int main(int argc, char *argv[])
     shaderCodeTest.AddVertexAttribute("aModel", ShaderDataType::Int, 6);
     shaderCodeTest.AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
     shaderCodeTest.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
+    shaderCodeTest.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
     shaderCodeTest.SetMain(ShaderStage::Vertex, "colorOut = aColor;"
     "gl_Position = mvps[aModel]*vec4(aPos, 1.0);");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
