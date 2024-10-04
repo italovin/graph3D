@@ -3,6 +3,67 @@
 #include "Mesh.hpp"
 #include "VertexArray.hpp"
 
+// Implementation for StructArray
+size_t StructArray::alignOffset(size_t offset, size_t alignment) {
+    return (offset + alignment - 1) & ~(alignment - 1);
+}
+StructArray::StructArray(const std::vector<Member>& members, size_t numStructs)
+        : members(members), numStructs(numStructs), structSize(0) {
+
+        calculateOffsetsAndPadding();
+        allocateBuffer();
+}
+void StructArray::calculateOffsetsAndPadding() {
+    size_t currentOffset = 0;
+
+    // Percorre os membros e ajusta os offsets e paddings
+    for (auto& member : members) {
+        // Alinha o offset atual para o alinhamento do membro
+        size_t alignedOffset = alignOffset(currentOffset, member.alignment);
+
+        // Calcula o padding antes deste membro
+        member.paddingBefore = alignedOffset - currentOffset;
+
+        // Define o offset deste membro
+        member.offset = alignedOffset;
+
+        // Avança o offset atual pelo tamanho do membro
+        currentOffset = alignedOffset + member.size;
+    }
+
+    // Alinha o tamanho total da struct para múltiplos de 16 bytes (std140 rule)
+    structSize = alignOffset(currentOffset, 16);
+}
+
+void StructArray::allocateBuffer() {
+    size_t totalSize = structSize * numStructs;
+    data.resize(totalSize);  // Redimensiona o buffer de dados para conter todas as structs
+    std::memset(data.data(), 0, totalSize);  // Inicializa o buffer com zeros
+}
+
+template<typename T>
+void StructArray::setMember(size_t structIndex, const std::string& memberName, const T& value) {
+    // Encontrar o membro pelo nome
+    std::vector<Member>::iterator memberIt = std::find_if(members.begin(), members.end(), [&memberName](const Member &member){
+        return member.name == memberName;
+    });
+    if(memberIt == members.end())
+        return;
+
+    Member member = *memberIt;
+    size_t offset = structIndex * structSize + member.offset;
+    std::memcpy(data.data() + offset, &value, sizeof(T));
+    return;
+
+    std::cerr << "Membro '" << memberName << "' não encontrado na struct!\n";
+}
+
+std::vector<char> &StructArray::GetData(){
+    return data;
+}
+////
+
+
 GLenum Renderer::GetDrawMode(MeshTopology topology){
     switch(topology){
         case MeshTopology::Lines: return GL_LINES;
@@ -783,8 +844,6 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
 }
 
 Renderer::Renderer(){
-    GLuint maxBindingPoints = 50;
-
     for(GLuint i = 0; i < maxBindingPoints; i++){
         availableBindingPoints.emplace(i, true);
     }
