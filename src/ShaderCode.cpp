@@ -1,4 +1,5 @@
 #include "ShaderCode.hpp"
+#include "ShaderTypes.hpp"
 
 const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){ 
     switch (type)
@@ -115,6 +116,18 @@ void ShaderCode::AddMaterialParameterToStruct(const std::string &structType, Sha
     }
 }
 
+void ShaderCode::UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.materialParametersUniformBlock.first = name; vertexShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::TesselationControl : tesselationControlShader.materialParametersUniformBlock.first = name; tesselationControlShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::Geometry : geometryShader.materialParametersUniformBlock.first = name; geometryShader.materialParametersUniformBlock.second = body; break;
+        case ShaderStage::Fragment : fragmentShader.materialParametersUniformBlock.first = name; fragmentShader.materialParametersUniformBlock.second = body; break;
+        default: return;
+    }
+}
+
 void ShaderCode::CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
 {
     switch(shaderStage){
@@ -123,18 +136,6 @@ void ShaderCode::CreateUniformBlock(ShaderStage shaderStage, const std::string &
         case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.uniformBlocks[name] = body; break;
         case ShaderStage::Geometry : geometryShader.uniformBlocks[name] = body; break;
         case ShaderStage::Fragment : fragmentShader.uniformBlocks[name] = body; break;
-        default: return;
-    }
-}
-
-void ShaderCode::UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
-{
-    switch(shaderStage){
-        case ShaderStage::Vertex : vertexShader.materialParametersUniformBlock.first = name; vertexShader.materialParametersUniformBlock.second = body; break;
-        case ShaderStage::TesselationControl : tesselationControlShader.materialParametersUniformBlock.first = name; tesselationControlShader.materialParametersUniformBlock.second = body; break;
-        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
-        case ShaderStage::Geometry : geometryShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
-        case ShaderStage::Fragment : fragmentShader.materialParametersUniformBlock.first = name; tesselationEvaluationShader.materialParametersUniformBlock.second = body; break;
         default: return;
     }
 }
@@ -170,9 +171,13 @@ std::string &outsideString, std::string &outsideStringIns){
         if(parameter.second.location.has_value())
             locationString = "layout (location=" + std::to_string(parameter.second.location.value()) + ") ";
         
-        outsideString += locationString + "out " + GLSLTypeToString(parameter.second.dataType) +
+        // flat string receives 'flat' when the output is int or uint
+        std::string flatString;
+        if(parameter.second.dataType == ShaderDataType::Int)
+            flatString = "flat ";
+        outsideString += locationString + flatString + "out " + GLSLTypeToString(parameter.second.dataType) +
         + " " + parameter.first + ";\n";
-        outsideStringIns += locationString + "in " + GLSLTypeToString(parameter.second.dataType) 
+        outsideStringIns += locationString + flatString  + "in " + GLSLTypeToString(parameter.second.dataType)
         + " " + parameter.first + ";\n";
     }
 
@@ -246,14 +251,15 @@ std::optional<Shader> ShaderCode::Generate()
         } else if(shaderObjects[i].GetType() == GL_FRAGMENT_SHADER){
             ProcessShaderStageCode(fragmentShader, mainString, outsideString, outsideStringIns);
         }
+        // If Vertex Shader
         if(i == 0){
             shaderSource = versionString + outsideString + 
-            "void main(){" +
-            mainString + "}";
+            "void main(){\n" +
+            mainString + "\n}";
         } else {
             shaderSource = versionString + outsideString + outsideStringInsPrevious + 
-            "void main(){" +
-            mainString + "}";
+            "void main(){\n" +
+            mainString + "\n}";
         }
         outsideStringInsPrevious = outsideStringIns;
 

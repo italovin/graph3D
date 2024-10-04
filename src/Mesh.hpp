@@ -4,7 +4,6 @@
 #include <string>
 #include <variant>
 #include "Resource.hpp"
-#include "ShaderTypes.hpp"
 
 enum class MeshTopology{
     Triangles,
@@ -13,23 +12,23 @@ enum class MeshTopology{
 };
 
 enum class MeshAttributeFormat{
-    Vec1, Vec2, Vec3, Vec4, Mat3, Mat4
+    Vec1, Vec2, Vec3, Vec4, Mat3, Mat4, None
 };
 
 enum class MeshAttributeType{
-    Float, Int, UnsignedInt, Byte, UnsignedByte, Short, UnsignedShort
+    Float, Int, UnsignedInt, Byte, UnsignedByte, Short, UnsignedShort, None
 };
 
 enum class MeshIndexType{
-    UnsignedInt, UnsignedShort
+    UnsignedInt, UnsignedShort, None
 };
 
 struct MeshAttribute{
     std::string name;
-    int location;
-    MeshAttributeType type;
-    MeshAttributeFormat format;
-    bool normalized;
+    int location = 0;
+    MeshAttributeType type = MeshAttributeType::None;
+    MeshAttributeFormat format = MeshAttributeFormat::None;
+    bool normalized = false;
     bool interpretAsInt = false;
     MeshAttribute() = default;
 
@@ -132,7 +131,7 @@ struct MeshIndexData{
     std::variant<std::vector<unsigned int>, std::vector<unsigned short>> indices;
     //Indices data size in bytes
     int indicesSize = 0;
-    MeshIndexType type;
+    MeshIndexType type = MeshIndexType::None;
     MeshIndexData() = default;
     MeshIndexData(const std::vector<unsigned int> &&indices, int indicesSize, MeshIndexType type):
     indices(indices), indicesSize(indicesSize), type(type){}

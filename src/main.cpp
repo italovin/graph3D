@@ -1,8 +1,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "Base.hpp"
 #include "Components.hpp"
+#include "Material.hpp"
 #include "ShaderCode.hpp"
-#include "ShaderBuilder.hpp"
 #include "Input.hpp"
 #include "Renderer.hpp"
 #include "ShaderTypes.hpp"
@@ -227,30 +228,25 @@ int main(int argc, char *argv[])
     graphMesh->PushAttribute("params", 0, MeshAttributeFormat::Vec2, false, parameters);
     graphMesh->SetIndices(indices, MeshTopology::Lines);
 
-    ShaderBuilder vertexShaderBuilder = ShaderBuilder(false);
-    ShaderBuilder fragmentShaderBuilder = ShaderBuilder(false);
-    ShaderObject graphVertexShader = vertexShaderBuilder.SetShaderType(GL_VERTEX_SHADER)
-    .SetVersion(glslVersion)
-    .AddInput(0, ShaderDataType::Float2, "params")
-    .AddInput(6, ShaderDataType::Int, "aModel")
-    .AddUniform(ShaderDataType::Mat4, "mvp")
-    .AddUniform(ShaderDataType::Float, timeString)
-    .AddUniformBlock("mat4 mvps[1];", "mvpMatrices")
-    .SetMain("float " + var1 + "= params.x;"
+    ShaderCode graphShaderCode = ShaderCode();
+    graphShaderCode.SetVersion(glslVersion);
+    graphShaderCode.SetStageToPipeline(ShaderStage::Vertex, true);
+    graphShaderCode.AddVertexAttribute("params", ShaderDataType::Float2, 0);
+    graphShaderCode.AddVertexAttribute("aModel", ShaderDataType::Int, 6);
+    graphShaderCode.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
+    graphShaderCode.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
+    graphShaderCode.AddUniform(ShaderStage::Vertex, timeString, ShaderDataType::Float);
+    graphShaderCode.SetMain(ShaderStage::Vertex, "float " + var1 + "= params.x;"
     "float " + var2 + "= params.y;"
     "float x =" + equationX + ";"
     "float y =" + equationY + ";"
     "float z =" + equationZ + ";"
-    + "gl_Position = mvps[aModel]*vec4(x, z, y, 1.0);").Build();
-    ShaderObject graphFragmentShader = fragmentShaderBuilder.SetShaderType(GL_FRAGMENT_SHADER)
-    .SetVersion(glslVersion)
-    .AddOutput(ShaderDataType::Float4, "FragColor")
-    .AddUniform(ShaderDataType::Float, "red")
-    .SetMain("FragColor = vec4(red, 0.0, 0.0, 1.0);").Build();
-    //Ref<Shader> graphShader = CreateRef<Shader>(std::vector<ShaderObject>
-    //{graphVertexShader, graphFragmentShader}, true);
-    //graphShader->SetFloat("red", 1.0f);
-    //graphShader->SetBlockBinding("mvpMatrices", 3);
+    + "gl_Position = mvps[aModel]*vec4(x, z, y, 1.0);");
+    graphShaderCode.SetStageToPipeline(ShaderStage::Fragment, true);
+    graphShaderCode.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
+    graphShaderCode.SetMain(ShaderStage::Fragment, "FragColor = vec4(1.0, 0.0, 0.0, 1.0);");
+    Ref<Material> graphMaterial = CreateRef<Material>(graphShaderCode);
+
 
     Ref<Mesh> mesh = CreateRef<Mesh>();
     Ref<Mesh> mesh2 = CreateRef<Mesh>();
@@ -280,39 +276,33 @@ int main(int argc, char *argv[])
     mesh2->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, triangle);
     mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
     mesh2->SetIndices(std::vector<unsigned short>{0, 1, 2}, MeshTopology::Triangles);
-    ShaderBuilder testVBuilder = ShaderBuilder(false);
-    ShaderBuilder testFBuilder = ShaderBuilder(false);
-    ShaderObject testV = testVBuilder.SetShaderType(GL_VERTEX_SHADER)
-    .SetVersion(glslVersion)
-    .AddInput(0, ShaderDataType::Float3, "aPos")
-    .AddInput(1, ShaderDataType::Float4, "aColor")
-    .AddInput(6, ShaderDataType::Int, "aModel")
-    .AddOutput(ShaderDataType::Float4, "colorOut")
-    .AddUniformBlock("mat4 mvps[2];", "mvpMatrices")
-    .SetMain("colorOut = aColor;"
-    "gl_Position = mvps[aModel]*vec4(aPos, 1.0);").Build();
-    ShaderObject testF = testFBuilder.SetShaderType(GL_FRAGMENT_SHADER)
-    .SetVersion(glslVersion)
-    .AddInput(ShaderDataType::Float4, "colorOut")
-    .AddOutput(ShaderDataType::Float4, "FragColor")
-    .SetMain("FragColor = colorOut;").Build();
-    //Ref<Shader> testShader = CreateRef<Shader>(std::vector<ShaderObject>{testV, testF}, true);
-    //testShader->SetBlockBinding("mvpMatrices", 3);
+
     ShaderCode shaderCodeTest = ShaderCode();
     shaderCodeTest.SetVersion(glslVersion);
     shaderCodeTest.SetStageToPipeline(ShaderStage::Vertex, true);
     shaderCodeTest.AddVertexAttribute("aPos", ShaderDataType::Float3, 0);
     shaderCodeTest.AddVertexAttribute("aColor", ShaderDataType::Float4, 1);
-    shaderCodeTest.AddVertexAttribute("aModel", ShaderDataType::Int, 6);
+    shaderCodeTest.AddVertexAttribute("aModel", ShaderDataType::Int, 2);
     shaderCodeTest.AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
+    shaderCodeTest.AddOutput(ShaderStage::Vertex, "matID", ShaderDataType::Int);
     shaderCodeTest.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
     shaderCodeTest.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
     shaderCodeTest.SetMain(ShaderStage::Vertex, "colorOut = aColor;"
+    "matID = aModel;"
     "gl_Position = mvps[aModel]*vec4(aPos, 1.0);");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
+    shaderCodeTest.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
+    shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "albedo", ShaderDataType::Float4);
+    shaderCodeTest.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[512];");
+    shaderCodeTest.SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");
     shaderCodeTest.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
-    shaderCodeTest.SetMain(ShaderStage::Fragment, "FragColor = colorOut;");
+    shaderCodeTest.SetMain(ShaderStage::Fragment, "FragColor = materials[matID].albedo;");
     Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
+    Ref<Material> materialTestGreen = CreateRef<Material>(shaderCodeTest);
+    Ref<Material> materialTestRed = CreateRef<Material>(shaderCodeTest);
+    materialTest->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
+    materialTestGreen->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
+    materialTestRed->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
 
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
@@ -332,21 +322,19 @@ int main(int argc, char *argv[])
     quad1.AddComponent<MeshRendererComponent>(mesh, materialTest);
     quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
-    tri1.AddComponent<MeshRendererComponent>(mesh2, materialTest);
+    tri1.AddComponent<MeshRendererComponent>(mesh2, materialTestGreen);
     tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
 
-    quad2.AddComponent<MeshRendererComponent>(mesh, materialTest);
+    quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
     quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
 
-    //graph.AddComponent<MeshRendererComponent>(graphMesh, materialTest);
+    graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
     graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
     Renderer mainRenderer = Renderer();
 
-    mainRenderer.SetMVPBindingPoint(3);
-    mainRenderer.SetObjectsIndexerLocation(6);
     mainRenderer.SetMainWindow(std::addressof(window));
     mainRenderer.SetAPIVersion(GLApiVersionStruct::GetVersionFromInteger(glslVersion));
     double initialRendererTime = glfwGetTime();
@@ -434,7 +422,8 @@ int main(int argc, char *argv[])
         /* Render here */
 
         quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
-        //graph.GetComponent<MeshRendererComponent>().shader->SetFloat("time", time);
+
+        graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
         graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
 
         mainRenderer.Update(mainScene.registry, deltaTime);

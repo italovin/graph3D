@@ -1,5 +1,6 @@
 #include "Renderer.hpp"
 #include "Material.hpp"
+#include "Mesh.hpp"
 #include "VertexArray.hpp"
 
 GLenum Renderer::GetDrawMode(MeshTopology topology){
@@ -25,6 +26,7 @@ void Renderer::BufferSubDataMVPs(RenderGroup &renderGroup){
 
 void Renderer::SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout){
     int bindingPoint = 0;
+    int objectsIndexerLocation = layout.attributes.back().location + layout.attributes.back().LocationsCount();
     for(auto &&attribute : layout.attributes){
         GLenum type;
         GLboolean normalized;
@@ -49,14 +51,17 @@ void Renderer::SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout
             }
             glEnableVertexArrayAttrib(renderGroup.vao.GetHandle(), i);
             glVertexArrayAttribBinding(renderGroup.vao.GetHandle(), i, bindingPoint);
+            if(i == location + locations - 1){
+                objectsIndexerLocation = i + 1;
+            }
         }
         bindingPoint++;
     }
     // This index is equals last attribute index plus one
     int objectsIndexerBindingIndex = renderGroup.attributesBuffers.size();
-    glVertexArrayAttribIFormat(renderGroup.vao.GetHandle(), this->objectsIndexerDefaultLocation, 1, GL_UNSIGNED_SHORT, 0);
-    glEnableVertexArrayAttrib(renderGroup.vao.GetHandle(), this->objectsIndexerDefaultLocation);
-    glVertexArrayAttribBinding(renderGroup.vao.GetHandle(), this->objectsIndexerDefaultLocation, objectsIndexerBindingIndex);
+    glVertexArrayAttribIFormat(renderGroup.vao.GetHandle(), objectsIndexerLocation, 1, GL_UNSIGNED_SHORT, 0);
+    glEnableVertexArrayAttrib(renderGroup.vao.GetHandle(), objectsIndexerLocation);
+    glVertexArrayAttribBinding(renderGroup.vao.GetHandle(), objectsIndexerLocation, objectsIndexerBindingIndex);
     glVertexArrayBindingDivisor(renderGroup.vao.GetHandle(), objectsIndexerBindingIndex, 1);
 }
 
@@ -134,11 +139,15 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             Shader shaderGenerated = shaderGeneratedGlobal;
             // Setting shader mvp binding point;
             for(auto &&bindingPurpose : x.second[0].first.get().material->GetShaderCode().value().get().GetBindingsPurposes(ShaderStage::Vertex)){
-                AddUBOBindingPurpose(bindingPurpose.second);
+                std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
+                if(!binding.has_value()){
+                    // No binding point available
+                    return;
+                }
                 shaderGenerated.SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
             }
-            for(auto &&x : group){
-                shaderMap[shaderGenerated.resourceHandle].emplace_back(std::move(x));
+            for(auto &&renderable : group){
+                shaderMap[shaderGenerated.resourceHandle].emplace_back(std::move(renderable));
                 shaderCache[shaderGenerated.resourceHandle] = shaderGenerated;
             }
         }
@@ -244,6 +253,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 attributesBatchedChunks[i].data = std::vector<short>(); break;
                 case MeshAttributeType::UnsignedShort:
                 attributesBatchedChunks[i].data = std::vector<unsigned short>(); break;
+                case MeshAttributeType::None: break;
             }
         }
 
@@ -255,6 +265,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             indicesBatchedChunk.indices = std::vector<unsigned int>(); break;
             case MeshIndexType::UnsignedShort:
             indicesBatchedChunk.indices = std::vector<unsigned short>(); break;
+            case MeshIndexType::None: break;
         }
 
         //Temp auxiliary variables
@@ -318,6 +329,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                     std::get<std::vector<unsigned short>>(attributesBatchedChunks[attributeIndex].data).end(),
                     std::get<std::vector<unsigned short>>(attributesData.data).begin(),
                     std::get<std::vector<unsigned short>>(attributesData.data).end()); break;
+                    case MeshAttributeType::None: break;
                 }
                 attributeIndex++;
             }
@@ -336,6 +348,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                     std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).end(),
                     std::get<std::vector<unsigned short>>(indicesData.indices).begin(),
                     std::get<std::vector<unsigned short>>(indicesData.indices).end()); break;
+                    case MeshIndexType::None: break;
                 }
             }
 
@@ -361,6 +374,17 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
             auto objectMaterial = object.first.get().material;
             renderGroup.materials.emplace_back(*objectMaterial);
+            // Register material callbacks
+            objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
+                renderGroup.shader.SetFloat(name, value);
+            });
+            objectMaterial->SetOnGlobalBooleanChangeCallback([renderGroup](const std::string &name, bool value){
+                renderGroup.shader.SetBool(name, value);
+            });
+            objectMaterial->SetOnGlobalVector4ChangeCallback([renderGroup](const std::string &name, glm::vec4 value){
+                renderGroup.shader.SetVec4(name, value);
+            });
+
             auto matParameters = objectMaterial->GetParameters();
             // Setting material parameters layout once
             if(!areParametersMembersSet){
@@ -384,10 +408,15 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 matParamStructArray = StructArray(members, objectsCount);
                 areParametersMembersSet = true;
             }
-            // Setting struct array data
+            // Setting material struct array data
             if(areParametersMembersSet){
                 for(auto &&parameter : matParameters){
-                    matParamStructArray.setMember(objectIndex, parameter.first, parameter.second.data);
+                    switch(parameter.second.type){
+                        case MaterialParameterType::Float: matParamStructArray.setMember(objectIndex, parameter.first, std::get<float>(parameter.second.data)); break;
+                        case MaterialParameterType::Boolean: matParamStructArray.setMember(objectIndex, parameter.first, std::get<bool>(parameter.second.data)); break;
+                        case MaterialParameterType::Vector4: matParamStructArray.setMember(objectIndex, parameter.first, std::get<glm::vec4>(parameter.second.data));
+                        default: break;
+                    }
                 }
             }
 
@@ -439,6 +468,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                     std::get<std::vector<unsigned short>>(attributesBatchedChunks[attributeIndex].data).end(),
                     std::get<std::vector<unsigned short>>(attributesData.data).begin(),
                     std::get<std::vector<unsigned short>>(attributesData.data).end()); break;
+                    case MeshAttributeType::None: break;
                 }
                 attributeIndex++;
             }
@@ -457,6 +487,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                     std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).end(),
                     std::get<std::vector<unsigned short>>(indicesData.indices).begin(),
                     std::get<std::vector<unsigned short>>(indicesData.indices).end()); break;
+                    case MeshIndexType::None: break;
                 }
             }
 
@@ -482,6 +513,16 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 //Material
                 auto objectMaterial = object.first.get().material;
                 renderGroup.materials.emplace_back(*objectMaterial);
+                // Register material callbacks
+                objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
+                    renderGroup.shader.SetFloat(name, value);
+                });
+                objectMaterial->SetOnGlobalBooleanChangeCallback([renderGroup](const std::string &name, bool value){
+                    renderGroup.shader.SetBool(name, value);
+                });
+                objectMaterial->SetOnGlobalVector4ChangeCallback([renderGroup](const std::string &name, glm::vec4 value){
+                    renderGroup.shader.SetVec4(name, value);
+                });
 
                 auto matParameters = objectMaterial->GetParameters();
                 // Setting material parameters layout once
@@ -506,17 +547,24 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                     matParamStructArray = StructArray(members, objectsCount);
                     areParametersMembersSet = true;
                 }
-                // Setting struct array data
+                // Setting material struct array data
                 if(areParametersMembersSet){
                     for(auto &&parameter : matParameters){
-                        matParamStructArray.setMember(objectIndex, parameter.first, parameter.second.data);
+                        switch(parameter.second.type){
+                            case MaterialParameterType::Float: matParamStructArray.setMember(objectIndex, parameter.first, std::get<float>(parameter.second.data)); break;
+                            case MaterialParameterType::Boolean: matParamStructArray.setMember(objectIndex, parameter.first, std::get<bool>(parameter.second.data)); break;
+                            case MaterialParameterType::Vector4: matParamStructArray.setMember(objectIndex, parameter.first, std::get<glm::vec4>(parameter.second.data));
+                            default: break;
+                        }
                     }
                 }
                 objectIndex++;
             }
             meshIndex++;
         }
+        renderGroup.objectsCount = objectsCount;
         renderGroup.commands = commands;
+        renderGroup.materialsStructArray = matParamStructArray;
         std::vector<GLuint> attributesBuffersNames(attributesCount);
         glCreateBuffers(attributesCount, attributesBuffersNames.data());
         std::vector<Buffer> attributesBuffers(attributesCount);
@@ -535,7 +583,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         renderGroup.objectIndexerBuffer.name = objectIndexBufferName;
         renderGroup.objectIndexerBuffer.bufferSize = sizeof(unsigned short)*objectsCount;
         renderGroup.objectIndexerBuffer.stride = sizeof(unsigned short);
-        renderGroup.objectIndexerBuffer.bindingPoint = attributesCount;
+        renderGroup.objectIndexerBuffer.bindingPoint = attributesCount; // Last attribute binding plus one
 
         GLuint mpvsUniformBufferName = 0;
         glCreateBuffers(1, std::addressof(mpvsUniformBufferName));
@@ -549,7 +597,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         renderGroup.materialUniformBuffer.name = materialUniformBufferName;
         renderGroup.materialUniformBuffer.bufferSize = matParamStructArray.structSize *matParamStructArray.numStructs;
         renderGroup.materialUniformBuffer.stride = matParamStructArray.structSize;
-        renderGroup.materialUniformBuffer.bindingPoint = AddUBOBindingPurpose("materials");
+        renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes["materials"];
 
         int index = 0;
         for(auto &&buffer : renderGroup.attributesBuffers){
@@ -568,15 +616,17 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
                 case MeshAttributeType::UnsignedShort:
                 glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                case MeshAttributeType::None: break;
             }
             index++;
         }
 
         switch(indicesBatchedChunk.type){
             case MeshIndexType::UnsignedInt:
-            glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesBatchedChunk.indicesSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            glNamedBufferStorage(renderGroup.indicesBuffer.name, renderGroup.indicesBuffer.bufferSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
             case MeshIndexType::UnsignedShort:
-            glNamedBufferStorage(renderGroup.indicesBuffer.name, indicesBatchedChunk.indicesSize, std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            glNamedBufferStorage(renderGroup.indicesBuffer.name, renderGroup.indicesBuffer.bufferSize, std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            case MeshIndexType::None: break;
         }
 
         {
@@ -585,7 +635,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             for(int i = 0; i < objectsCount; i++){
                 objectsIndexer.emplace_back(i);
             }
-            glNamedBufferStorage(renderGroup.objectIndexerBuffer.name, sizeof(unsigned short)*objectsIndexer.size(), objectsIndexer.data(), GL_DYNAMIC_STORAGE_BIT);
+            glNamedBufferStorage(renderGroup.objectIndexerBuffer.name, renderGroup.objectIndexerBuffer.bufferSize, objectsIndexer.data(), GL_DYNAMIC_STORAGE_BIT);
         }
         // MVP UBO
         glNamedBufferStorage(renderGroup.mvpsUniformBuffer.name, renderGroup.mvpsUniformBuffer.bufferSize, renderGroup.mvps.data(), GL_DYNAMIC_STORAGE_BIT);
@@ -613,21 +663,25 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     }
 }
 
-int Renderer::AddUBOBindingPurpose(const std::string &purpose){
-    int bindingPoint = uboBindingPointFree;
+std::optional<int> Renderer::AddUBOBindingPurpose(const std::string &purpose){
+    int bindingPoint = -1;
+
     if(uboBindingsPurposes.count(purpose) == 0){
+        for(auto &&availableBinding : availableBindingPoints){
+            if(availableBinding.second){
+                bindingPoint = availableBinding.first;
+                availableBindingPoints[bindingPoint] = false;
+                break;
+            }
+        }
+        if(bindingPoint == -1)
+            return std::nullopt;
+
         uboBindingsPurposes.emplace(purpose, bindingPoint);
-        uboBindingPointFree++;
+    } else {
+        bindingPoint = uboBindingsPurposes[purpose];
     }
     return bindingPoint;
-}
-
-void Renderer::SetMVPBindingPoint(int bindingPoint){
-    this->mvpDefaultBindingPoint = bindingPoint;
-}
-
-void Renderer::SetObjectsIndexerLocation(int location){
-    this->objectsIndexerDefaultLocation = location;
 }
 
 void Renderer::SetDrawFunction(){
@@ -708,7 +762,7 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         renderGroup.shader.Use();
         renderGroup.vao.Bind();
 
-        for(int i = 0; i < renderGroup.transforms.size(); i++){
+        for(int i = 0; i < renderGroup.objectsCount; i++){
             auto& transform = renderGroup.transforms[i];
             glm::mat4 model = glm::mat4(1.0f);
             glm::mat4 scl = glm::scale(model, transform.get().scale);
@@ -716,13 +770,23 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
             glm::mat4 trn = glm::translate(model, transform.get().position);
             model = trn*rot*scl;
             renderGroup.mvps[i] = mainCameraProjection * mainCameraView * model;
+
         }
 
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         BufferSubDataMVPs(renderGroup);
-        glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.materialUniformBuffer.bindingPoint, renderGroup.materialUniformBuffer.name);
+        if(renderGroup.materialUniformBuffer.name > 0)
+            glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.materialUniformBuffer.bindingPoint, renderGroup.materialUniformBuffer.name);
 
         (this->*DrawFunction)(renderGroup);
+    }
+}
+
+Renderer::Renderer(){
+    GLuint maxBindingPoints = 50;
+
+    for(GLuint i = 0; i < maxBindingPoints; i++){
+        availableBindingPoints.emplace(i, true);
     }
 }
 

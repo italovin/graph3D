@@ -1,5 +1,6 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
+#include <functional>
 #include <unordered_map>
 #include <string>
 #include <variant>
@@ -24,6 +25,9 @@ struct MaterialParameter{
 
 class Material : public Resource {
 private:
+    std::function<void(const std::string&, float)> floatGlobalChangeCallback;
+    std::function<void(const std::string&, bool)> booleanGlobalChangeCallback;
+    std::function<void(const std::string&, glm::vec4)> vector4GlobalChangeCallback;
     bool changingBuffer = false;
     std::unordered_map<std::string, MaterialParameter> parameters;
     // Global parameters sets a uniform in the shader. The last material to set overrides the value
@@ -42,6 +46,9 @@ public:
     void SetParameterFloat(const std::string &name, float value);
     void SetParameterBoolean(const std::string &name, bool value);
     void SetParameterVector4(const std::string &name, glm::vec4 value);
+    void SetOnGlobalFloatChangeCallback(std::function<void(const std::string&, float)> callback);
+    void SetOnGlobalBooleanChangeCallback(std::function<void(const std::string&, bool)> callback);
+    void SetOnGlobalVector4ChangeCallback(std::function<void(const std::string&, glm::vec4)> callback);
     std::optional<Ref<Texture>> GetParameterMap(const std::string &name);
     std::optional<float> GetParameterFloat(const std::string &name);
     std::optional<bool> GetParameterBoolean(const std::string &name);
@@ -51,5 +58,6 @@ public:
     void SetGlobalParameterFloat(const std::string &name, float value);
     void SetGlobalParameterBoolean(const std::string &name, bool value);
     void SetGlobalParameterVector4(const std::string &name, glm::vec4 value);
+    std::unordered_map<std::string, MaterialParameter> GetGlobalVertexParameters() const;
 };
 #endif

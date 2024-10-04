@@ -1,6 +1,5 @@
 #ifndef RENDERER_H
 #define RENDERER_H
-#include "Base.hpp"
 #include "GLApiVersions.hpp"
 #include "VertexArray.hpp"
 #include "Components.hpp"
@@ -8,10 +7,8 @@
 #include "System.hpp"
 #include "Window.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <map>
 #include <algorithm>
-#include <chrono>
-#include <memory>
+#include <unordered_map>
 
 struct Member {
     std::string name;
@@ -30,8 +27,8 @@ size_t alignOffset(size_t offset, size_t alignment) {
 public:
     // Define os membros da struct, seus tamanhos e alinhamentos
     std::vector<Member> members;
-    size_t structSize;  // Tamanho da struct com padding
-    size_t numStructs;  // Número de structs no array
+    size_t structSize = 0;  // Tamanho da struct com padding
+    size_t numStructs = 0;  // Número de structs no array
     std::vector<char> data;  // Buffer de dados para armazenar structs
 
     StructArray() = default;
@@ -77,13 +74,17 @@ public:
     template<typename T>
     void setMember(size_t structIndex, const std::string& memberName, const T& value) {
         // Encontrar o membro pelo nome
-        for (const auto& member : members) {
-            if (member.name == memberName) {
-                size_t offset = structIndex * structSize + member.offset;
-                std::memcpy(data.data() + offset, &value, sizeof(T));
-                return;
-            }
-        }
+        std::vector<Member>::iterator memberIt = std::find_if(members.begin(), members.end(), [&memberName](const Member &member){
+            return member.name == memberName;
+        });
+        if(memberIt == members.end())
+            return;
+
+        Member member = *memberIt;
+        size_t offset = structIndex * structSize + member.offset;
+        std::memcpy(data.data() + offset, &value, sizeof(T));
+        return;
+
         std::cerr << "Membro '" << memberName << "' não encontrado na struct!\n";
     }
 
@@ -94,8 +95,7 @@ public:
 class Renderer : public System{
 private:
     Window* mainWindow = nullptr;
-    int mvpDefaultBindingPoint = 0;
-    int objectsIndexerDefaultLocation = 0;
+    std::unordered_map<int, bool> availableBindingPoints;
     std::unordered_map<std::string, int> uboBindingsPurposes;
     int uboBindingPointFree = 0;
     GLApiVersion version = GLApiVersion::V330;
@@ -126,11 +126,14 @@ private:
         std::vector<Buffer> attributesBuffers;
         Buffer indicesBuffer;
         Buffer objectIndexerBuffer;
+        ////
+        int objectsCount;
         Buffer mvpsUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
         std::vector<glm::mat4> mvps;
         Buffer materialUniformBuffer;
         std::vector<std::reference_wrapper<Material>> materials;
+        StructArray materialsStructArray;
         GLenum mode; // Equivalent to Topology
         GLenum indicesType; // Equivalent to mesh indices data type
         MeshIndexType indicesTypeEnum;
@@ -151,12 +154,11 @@ private:
     void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;
     // Performs grouping operations for batching and instancing
     void PrepareRenderGroups(entt::registry &registry);
-    int AddUBOBindingPurpose(const std::string &purpose);
+    std::optional<int> AddUBOBindingPurpose(const std::string &purpose);
     // Executes the drawing at update call
     void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform);
 public:
-    void SetMVPBindingPoint(int bindingPoint);
-    void SetObjectsIndexerLocation(int location);
+    Renderer();
     void SetAPIVersion(GLApiVersion version);
     void SetMainWindow(Window *mainWindow);
     void Start(entt::registry &registry) override;

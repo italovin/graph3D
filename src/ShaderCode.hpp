@@ -64,8 +64,8 @@ public:
     std::string CreateStruct(ShaderStage shaderStage, const std::string &structType, const std::string &name);
     std::string DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType);
     void AddMaterialParameterToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, ShaderDataType dataType);
-    void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
+    void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void SetMain(ShaderStage shaderStage, const std::string &main);
     std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
     std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> GetMaterialParametersStruct(ShaderStage shaderStage) const;

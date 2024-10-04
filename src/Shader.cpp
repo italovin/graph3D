@@ -128,6 +128,11 @@ void Shader::SetDouble(const std::string &name, double value) const{
     if(uniforms.count(name) > 0)
         glProgramUniform1d(handle, uniforms.at(name).location, value);
 }
+void Shader::SetVec4(const std::string &name, glm::vec4 value) const{
+    if(uniforms.count(name) > 0)
+        glProgramUniform4f(handle, uniforms.at(name).location, value.x, value.y, value.z, value.w);
+}
+
 void Shader::SetMat4Float(const std::string &name, const glm::mat4 &matrix) const{
     if(uniforms.count(name) > 0)    
         glProgramUniformMatrix4fv(handle, uniforms.at(name).location, 1, GL_FALSE, glm::value_ptr(matrix));

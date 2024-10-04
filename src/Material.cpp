@@ -81,6 +81,18 @@ void Material::SetParameterVector4(const std::string &name, glm::vec4 value)
         parameters[name].data = value;
 }
 
+void Material::SetOnGlobalFloatChangeCallback(std::function<void(const std::string&, float)> callback){
+    floatGlobalChangeCallback = callback;
+}
+
+void Material::SetOnGlobalBooleanChangeCallback(std::function<void(const std::string&, bool)> callback){
+    booleanGlobalChangeCallback = callback;
+}
+
+void Material::SetOnGlobalVector4ChangeCallback(std::function<void(const std::string&, glm::vec4)> callback){
+    vector4GlobalChangeCallback = callback;
+}
+
 std::optional<Ref<Texture>> Material::GetParameterMap(const std::string &name)
 {
     if(parameters.count(name) == 0)
@@ -124,16 +136,26 @@ void Material::SetGlobalParameterFloat(const std::string &name, float value)
 {
     if(globalShaderParameters.count(name) > 0)
         globalShaderParameters[name].data = value;
+    if(floatGlobalChangeCallback)
+        floatGlobalChangeCallback(name, value);
 }
 
 void Material::SetGlobalParameterBoolean(const std::string &name, bool value)
 {
     if(globalShaderParameters.count(name) > 0)
         globalShaderParameters[name].data = value;
+    if(booleanGlobalChangeCallback)
+        booleanGlobalChangeCallback(name, value);
 }
 
 void Material::SetGlobalParameterVector4(const std::string &name, glm::vec4 value)
 {
     if(globalShaderParameters.count(name) > 0)
         globalShaderParameters[name].data = value;
+    if(vector4GlobalChangeCallback)
+        vector4GlobalChangeCallback(name, value);
+}
+
+std::unordered_map<std::string, MaterialParameter> Material::GetGlobalVertexParameters() const{
+    return globalVertexShaderParameters;
 }
