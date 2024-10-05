@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include "Base.hpp"
 #include "Components.hpp"
+#include "GLApiVersions.hpp"
 #include "Material.hpp"
 #include "ShaderCode.hpp"
 #include "Input.hpp"
@@ -19,6 +20,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    ///glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     const int WIDTH = 800;
     const int HEIGHT = 600;
 
@@ -34,6 +36,7 @@ int main(int argc, char *argv[])
     /* Make the window's context current */
     window.MakeContextCurrent();
     Input::RegisterWindow(window);
+    std::cout << glfwGetWindowAttrib(window.GetHandle(), GLFW_CONTEXT_CREATION_API) << std::endl;
 
     GLint size;
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &size);
@@ -64,7 +67,7 @@ int main(int argc, char *argv[])
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(GLDebugCallback, nullptr);
 
-    int glslVersion = window.GetGLSLVersion();
+    const int glslVersion = window.GetGLSLVersion();
 
     std::string var1 = "s";
     std::string var2 = "t";
@@ -198,31 +201,41 @@ int main(int argc, char *argv[])
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
 
-    std::vector<GLfloat> parameters(2*(s_steps+1)*(t_steps+1));
+    std::vector<GLfloat> parameters;
+    parameters.reserve(2*(s_steps+1)*(t_steps+1));
     for(int i = 0; i < s_steps+1; i++) {
         for(int j = 0; j < t_steps+1; j++) {
             float s = min_s + s_stepSize*j;
             float t = min_t + t_stepSize*i;
-            parameters[2*i*(s_steps+1)+2*j] = s;
-            parameters[2*i*(s_steps+1)+2*j+1] = t;
+            parameters.push_back(s);
+            parameters.push_back(t);
         }
     }
-    std::vector<GLuint> indices(2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1));
+    std::vector<GLuint> indices;
+    indices.reserve(2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1));
     int i = 0;
     for(int y = 0; y < t_steps+1; y++) {
         for(int x = 0; x < s_steps; x++) {
-            indices[i++] = y * (s_steps+1) + x;
-            indices[i++] = y * (s_steps+1) + x + 1;
+            indices.push_back(y * (s_steps+1) + x);
+            indices.push_back(y * (s_steps+1) + x + 1);
         }
     }
 
     // Vertical grid lines
     for(int x = 0; x < s_steps+1; x++) {
         for(int y = 0; y < t_steps; y++) {
-            indices[i++] = y * (t_steps+1) + x;
-            indices[i++] = (y + 1) * (t_steps+1) + x;
+            indices.push_back(y * (t_steps+1) + x);
+            indices.push_back((y + 1) * (t_steps+1) + x);
         }
     }
+    // Useful for indexing objects on shader
+    std::string objIDString;
+    if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460){
+        objIDString = "gl_BaseInstanceARB + gl_InstanceID";
+    } else {
+        objIDString = "gl_BaseInstance + gl_InstanceID";
+    }
+    ////
 
     Ref<Mesh> graphMesh = CreateRef<Mesh>();
     graphMesh->PushAttribute("params", 0, MeshAttributeFormat::Vec2, false, parameters);
@@ -230,18 +243,21 @@ int main(int argc, char *argv[])
 
     ShaderCode graphShaderCode = ShaderCode();
     graphShaderCode.SetVersion(glslVersion);
+    if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460)
+        graphShaderCode.AddExtension("GL_ARB_shader_draw_parameters");
     graphShaderCode.SetStageToPipeline(ShaderStage::Vertex, true);
     graphShaderCode.AddVertexAttribute("params", ShaderDataType::Float2, 0);
-    graphShaderCode.AddVertexAttribute("aModel", ShaderDataType::Int, 6);
     graphShaderCode.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
     graphShaderCode.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
     graphShaderCode.AddUniform(ShaderStage::Vertex, timeString, ShaderDataType::Float);
-    graphShaderCode.SetMain(ShaderStage::Vertex, "float " + var1 + "= params.x;"
+    graphShaderCode.SetMain(ShaderStage::Vertex,
+    "int objID = " + objIDString + ";"
+    "float " + var1 + "= params.x;"
     "float " + var2 + "= params.y;"
     "float x =" + equationX + ";"
     "float y =" + equationY + ";"
     "float z =" + equationZ + ";"
-    + "gl_Position = mvps[aModel]*vec4(x, z, y, 1.0);");
+    + "gl_Position = mvps[objID]*vec4(x, z, y, 1.0);");
     graphShaderCode.SetStageToPipeline(ShaderStage::Fragment, true);
     graphShaderCode.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
     graphShaderCode.SetMain(ShaderStage::Fragment, "FragColor = vec4(1.0, 0.0, 0.0, 1.0);");
@@ -279,17 +295,20 @@ int main(int argc, char *argv[])
 
     ShaderCode shaderCodeTest = ShaderCode();
     shaderCodeTest.SetVersion(glslVersion);
+    if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460)
+        shaderCodeTest.AddExtension("GL_ARB_shader_draw_parameters");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Vertex, true);
     shaderCodeTest.AddVertexAttribute("aPos", ShaderDataType::Float3, 0);
     shaderCodeTest.AddVertexAttribute("aColor", ShaderDataType::Float4, 1);
-    shaderCodeTest.AddVertexAttribute("aModel", ShaderDataType::Int, 2);
     shaderCodeTest.AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
     shaderCodeTest.AddOutput(ShaderStage::Vertex, "matID", ShaderDataType::Int);
     shaderCodeTest.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
     shaderCodeTest.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
-    shaderCodeTest.SetMain(ShaderStage::Vertex, "colorOut = aColor;"
-    "matID = aModel;"
-    "gl_Position = mvps[aModel]*vec4(aPos, 1.0);");
+    shaderCodeTest.SetMain(ShaderStage::Vertex,
+    "int objID = " + objIDString + ";\n"
+    "colorOut = aColor;\n"
+    "matID = objID;\n"
+    "gl_Position = mvps[objID]*vec4(aPos, 1.0);");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
     shaderCodeTest.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
     shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "albedo", ShaderDataType::Float4);

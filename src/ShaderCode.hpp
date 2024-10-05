@@ -46,6 +46,8 @@ struct ShaderStageCode{
 class ShaderCode : public Resource {
 private:
     int version = 330;
+    std::vector<std::string> extensions;
+    std::string additionalOutsideString;
     ShaderStageCode vertexShader;
     ShaderStageCode fragmentShader;
     ShaderStageCode tesselationControlShader;
@@ -57,6 +59,8 @@ private:
     std::string &outsideString, std::string &outsideStringIns);
 public:
     void SetVersion(int version);
+    void AddExtension(const std::string &extension);
+    void SetAdditionalOutsideString(const std::string &additionalOutsideString);
     void SetStageToPipeline(ShaderStage shaderStage, bool enabled);
     void AddVertexAttribute(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
     void AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);

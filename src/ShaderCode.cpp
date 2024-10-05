@@ -29,6 +29,14 @@ void ShaderCode::SetVersion(int version){
     this->version = version;
 }
 
+void ShaderCode::AddExtension(const std::string &extension){
+    this->extensions.emplace_back(extension);
+}
+
+void ShaderCode::SetAdditionalOutsideString(const std::string &additionalOutsideString){
+    this->additionalOutsideString = additionalOutsideString;
+}
+
 void ShaderCode::SetStageToPipeline(ShaderStage shaderStage, bool enabled){
     switch(shaderStage){
         case ShaderStage::Vertex : vertexShader.enabled = enabled; break;
@@ -235,6 +243,10 @@ std::optional<Shader> ShaderCode::Generate()
     std::string outsideStringInsPrevious;
     for(int i = 0; i < shaderObjects.size(); i++){
         std::string versionString = "#version " + std::to_string(version) + "\n";
+        std::string extensionsString;
+        for(auto &&extension : extensions){
+            extensionsString += "#extension " + extension + " : enable\n";
+        }
         std::string mainString;
         std::string outsideString;
         std::string outsideStringIns;
@@ -253,11 +265,11 @@ std::optional<Shader> ShaderCode::Generate()
         }
         // If Vertex Shader
         if(i == 0){
-            shaderSource = versionString + outsideString + 
+            shaderSource = versionString + extensionsString + outsideString + additionalOutsideString +
             "void main(){\n" +
             mainString + "\n}";
         } else {
-            shaderSource = versionString + outsideString + outsideStringInsPrevious + 
+            shaderSource = versionString + extensionsString + outsideString + outsideStringInsPrevious +
             "void main(){\n" +
             mainString + "\n}";
         }
