@@ -15,6 +15,9 @@ struct Member {
     size_t alignment;
     size_t offset;
     size_t paddingBefore;
+
+    Member(const std::string &name, size_t size, size_t alignment, size_t offset, size_t paddingBefore):
+    name(name), size(size), alignment(alignment), offset(offset), paddingBefore(paddingBefore){}
 };
 // Classe que armazena dinamicamente as structs com paddings adequados
 class StructArray {
@@ -78,7 +81,6 @@ private:
         Shader shader;
         std::vector<Buffer> attributesBuffers;
         Buffer indicesBuffer;
-        Buffer objectIndexerBuffer;
         ////
         int objectsCount;
         Buffer mvpsUniformBuffer;

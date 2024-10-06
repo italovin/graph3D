@@ -2,6 +2,7 @@
 #include "Material.hpp"
 #include "Mesh.hpp"
 #include "VertexArray.hpp"
+#include <chrono>
 
 // Implementation for StructArray
 size_t StructArray::alignOffset(size_t offset, size_t alignment) {
@@ -87,7 +88,6 @@ void Renderer::BufferSubDataMVPs(RenderGroup &renderGroup){
 
 void Renderer::SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout){
     int bindingPoint = 0;
-    int objectsIndexerLocation = layout.attributes.back().location + layout.attributes.back().LocationsCount();
     for(auto &&attribute : layout.attributes){
         GLenum type;
         GLboolean normalized;
@@ -112,18 +112,9 @@ void Renderer::SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout
             }
             glEnableVertexArrayAttrib(renderGroup.vao.GetHandle(), i);
             glVertexArrayAttribBinding(renderGroup.vao.GetHandle(), i, bindingPoint);
-            if(i == location + locations - 1){
-                objectsIndexerLocation = i + 1;
-            }
         }
         bindingPoint++;
     }
-    // This index is equals last attribute index plus one
-    int objectsIndexerBindingIndex = renderGroup.attributesBuffers.size();
-    glVertexArrayAttribIFormat(renderGroup.vao.GetHandle(), objectsIndexerLocation, 1, GL_UNSIGNED_SHORT, 0);
-    glEnableVertexArrayAttrib(renderGroup.vao.GetHandle(), objectsIndexerLocation);
-    glVertexArrayAttribBinding(renderGroup.vao.GetHandle(), objectsIndexerLocation, objectsIndexerBindingIndex);
-    glVertexArrayBindingDivisor(renderGroup.vao.GetHandle(), objectsIndexerBindingIndex, 1);
 }
 
 void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup)
@@ -131,8 +122,8 @@ void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup)
     std::vector<GLuint> buffers;
     std::vector<GLintptr> offsets;
     std::vector<GLsizei> strides;
-    //Attributes buffer + extra attribute for index the models (Compatibility for no gl_DrawID)
-    GLsizei buffersCount = renderGroup.attributesBuffers.size() + 1;
+    //Attributes buffer
+    GLsizei buffersCount = renderGroup.attributesBuffers.size();
     buffers.reserve(buffersCount);
     offsets.reserve(buffersCount);
     strides.reserve(buffersCount);
@@ -141,15 +132,12 @@ void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup)
         offsets.emplace_back(0);
         strides.emplace_back(buffer.stride);
     }
-    buffers.emplace_back(renderGroup.objectIndexerBuffer.name);
-    offsets.emplace_back(0);
-    strides.emplace_back(renderGroup.objectIndexerBuffer.stride);
     glVertexArrayVertexBuffers(renderGroup.vao.GetHandle(), 0, buffersCount, buffers.data(), offsets.data(), strides.data());
     glVertexArrayElementBuffer(renderGroup.vao.GetHandle(), renderGroup.indicesBuffer.name);
 }
 
 void Renderer::PrepareRenderGroups(entt::registry &registry){
-
+    auto mapBegin = std::chrono::high_resolution_clock::now();
     auto renderableView = registry.view<MeshRendererComponent, TransformComponent>();
 
     using Renderable = std::pair<std::reference_wrapper<MeshRendererComponent>,
@@ -184,7 +172,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             continue;
         }
         auto shaderCode = shaderCodeOpt.value();
-        shaderCodeMap[shaderCode.get().resourceHandle].emplace_back(std::move(x));
+        shaderCodeMap[shaderCode.get().resourceHandle].push_back(std::move(x));
     }
     for(auto &&x : shaderCodeMap){
         std::optional<Shader> shaderGeneratedOpt = x.second[0].first.get().material->GetShaderCode().value().get().Generate();
@@ -192,9 +180,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             continue;
         Shader shaderGeneratedGlobal = shaderGeneratedOpt.value();
         std::vector<std::vector<Renderable>> shaderGeneratedGroups;
-        for(size_t i = 0; i < x.second.size(); i+=512){
-            std::vector<Renderable> vec(x.second.begin() + i, x.second.begin() + std::min(i+512, x.second.size()));
-            shaderGeneratedGroups.emplace_back(std::move(vec));
+        const int groupSize = 512;
+        shaderGeneratedGroups.reserve(std::ceil(x.second.size()/groupSize));
+        for(size_t i = 0; i < x.second.size(); i+=groupSize){
+            std::vector<Renderable> vec(x.second.begin() + i, x.second.begin() + std::min(i+groupSize, x.second.size()));
+            shaderGeneratedGroups.push_back(std::move(vec));
         }
         for(auto &&group : shaderGeneratedGroups){
             Shader shaderGenerated = shaderGeneratedGlobal;
@@ -207,8 +197,9 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 }
                 shaderGenerated.SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
             }
+            shaderMap[shaderGenerated.resourceHandle].reserve(group.size());
             for(auto &&renderable : group){
-                shaderMap[shaderGenerated.resourceHandle].emplace_back(std::move(renderable));
+                shaderMap[shaderGenerated.resourceHandle].push_back(std::move(renderable));
                 shaderCache[shaderGenerated.resourceHandle] = shaderGenerated;
             }
         }
@@ -217,22 +208,31 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         ShaderGroup shaderGroup;
         shaderGroup.shader = shaderCache[group.first];
         std::unordered_map<ResourceHandle, std::vector<Renderable>> groupMap;
+        int batchSize = 0;
         for(auto &&x : group.second){
-            groupMap[x.first.get().mesh->resourceHandle].emplace_back(std::move(x));
+            if(groupMap[x.first.get().mesh->resourceHandle].size() == 0)
+                batchSize++;
+            else if(groupMap[x.first.get().mesh->resourceHandle].size() == 1)
+                batchSize--; // Reverts when instances are found
+
+            groupMap[x.first.get().mesh->resourceHandle].push_back(std::move(x));
         }
-        std::vector<std::vector<Renderable>> groupByMeshes;
+        shaderGroup.batchGroup.reserve(batchSize);
         for(auto &&x : groupMap){
             if(x.second.size() >= 2){
-                shaderGroup.instancesGroups.emplace_back(std::move(x.second));
+                shaderGroup.instancesGroups.push_back(std::move(x.second));
             } else {
                 for(auto &&y : x.second){
-                    shaderGroup.batchGroup.emplace_back(std::move(y));
+                    shaderGroup.batchGroup.push_back(std::move(y));
                 }
             }
         }
-        shaderGroups.emplace_back(std::move(shaderGroup));
+        shaderGroups.push_back(std::move(shaderGroup));
     }
+    auto mapEnd = std::chrono::high_resolution_clock::now();
+    std::cout << "Mapping and shaders compiling: " << std::chrono::duration_cast<std::chrono::nanoseconds>(mapEnd-mapBegin).count()/1000 << "μs" << std::endl;
     for(auto &&shaderGroup : shaderGroups){
+        auto setupBegin = std::chrono::high_resolution_clock::now();
         RenderGroup renderGroup;
         renderGroup.vao = VertexArray();
         renderGroup.shader = shaderGroup.shader;
@@ -458,13 +458,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                         case MaterialParameterType::Vector4: mSize = 16; mAlignment = 16; break;
                         case MaterialParameterType::Map: break;
                     }
-                    Member member;
-                    member.name = parameter.first;
-                    member.size = mSize;
-                    member.alignment = mAlignment;
-                    member.offset = 0;
-                    member.paddingBefore = 0;
-                    members.emplace_back(member);
+                    members.emplace_back(parameter.first, mSize, mAlignment, 0, 0);
                 }
                 matParamStructArray = StructArray(members, objectsCount);
                 areParametersMembersSet = true;
@@ -559,7 +553,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 .baseVertex = baseVertex,    // First in the vertex array
                 .baseInstance = baseInstance
             };
-            commands.emplace_back(std::move(meshCmd));
+            commands.push_back(std::move(meshCmd));
 
             //Base vertex is offset of vertices, not of indices
             baseVertex += mesh->GetVerticesCount();
@@ -569,11 +563,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             for(auto &&object : instanceGroup){
                 //Transform
                 auto& objectTransform = object.second;
-                renderGroup.transforms.emplace_back(objectTransform);
-                renderGroup.mvps.emplace_back(glm::mat4(1.0f));
+                renderGroup.transforms.push_back(objectTransform);
+                renderGroup.mvps.push_back(glm::mat4(1.0f));
                 //Material
                 auto objectMaterial = object.first.get().material;
-                renderGroup.materials.emplace_back(*objectMaterial);
+                renderGroup.materials.push_back(*objectMaterial);
                 // Register material callbacks
                 objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
                     renderGroup.shader.SetFloat(name, value);
@@ -597,13 +591,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                             case MaterialParameterType::Vector4: mSize = 16; mAlignment = 16; break;
                             case MaterialParameterType::Map: break;
                         }
-                        Member member;
-                        member.name = parameter.first;
-                        member.size = mSize;
-                        member.alignment = mAlignment;
-                        member.offset = 0;
-                        member.paddingBefore = 0;
-                        members.emplace_back(member);
+                        members.emplace_back(parameter.first, mSize, mAlignment, 0, 0);
                     }
                     matParamStructArray = StructArray(members, objectsCount);
                     areParametersMembersSet = true;
@@ -639,13 +627,6 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         renderGroup.indicesBuffer.name = indicesBufferName;
         renderGroup.indicesBuffer.bufferSize = indicesBatchedChunk.indicesSize;
 
-        GLuint objectIndexBufferName = 0;
-        glCreateBuffers(1, std::addressof(objectIndexBufferName));
-        renderGroup.objectIndexerBuffer.name = objectIndexBufferName;
-        renderGroup.objectIndexerBuffer.bufferSize = sizeof(unsigned short)*objectsCount;
-        renderGroup.objectIndexerBuffer.stride = sizeof(unsigned short);
-        renderGroup.objectIndexerBuffer.bindingPoint = attributesCount; // Last attribute binding plus one
-
         GLuint mpvsUniformBufferName = 0;
         glCreateBuffers(1, std::addressof(mpvsUniformBufferName));
         renderGroup.mvpsUniformBuffer.name = mpvsUniformBufferName;
@@ -660,26 +641,32 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         renderGroup.materialUniformBuffer.stride = matParamStructArray.structSize;
         renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes["materials"];
 
-        int index = 0;
-        for(auto &&buffer : renderGroup.attributesBuffers){
-            switch(attributesBatchedChunks[index].attribute.type){
-                case MeshAttributeType::Float:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<float>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::Int:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<int>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::UnsignedInt:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned int>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::Byte:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<char>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::UnsignedByte:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned char>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::Short:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::UnsignedShort:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
-                case MeshAttributeType::None: break;
+
+        auto setupEnd = std::chrono::high_resolution_clock::now();
+        std::cout << "Time to setup: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << "μs" << std::endl;
+        auto bufferBegin = std::chrono::high_resolution_clock::now();
+        {
+            int index = 0;
+            for(auto &&buffer : renderGroup.attributesBuffers){
+                switch(attributesBatchedChunks[index].attribute.type){
+                    case MeshAttributeType::Float:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<float>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::Int:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<int>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::UnsignedInt:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned int>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::Byte:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<char>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::UnsignedByte:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned char>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::Short:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::UnsignedShort:
+                    glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                    case MeshAttributeType::None: break;
+                }
+                index++;
             }
-            index++;
         }
 
         switch(indicesBatchedChunk.type){
@@ -690,14 +677,6 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             case MeshIndexType::None: break;
         }
 
-        {
-            std::vector<unsigned short> objectsIndexer;
-            objectsIndexer.reserve(objectsCount);
-            for(int i = 0; i < objectsCount; i++){
-                objectsIndexer.emplace_back(i);
-            }
-            glNamedBufferStorage(renderGroup.objectIndexerBuffer.name, renderGroup.objectIndexerBuffer.bufferSize, objectsIndexer.data(), GL_DYNAMIC_STORAGE_BIT);
-        }
         // MVP UBO
         glNamedBufferStorage(renderGroup.mvpsUniformBuffer.name, renderGroup.mvpsUniformBuffer.bufferSize, renderGroup.mvps.data(), GL_DYNAMIC_STORAGE_BIT);
 
@@ -719,8 +698,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                      commands.data(),
                      GL_DYNAMIC_STORAGE_BIT);
 
+        auto bufferEnd = std::chrono::high_resolution_clock::now();
+        std::cout << "Time to buffer data: " << std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count() << "μs" << std::endl;
+
         renderGroup.drawCmdBuffer.commandsCount = commands.size();
-        this->renderGroups.emplace_back(renderGroup);
+        this->renderGroups.push_back(std::move(renderGroup));
     }
 }
 

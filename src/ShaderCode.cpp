@@ -239,7 +239,6 @@ std::optional<Shader> ShaderCode::Generate()
 
     if(fragmentShader.enabled)
         shaderObjects.emplace_back(ShaderObject(GL_FRAGMENT_SHADER));
-
     std::string outsideStringInsPrevious;
     for(int i = 0; i < shaderObjects.size(); i++){
         std::string versionString = "#version " + std::to_string(version) + "\n";
@@ -274,7 +273,6 @@ std::optional<Shader> ShaderCode::Generate()
             mainString + "\n}";
         }
         outsideStringInsPrevious = outsideStringIns;
-
         shaderObjects[i].Compile(shaderSource);
     }
     Shader shader(shaderObjects);
