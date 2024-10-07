@@ -9,6 +9,7 @@
 #include "Renderer.hpp"
 #include "ShaderTypes.hpp"
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
@@ -287,10 +288,10 @@ int main(int argc, char *argv[])
     0.5f, -0.5f, 0.0f,
     0.0f, 0.5f, 0.0f};
     mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, quad);
-    mesh->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color1);
+    //mesh->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color1);
     mesh->SetIndices(quadIndices, MeshTopology::Triangles);
     mesh2->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, triangle);
-    mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
+    //mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
     mesh2->SetIndices(std::vector<unsigned short>{0, 1, 2}, MeshTopology::Triangles);
 
     ShaderCode shaderCodeTest = ShaderCode();
@@ -323,11 +324,44 @@ int main(int argc, char *argv[])
     materialTestGreen->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
     materialTestRed->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
 
+    std::ifstream model1Stream("../resources/modelos/ball.json");
+    nlohmann::json model1Json = nlohmann::json::parse(model1Stream);
+    std::vector<float> model1Vertices = model1Json["vertices"].get<std::vector<float>>();
+    std::vector<unsigned short> model1Indices = model1Json["indices"].get<std::vector<unsigned short>>();
+    Ref<Mesh> model1Mesh = CreateRef<Mesh>();
+    model1Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model1Vertices);
+    model1Mesh->SetIndices(model1Indices, MeshTopology::Triangles);
+    Ref<Material> model1Material = CreateRef<Material>(shaderCodeTest);
+    model1Material->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
+
+    std::ifstream model2Stream("../resources/modelos/cone1.json");
+    nlohmann::json model2Json = nlohmann::json::parse(model2Stream);
+    std::vector<float> model2Vertices = model2Json["vertices"].get<std::vector<float>>();
+    std::vector<unsigned short> model2Indices = model2Json["indices"].get<std::vector<unsigned short>>();
+    Ref<Mesh> model2Mesh = CreateRef<Mesh>();
+    model2Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model2Vertices);
+    model2Mesh->SetIndices(model2Indices, MeshTopology::Triangles);
+    Ref<Material> model2Material = CreateRef<Material>(shaderCodeTest);
+    model2Material->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
+
+    std::ifstream model3Stream("../resources/modelos/ball.json");
+    nlohmann::json model3Json = nlohmann::json::parse(model3Stream);
+    std::vector<float> model3Vertices = model3Json["vertices"].get<std::vector<float>>();
+    std::vector<unsigned short> model3Indices = model3Json["indices"].get<std::vector<unsigned short>>();
+    Ref<Mesh> model3Mesh = CreateRef<Mesh>();
+    model3Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model3Vertices);
+    model3Mesh->SetIndices(model3Indices, MeshTopology::Triangles);
+    Ref<Material> model3Material = CreateRef<Material>(shaderCodeTest);
+    model3Material->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
+
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
     Entity tri1 = mainScene.CreateEntity();
     Entity quad2 = mainScene.CreateEntity();
     Entity graph = mainScene.CreateEntity();
+    Entity model1 = mainScene.CreateEntity();
+    Entity model2 = mainScene.CreateEntity();
+    Entity model3 = mainScene.CreateEntity();
     Entity mainCamera = mainScene.CreateEntity();
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
@@ -338,17 +372,24 @@ int main(int argc, char *argv[])
     topDownCameraTransform.position = glm::vec3(0, 5, 0);
     topDownCameraTransform.eulerAngles(glm::vec3(90, 0, 0));
 
-    quad1.AddComponent<MeshRendererComponent>(mesh, materialTest);
-    quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+    // quad1.AddComponent<MeshRendererComponent>(mesh, materialTest);
+    // quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+    //
+    // tri1.AddComponent<MeshRendererComponent>(mesh2, materialTestGreen);
+    // tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
+    //
+    // quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
+    // quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
+    //
+    // graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
+    // graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
-    tri1.AddComponent<MeshRendererComponent>(mesh2, materialTestGreen);
-    tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
-
-    quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
-    quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
-
-    graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
-    graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+    model1.AddComponent<MeshRendererComponent>(model1Mesh, model1Material);
+    model1.GetComponent<TransformComponent>().position = glm::vec3(-2, 0, 0);
+    model2.AddComponent<MeshRendererComponent>(model2Mesh, model2Material);
+    model2.GetComponent<TransformComponent>().position = glm::vec3(2, 0, 0);
+    model3.AddComponent<MeshRendererComponent>(model3Mesh, model3Material);
+    model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 2);
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
@@ -440,10 +481,12 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         /* Render here */
 
-        quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
+        //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
 
-        graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
-        graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
+        //graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
+        //graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
+        model2.transform.eulerAngles(glm::vec3(30*time, -30*time, 0));
+        model3.transform.eulerAngles(glm::vec3(-30*time, 30*time, 0));
 
         mainRenderer.Update(mainScene.registry, deltaTime);
         /* Swap front and back buffers */
