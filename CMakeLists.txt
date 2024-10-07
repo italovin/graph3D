@@ -15,9 +15,10 @@ src/Renderer.cpp
 src/Scene.cpp
 src/Entity.cpp)
 if(LINUX)
-    target_link_libraries(graph3D GL GLEW glfw)
+    target_link_libraries(graph3D GLEW glfw GL)
 endif()
 
 if(WIN32)
-    target_link_libraries(graph3D glfw3 glew32 opengl32)
+    target_compile_definitions(graph3D PUBLIC GLEW_STATIC)
+    target_link_libraries(graph3D glew32.a glfw3 opengl32 user32 gdi32 stdc++.a winpthread.a)
 endif()
