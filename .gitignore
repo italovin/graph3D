@@ -32,5 +32,6 @@
 *.app
 
 build
+mingw_build
 .vscode
 .cache
