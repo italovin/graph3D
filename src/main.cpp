@@ -9,6 +9,7 @@
 #include "Renderer.hpp"
 #include "ShaderTypes.hpp"
 #include <iostream>
+#include <filesystem>
 #include <nlohmann/json.hpp>
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
@@ -267,9 +268,7 @@ int main(int argc, char *argv[])
 
     Ref<Mesh> mesh = CreateRef<Mesh>();
     Ref<Mesh> mesh2 = CreateRef<Mesh>();
-    /*std::vector<float> triangle = {-0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f};*/
+
     std::vector<float> quad = {-0.5f, -0.5f, 0.0f,
     0.5f, -0.5f, 0.0f,
     0.5f,  0.5f, 0.0f,
@@ -324,30 +323,65 @@ int main(int argc, char *argv[])
     materialTestGreen->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
     materialTestRed->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
 
-    std::ifstream model1Stream("../resources/modelos/ball.json");
+    std::filesystem::path modelsDirectory;
+    if(std::filesystem::exists(std::filesystem::path("../resources/modelos"))){
+        modelsDirectory = std::filesystem::path("../resources/modelos");
+    } else if(std::filesystem::exists(std::filesystem::path("./resources/modelos"))){
+        modelsDirectory = std::filesystem::path("./resources/modelos");
+    } else {
+        std::cout << "Insira manualmente o diretório base dos modelos:";
+        std::cin >> modelsDirectory;
+    }
+    if(!std::filesystem::exists(modelsDirectory)){
+        std::cout << "Diretório dos modelos inválido\n";
+        return -1;
+    }
+
+    const std::string modelsVerticesKey = "vertices";
+    const std::string modelsIndicessKey = "indices";
+
+    std::ifstream model1Stream(modelsDirectory/"ball.json");
+    if(!model1Stream || !nlohmann::json::accept(model1Stream)){
+        std::cout << "JSON do model 1 não existe ou é inválido\n";
+        return -1;
+    }
+    model1Stream.seekg(0);
+
     nlohmann::json model1Json = nlohmann::json::parse(model1Stream);
-    std::vector<float> model1Vertices = model1Json["vertices"].get<std::vector<float>>();
-    std::vector<unsigned short> model1Indices = model1Json["indices"].get<std::vector<unsigned short>>();
+    std::vector<float> model1Vertices = model1Json[modelsVerticesKey].get<std::vector<float>>();
+    std::vector<unsigned short> model1Indices = model1Json[modelsIndicessKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model1Mesh = CreateRef<Mesh>();
     model1Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model1Vertices);
     model1Mesh->SetIndices(model1Indices, MeshTopology::Triangles);
     Ref<Material> model1Material = CreateRef<Material>(shaderCodeTest);
     model1Material->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
 
-    std::ifstream model2Stream("../resources/modelos/cone1.json");
+    std::ifstream model2Stream(modelsDirectory/"cone1.json");
+    if(!model2Stream || !nlohmann::json::accept(model2Stream)){
+        std::cout << "JSON do model 2 não existe ou é inválido\n";
+        return -1;
+    }
+    model2Stream.seekg(0);
+
     nlohmann::json model2Json = nlohmann::json::parse(model2Stream);
-    std::vector<float> model2Vertices = model2Json["vertices"].get<std::vector<float>>();
-    std::vector<unsigned short> model2Indices = model2Json["indices"].get<std::vector<unsigned short>>();
+    std::vector<float> model2Vertices = model2Json[modelsVerticesKey].get<std::vector<float>>();
+    std::vector<unsigned short> model2Indices = model2Json[modelsIndicessKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model2Mesh = CreateRef<Mesh>();
     model2Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model2Vertices);
     model2Mesh->SetIndices(model2Indices, MeshTopology::Triangles);
     Ref<Material> model2Material = CreateRef<Material>(shaderCodeTest);
     model2Material->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
 
-    std::ifstream model3Stream("../resources/modelos/ball.json");
+    std::ifstream model3Stream(modelsDirectory/"cylinder.json");
+    if(!model3Stream || !nlohmann::json::accept(model3Stream)){
+        std::cout << "JSON do model 3 não existe ou é inválido\n";
+        return -1;
+    }
+    model3Stream.seekg(0);
+
     nlohmann::json model3Json = nlohmann::json::parse(model3Stream);
-    std::vector<float> model3Vertices = model3Json["vertices"].get<std::vector<float>>();
-    std::vector<unsigned short> model3Indices = model3Json["indices"].get<std::vector<unsigned short>>();
+    std::vector<float> model3Vertices = model3Json[modelsVerticesKey].get<std::vector<float>>();
+    std::vector<unsigned short> model3Indices = model3Json[modelsIndicessKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model3Mesh = CreateRef<Mesh>();
     model3Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model3Vertices);
     model3Mesh->SetIndices(model3Indices, MeshTopology::Triangles);
@@ -389,7 +423,8 @@ int main(int argc, char *argv[])
     model2.AddComponent<MeshRendererComponent>(model2Mesh, model2Material);
     model2.GetComponent<TransformComponent>().position = glm::vec3(2, 0, 0);
     model3.AddComponent<MeshRendererComponent>(model3Mesh, model3Material);
-    model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 2);
+    model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+    model3.transform.scale = glm::vec3(0.2f, 0.2f, 0.2f);
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
