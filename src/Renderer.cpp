@@ -9,7 +9,7 @@ size_t StructArray::alignOffset(size_t offset, size_t alignment) {
     return (offset + alignment - 1) & ~(alignment - 1);
 }
 StructArray::StructArray(const std::vector<Member>& members, size_t numStructs)
-        : members(members), numStructs(numStructs), structSize(0) {
+        : members(members), numStructs(numStructs) {
 
         calculateOffsetsAndPadding();
         allocateBuffer();
@@ -237,7 +237,6 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         renderGroup.vao = VertexArray();
         renderGroup.shader = shaderGroup.shader;
         MeshLayout layout;
-        std::vector<DrawElementsIndirectCommand> commands;
 
         auto& batchGroup = shaderGroup.GetBatchGroup();
         auto& instancesGroups = shaderGroup.GetInstancesGroups();
@@ -297,7 +296,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
         //Combines meshes attributes in a single data vector
         std::vector<MeshAttributeData> attributesBatchedChunks(attributesCount);
-        for(int i = 0; i < attributesBatchedChunks.size(); i++){
+        for(size_t i = 0; i < attributesBatchedChunks.size(); i++){
             attributesBatchedChunks[i].attribute = meshGlobalLayout.attributes[i];
             switch(attributesBatchedChunks[i].attribute.type){
                 case MeshAttributeType::Float:
@@ -338,11 +337,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
         renderGroup.mvps.reserve(objectsCount);
         renderGroup.transforms.reserve(objectsCount);
+        renderGroup.instancesGroups.reserve(instancesGroups.size());
 
-        struct MaterialParameterData{
-            std::variant<Ref<Texture>, float, bool, glm::vec4> data;
-        };
-        std::vector<MaterialParameterData> materialParameters;
         // Boolean to check if material parameters struct layout is calculated
         bool areParametersMembersSet = false;
         StructArray matParamStructArray;
@@ -414,19 +410,22 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             }
 
             unsigned int instanceCount = 1;
-
-            DrawElementsIndirectCommand meshCmd = {
-                .count = mesh->GetIndicesCount(),
-                .instanceCount = instanceCount,
-                .firstIndex = firstIndex,    // First in the index array
-                .baseVertex = baseVertex,    // First in the vertex array
-                .baseInstance = baseInstance
-            };
-            commands.emplace_back(std::move(meshCmd));
+            unsigned int indicesCount = mesh->GetIndicesCount();
+            if(isIndirect){
+                // First Index - First in te index array (Offset in indices)
+                // Base vertex - Base offset for the vertices
+                DrawElementsIndirectCommand meshCmd(indicesCount, instanceCount, firstIndex, baseVertex, baseInstance);
+                renderGroup.commands.push_back(std::move(meshCmd));
+            } else {
+                renderGroup.batchGroup.count.push_back(indicesCount);
+                renderGroup.batchGroup.indices.push_back((GLvoid*)(intptr_t)(firstIndex*renderGroup.indicesTypeSize));
+                renderGroup.batchGroup.drawcount += 1;
+                renderGroup.batchGroup.baseVertex.push_back(baseVertex);
+            }
 
             //Base vertex is offset of vertices, not of indices
             baseVertex += mesh->GetVerticesCount();
-            firstIndex += mesh->GetIndicesCount();
+            firstIndex += indicesCount;
             baseInstance += instanceCount;
 
             auto& objectTransform = object.second;
@@ -546,14 +545,21 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 }
             }
 
-            DrawElementsIndirectCommand meshCmd = {
-                .count = mesh->GetIndicesCount(),
-                .instanceCount = instanceCount,
-                .firstIndex = firstIndex,    // First in the index array
-                .baseVertex = baseVertex,    // First in the vertex array
-                .baseInstance = baseInstance
-            };
-            commands.push_back(std::move(meshCmd));
+            unsigned int indicesCount = mesh->GetIndicesCount();
+            if(isIndirect){
+                // First Index - First in te index array (Offset in indices)
+                // Base vertex - Base offset for the vertices
+                DrawElementsIndirectCommand meshCmd(indicesCount, instanceCount, firstIndex, baseVertex, baseInstance);
+                renderGroup.commands.push_back(std::move(meshCmd));
+            } else {
+                InstanceGroup instanceGroupToPush;
+                instanceGroupToPush.count = indicesCount;
+                instanceGroupToPush.firstIndex = firstIndex;
+                instanceGroupToPush.instanceCount = instanceCount;
+                instanceGroupToPush.baseVertex = baseVertex;
+                instanceGroupToPush.baseInstance = baseInstance;
+                renderGroup.instancesGroups.push_back(std::move(instanceGroupToPush));
+            }
 
             //Base vertex is offset of vertices, not of indices
             baseVertex += mesh->GetVerticesCount();
@@ -612,12 +618,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             meshIndex++;
         }
         renderGroup.objectsCount = objectsCount;
-        renderGroup.commands = commands;
         renderGroup.materialsStructArray = matParamStructArray;
         std::vector<GLuint> attributesBuffersNames(attributesCount);
         glCreateBuffers(attributesCount, attributesBuffersNames.data());
         std::vector<Buffer> attributesBuffers(attributesCount);
-        for(int i = 0; i < attributesBuffers.size(); i++){
+        for(size_t i = 0; i < attributesBuffers.size(); i++){
             renderGroup.attributesBuffers.emplace_back(attributesBuffersNames[i],
             attributesBatchedChunks[i].dataSize, attributesBatchedChunks[i].attribute.AttributeDataSize(), i);
         }
@@ -688,20 +693,19 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         SetRenderGroupLayout(renderGroup, meshGlobalLayout);
         BindRenderGroupAttributesBuffers(renderGroup);
 
-        GLuint drawCmdBuffer = 0;
-        glCreateBuffers(1, std::addressof(drawCmdBuffer));
-        renderGroup.drawCmdBuffer.name = drawCmdBuffer;
-        GLsizeiptr drawCmdBufferSize = sizeof(DrawElementsIndirectCommand) * commands.size();
-        renderGroup.drawCmdBuffer.bufferSize = drawCmdBufferSize;
-        glNamedBufferStorage(drawCmdBuffer,
-                     drawCmdBufferSize,
-                     commands.data(),
-                     GL_DYNAMIC_STORAGE_BIT);
+        if(isIndirect){
+            GLuint drawCmdBufferName = 0;
+            glCreateBuffers(1, std::addressof(drawCmdBufferName));
+            renderGroup.drawCmdBuffer.name = drawCmdBufferName;
+            renderGroup.drawCmdBuffer.bufferSize = sizeof(DrawElementsIndirectCommand) * renderGroup.commands.size();
+            glNamedBufferStorage(renderGroup.drawCmdBuffer.name, renderGroup.drawCmdBuffer.bufferSize, renderGroup.commands.data(), GL_DYNAMIC_STORAGE_BIT);
+        }
+
 
         auto bufferEnd = std::chrono::high_resolution_clock::now();
         std::cout << "Time to buffer data: " << std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count() << "μs" << std::endl;
 
-        renderGroup.drawCmdBuffer.commandsCount = commands.size();
+        renderGroup.drawCmdBuffer.commandsCount = renderGroup.commands.size();
         this->renderGroups.push_back(std::move(renderGroup));
     }
 }
@@ -728,7 +732,9 @@ std::optional<int> Renderer::AddUBOBindingPurpose(const std::string &purpose){
 }
 
 void Renderer::SetDrawFunction(){
-    DrawFunction = version >= GLApiVersion::V400 ?
+    bool drawIndirectSupport = version >= GLApiVersion::V400;
+    this->isIndirect = drawIndirectSupport;
+    DrawFunction = drawIndirectSupport ?
     &Renderer::DrawFunctionIndirect : &Renderer::DrawFunctionNonIndirect;
 }
 
@@ -743,15 +749,25 @@ void Renderer::DrawFunctionIndirect(RenderGroup &renderGroup){
 }
 
 void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
-    for(auto&& command : renderGroup.commands){
+    // Draw batch
+    glMultiDrawElementsBaseVertex(
+        renderGroup.mode,
+        renderGroup.batchGroup.count.data(),
+        renderGroup.indicesType,
+        reinterpret_cast<GLvoid**>(renderGroup.batchGroup.indices.data()),
+        renderGroup.batchGroup.drawcount,
+        renderGroup.batchGroup.baseVertex.data()
+    );
+    // Draw instances
+    for(auto && instanceGroup : renderGroup.instancesGroups){
         glDrawElementsInstancedBaseVertexBaseInstance(
         renderGroup.mode,
-        command.count,
+        instanceGroup.count,
         renderGroup.indicesType,
-        reinterpret_cast<GLvoid *>(command.firstIndex*renderGroup.indicesTypeSize),
-        command.instanceCount,
-        command.baseVertex,
-        command.baseInstance
+        reinterpret_cast<GLvoid *>(instanceGroup.firstIndex*renderGroup.indicesTypeSize),
+        instanceGroup.instanceCount,
+        instanceGroup.baseVertex,
+        instanceGroup.baseInstance
         );
     }
 }

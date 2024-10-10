@@ -215,7 +215,6 @@ int main(int argc, char *argv[])
     }
     std::vector<GLuint> indices;
     indices.reserve(2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1));
-    int i = 0;
     for(int y = 0; y < t_steps+1; y++) {
         for(int x = 0; x < s_steps; x++) {
             indices.push_back(y * (s_steps+1) + x);
@@ -233,7 +232,7 @@ int main(int argc, char *argv[])
     // Useful for indexing objects on shader
     std::string objIDString;
     if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460){
-        objIDString = "gl_BaseInstanceARB + gl_InstanceID";
+        objIDString = "gl_DrawIDARB + gl_BaseInstanceARB + gl_InstanceID";
     } else {
         objIDString = "gl_BaseInstance + gl_InstanceID";
     }
@@ -406,17 +405,17 @@ int main(int argc, char *argv[])
     topDownCameraTransform.position = glm::vec3(0, 5, 0);
     topDownCameraTransform.eulerAngles(glm::vec3(90, 0, 0));
 
-    // quad1.AddComponent<MeshRendererComponent>(mesh, materialTest);
-    // quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
-    //
-    // tri1.AddComponent<MeshRendererComponent>(mesh2, materialTestGreen);
-    // tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
-    //
-    // quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
-    // quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
-    //
-    // graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
-    // graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+    quad1.AddComponent<MeshRendererComponent>(mesh, materialTest);
+    quad1.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+
+    tri1.AddComponent<MeshRendererComponent>(mesh2, materialTestGreen);
+    tri1.GetComponent<TransformComponent>().position = glm::vec3(0, 1, 0);
+
+    quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
+    quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
+
+    graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
+    graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
     model1.AddComponent<MeshRendererComponent>(model1Mesh, model1Material);
     model1.GetComponent<TransformComponent>().position = glm::vec3(-2, 0, 0);

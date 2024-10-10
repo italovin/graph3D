@@ -72,9 +72,25 @@ private:
         int           baseVertex;
         unsigned int  baseInstance;
     // Optional user-defined data goes here - if nothing, stride is 0
+        DrawElementsIndirectCommand(unsigned int count, unsigned int instanceCount, unsigned int firstIndex, int baseVertex, unsigned int baseInstance):
+        count(count), instanceCount(instanceCount), firstIndex(firstIndex), baseVertex(baseVertex), baseInstance(baseInstance){}
     };
     struct DrawCmdBuffer : Buffer{
         GLsizei commandsCount;
+    };
+    // Used mostly for non indirect drawing
+    struct BatchGroup{
+        std::vector<GLsizei> count = std::vector<GLsizei>();
+        std::vector<GLvoid*> indices = std::vector<GLvoid*>();
+        GLsizei drawcount = 0;
+        std::vector<GLint> baseVertex = std::vector<GLint>();
+    };
+    struct InstanceGroup{
+        GLsizei count = 0;
+        GLuint firstIndex = 0;
+        GLuint instanceCount = 0;
+        GLint baseVertex = 0;
+        GLuint baseInstance = 0;
     };
     struct RenderGroup{
         VertexArray vao;
@@ -93,8 +109,13 @@ private:
         GLenum indicesType; // Equivalent to mesh indices data type
         MeshIndexType indicesTypeEnum;
         int indicesTypeSize;
+        /// Used in multi draw indirect type
         DrawCmdBuffer drawCmdBuffer;
         std::vector<DrawElementsIndirectCommand> commands;
+        ///
+        /// These variables are used when using multidraw (non indirect) for batch group in each render group
+        BatchGroup batchGroup; // Objects that were batched
+        std::vector<InstanceGroup> instancesGroups;
     };
     std::vector<RenderGroup> renderGroups;
     GLenum GetDrawMode(MeshTopology topology);
@@ -106,6 +127,7 @@ private:
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();
     //Defaulft drawing is direct type
+    bool isIndirect = false;
     void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;
     // Performs grouping operations for batching and instancing
     void PrepareRenderGroups(entt::registry &registry);

@@ -240,7 +240,7 @@ std::optional<Shader> ShaderCode::Generate()
     if(fragmentShader.enabled)
         shaderObjects.emplace_back(ShaderObject(GL_FRAGMENT_SHADER));
     std::string outsideStringInsPrevious;
-    for(int i = 0; i < shaderObjects.size(); i++){
+    for(size_t i = 0; i < shaderObjects.size(); i++){
         std::string versionString = "#version " + std::to_string(version) + "\n";
         std::string extensionsString;
         for(auto &&extension : extensions){

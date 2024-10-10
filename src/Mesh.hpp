@@ -92,7 +92,7 @@ struct MeshLayout{
             return false;
         }
         bool isEqual = true;
-        for (int i = 0; i < attributes.size(); i++)
+        for (size_t i = 0; i < attributes.size(); i++)
         {
             if(!(attributes[i] == layout.attributes[i])){
                 isEqual = false;

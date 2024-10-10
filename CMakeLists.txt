@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(graph3D)
-add_compile_options(-mavx -mtune=native -O2)
+add_compile_options(-mavx -mtune=native -O2 -Wall -Wpedantic)
 include_directories(3rdparty)
 add_executable(${PROJECT_NAME} src/main.cpp
 src/VertexArray.cpp
