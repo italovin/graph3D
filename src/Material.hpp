@@ -10,14 +10,6 @@
 #include "Texture.hpp"
 #include "ShaderCode.hpp"
 
-
-enum class MaterialParameterType{
-    Map,
-    Float,
-    Boolean,
-    Vector4
-};
-
 struct MaterialParameter{
     std::variant<Ref<Texture>, float, bool, glm::vec4> data;
     MaterialParameterType type;
@@ -29,7 +21,7 @@ private:
     std::function<void(const std::string&, bool)> booleanGlobalChangeCallback;
     std::function<void(const std::string&, glm::vec4)> vector4GlobalChangeCallback;
     bool changingBuffer = false;
-    std::unordered_map<std::string, MaterialParameter> parameters;
+    std::vector<std::pair<std::string, MaterialParameter>> parameters;
     // Global parameters sets a uniform in the shader. The last material to set overrides the value
     std::unordered_map<std::string, MaterialParameter> globalShaderParameters;
     std::unordered_map<std::string, MaterialParameter> globalVertexShaderParameters;
@@ -38,6 +30,7 @@ private:
     void AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert);
     void DeleteParameters();
     MaterialParameterType GetParameterType(ShaderDataType type);
+    std::vector<std::pair<std::string, MaterialParameter>>::iterator FindParameter(const std::string &name);
 public:
     Material() = delete;
     Material(ShaderCode &shaderCode);
@@ -53,7 +46,7 @@ public:
     std::optional<float> GetParameterFloat(const std::string &name);
     std::optional<bool> GetParameterBoolean(const std::string &name);
     std::optional<glm::vec4> GetParameterVector4(const std::string &name);
-    std::unordered_map<std::string, MaterialParameter> GetParameters() const;
+    std::vector<std::pair<std::string, MaterialParameter>> GetParameters() const;
     void SetGlobalParameterMap(const std::string &name, Ref<Texture> value);
     void SetGlobalParameterFloat(const std::string &name, float value);
     void SetGlobalParameterBoolean(const std::string &name, bool value);

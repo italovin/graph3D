@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
     /* Make the window's context current */
     window.MakeContextCurrent();
     Input::RegisterWindow(window);
-    std::cout << glfwGetWindowAttrib(window.GetHandle(), GLFW_CONTEXT_CREATION_API) << std::endl;
 
     GLint size;
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &size);
@@ -310,17 +309,24 @@ int main(int argc, char *argv[])
     "gl_Position = mvps[objID]*vec4(aPos, 1.0);");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
     shaderCodeTest.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
-    shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "albedo", ShaderDataType::Float4);
+    shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "albedo", MaterialParameterType::Vector4);
+    shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "intensity", MaterialParameterType::Float);
     shaderCodeTest.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[512];");
     shaderCodeTest.SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");
     shaderCodeTest.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
-    shaderCodeTest.SetMain(ShaderStage::Fragment, "FragColor = materials[matID].albedo;");
+    shaderCodeTest.SetMain(ShaderStage::Fragment,
+    "vec4 albedo = materials[matID].albedo;"
+    "float intensity = materials[matID].intensity;"
+    "FragColor = intensity*materials[matID].albedo;");
     Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestGreen = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestRed = CreateRef<Material>(shaderCodeTest);
     materialTest->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
+    materialTest->SetParameterFloat("intensity", 0.2f);
     materialTestGreen->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
+    materialTestGreen->SetParameterFloat("intensity", 0.6f);
     materialTestRed->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
+    materialTestRed->SetParameterFloat("intensity", 1.0f);
 
     std::filesystem::path modelsDirectory;
     if(std::filesystem::exists(std::filesystem::path("../resources/modelos"))){
@@ -337,7 +343,7 @@ int main(int argc, char *argv[])
     }
 
     const std::string modelsVerticesKey = "vertices";
-    const std::string modelsIndicessKey = "indices";
+    const std::string modelsIndicesKey = "indices";
 
     std::ifstream model1Stream(modelsDirectory/"ball.json");
     if(!model1Stream || !nlohmann::json::accept(model1Stream)){
@@ -348,12 +354,13 @@ int main(int argc, char *argv[])
 
     nlohmann::json model1Json = nlohmann::json::parse(model1Stream);
     std::vector<float> model1Vertices = model1Json[modelsVerticesKey].get<std::vector<float>>();
-    std::vector<unsigned short> model1Indices = model1Json[modelsIndicessKey].get<std::vector<unsigned short>>();
+    std::vector<unsigned short> model1Indices = model1Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model1Mesh = CreateRef<Mesh>();
     model1Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model1Vertices);
     model1Mesh->SetIndices(model1Indices, MeshTopology::Triangles);
     Ref<Material> model1Material = CreateRef<Material>(shaderCodeTest);
     model1Material->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
+    model1Material->SetParameterFloat("intensity", 1.0f);
 
     std::ifstream model2Stream(modelsDirectory/"cone1.json");
     if(!model2Stream || !nlohmann::json::accept(model2Stream)){
@@ -364,12 +371,13 @@ int main(int argc, char *argv[])
 
     nlohmann::json model2Json = nlohmann::json::parse(model2Stream);
     std::vector<float> model2Vertices = model2Json[modelsVerticesKey].get<std::vector<float>>();
-    std::vector<unsigned short> model2Indices = model2Json[modelsIndicessKey].get<std::vector<unsigned short>>();
+    std::vector<unsigned short> model2Indices = model2Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model2Mesh = CreateRef<Mesh>();
     model2Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model2Vertices);
     model2Mesh->SetIndices(model2Indices, MeshTopology::Triangles);
     Ref<Material> model2Material = CreateRef<Material>(shaderCodeTest);
     model2Material->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
+    model2Material->SetParameterFloat("intensity", 1.0f);
 
     std::ifstream model3Stream(modelsDirectory/"cylinder.json");
     if(!model3Stream || !nlohmann::json::accept(model3Stream)){
@@ -380,12 +388,13 @@ int main(int argc, char *argv[])
 
     nlohmann::json model3Json = nlohmann::json::parse(model3Stream);
     std::vector<float> model3Vertices = model3Json[modelsVerticesKey].get<std::vector<float>>();
-    std::vector<unsigned short> model3Indices = model3Json[modelsIndicessKey].get<std::vector<unsigned short>>();
+    std::vector<unsigned short> model3Indices = model3Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model3Mesh = CreateRef<Mesh>();
     model3Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model3Vertices);
     model3Mesh->SetIndices(model3Indices, MeshTopology::Triangles);
     Ref<Material> model3Material = CreateRef<Material>(shaderCodeTest);
     model3Material->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
+    model3Material->SetParameterFloat("intensity", 1.0f);
 
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
@@ -517,8 +526,8 @@ int main(int argc, char *argv[])
 
         //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
 
-        //graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
-        //graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
+        graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
+        graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
         model2.transform.eulerAngles(glm::vec3(30*time, -30*time, 0));
         model3.transform.eulerAngles(glm::vec3(-30*time, 30*time, 0));
 

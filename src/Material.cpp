@@ -6,10 +6,10 @@ Material::Material(ShaderCode &shaderCode)
     if(parameters.size() > 0)
         DeleteParameters();
     
-    auto materialParameters = shaderCode.GetMaterialParametersStruct(ShaderStage::Fragment);
+    auto materialParameters = shaderCode.GetMaterialParameters(ShaderStage::Fragment);
     auto materialGlobalParameters = shaderCode.GetUniforms(ShaderStage::Fragment);
     auto materialGlobalVertexParameters = shaderCode.GetUniforms(ShaderStage::Vertex);
-    for(auto &&parameter : materialParameters.second){
+    for(auto &&parameter : materialParameters){
         AddParameter(parameter.first, GetParameterType(parameter.second.dataType));
     }
     for(auto &&parameter : materialGlobalParameters){
@@ -27,16 +27,26 @@ std::optional<std::reference_wrapper<ShaderCode>> Material::GetShaderCode() cons
 void Material::AddParameter(const std::string &name, MaterialParameterType type)
 {
     MaterialParameter parameter;
-    parameter.data = std::variant<Ref<Texture>, float, bool, glm::vec4>();
     parameter.type = type;
-    parameters[name] = parameter;
+    switch(parameter.type){
+        case MaterialParameterType::Float: parameter.data = 0.0f; break;
+        case MaterialParameterType::Boolean: parameter.data = false; break;
+        case MaterialParameterType::Vector4: parameter.data = glm::vec4(0.0f); break;
+        default: return;
+    }
+    parameters.emplace_back(name, parameter);
 }
 
 void Material::AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert)
 {
     MaterialParameter globalParameter;
-    globalParameter.data = std::variant<Ref<Texture>, float, bool, glm::vec4>();
     globalParameter.type = type;
+    switch(globalParameter.type){
+        case MaterialParameterType::Float: globalParameter.data = 0.0f; break;
+        case MaterialParameterType::Boolean: globalParameter.data = false; break;
+        case MaterialParameterType::Vector4: globalParameter.data = glm::vec4(0.0f); break;
+        default: return;
+    }
     if(isFragOrVert)
         globalShaderParameters[name] = globalParameter;
     else
@@ -57,28 +67,40 @@ MaterialParameterType Material::GetParameterType(ShaderDataType type){
     }
 }
 
+std::vector<std::pair<std::string, MaterialParameter>>::iterator Material::FindParameter(const std::string &name){
+    std::vector<std::pair<std::string, MaterialParameter>>::iterator parameterIt = std::find_if(parameters.begin(), parameters.end(), 
+    [name](const std::pair<std::string, MaterialParameter> &parameterPair){
+        return name == parameterPair.first;
+    });
+    return parameterIt;
+}
+
 void Material::SetParameterMap(const std::string &name, Ref<Texture> value)
 {
-    if(parameters.count(name) > 0)
-        parameters[name].data = value;
+    auto parameterIt = FindParameter(name);
+    if(parameterIt != parameters.end())
+        parameterIt->second.data = value;
 }
 
 void Material::SetParameterFloat(const std::string &name, float value)
 {
-    if(parameters.count(name) > 0)
-        parameters[name].data = value;
+    auto parameterIt = FindParameter(name);
+    if(parameterIt != parameters.end())
+        parameterIt->second.data = value;
 }
 
 void Material::SetParameterBoolean(const std::string &name, bool value)
 {
-    if(parameters.count(name) > 0)
-        parameters[name].data = value;
+    auto parameterIt = FindParameter(name);
+    if(parameterIt != parameters.end())
+        parameterIt->second.data = value;
 }
 
 void Material::SetParameterVector4(const std::string &name, glm::vec4 value)
 {
-    if(parameters.count(name) > 0)
-        parameters[name].data = value;
+    auto parameterIt = FindParameter(name);
+    if(parameterIt != parameters.end())
+        parameterIt->second.data = value;
 }
 
 void Material::SetOnGlobalFloatChangeCallback(std::function<void(const std::string&, float)> callback){
@@ -95,33 +117,45 @@ void Material::SetOnGlobalVector4ChangeCallback(std::function<void(const std::st
 
 std::optional<Ref<Texture>> Material::GetParameterMap(const std::string &name)
 {
-    if(parameters.count(name) == 0)
+    auto parameterIt = FindParameter(name);
+    if(parameterIt == parameters.end())
         return std::nullopt;
-    return std::get<Ref<Texture>>(parameters[name].data);
+    if(parameterIt->second.type != MaterialParameterType::Map)
+        return std::nullopt;
+    return std::get<Ref<Texture>>(parameterIt->second.data);
 }
 
 std::optional<float> Material::GetParameterFloat(const std::string &name)
 {
-    if(parameters.count(name) == 0)
+    auto parameterIt = FindParameter(name);
+    if(parameterIt == parameters.end())
         return std::nullopt;
-    return std::get<float>(parameters[name].data);
+    if(parameterIt->second.type != MaterialParameterType::Float)
+        return std::nullopt;
+    return std::get<float>(parameterIt->second.data);
 }
 
 std::optional<bool> Material::GetParameterBoolean(const std::string &name)
 {
-    if(parameters.count(name) == 0)
+    auto parameterIt = FindParameter(name);
+    if(parameterIt == parameters.end())
         return std::nullopt;
-    return std::get<bool>(parameters[name].data);
+    if(parameterIt->second.type != MaterialParameterType::Boolean)
+        return std::nullopt;
+    return std::get<bool>(parameterIt->second.data);
 }
 
 std::optional<glm::vec4> Material::GetParameterVector4(const std::string &name)
 {
-    if(parameters.count(name) == 0)
+    auto parameterIt = FindParameter(name);
+    if(parameterIt == parameters.end())
         return std::nullopt;
-    return std::get<glm::vec4>(parameters[name].data);
+    if(parameterIt->second.type != MaterialParameterType::Vector4)
+        return std::nullopt;
+    return std::get<glm::vec4>(parameterIt->second.data);
 }
 
-std::unordered_map<std::string, MaterialParameter> Material::GetParameters() const
+std::vector<std::pair<std::string, MaterialParameter>> Material::GetParameters() const
 {
     return this->parameters;
 }
