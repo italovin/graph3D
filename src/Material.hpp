@@ -3,17 +3,10 @@
 #include <functional>
 #include <unordered_map>
 #include <string>
-#include <variant>
 #include <optional>
 #include <glm/glm.hpp>
 #include "Base.hpp"
-#include "Texture.hpp"
 #include "ShaderCode.hpp"
-
-struct MaterialParameter{
-    std::variant<Ref<Texture>, float, bool, glm::vec4> data;
-    MaterialParameterType type;
-};
 
 class Material : public Resource {
 private:
@@ -26,7 +19,7 @@ private:
     std::unordered_map<std::string, MaterialParameter> globalShaderParameters;
     std::unordered_map<std::string, MaterialParameter> globalVertexShaderParameters;
     std::optional<std::reference_wrapper<ShaderCode>> shaderCode;
-    void AddParameter(const std::string &name, MaterialParameterType type);
+    void AddParameter(const std::string &name, const MaterialParameter &parameter);
     void AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert);
     void DeleteParameters();
     MaterialParameterType GetParameterType(ShaderDataType type);

@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     ///glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
-    const int WIDTH = 800;
-    const int HEIGHT = 600;
+    const int WIDTH = 1366;
+    const int HEIGHT = 768;
 
     /* Create a windowed mode window and its OpenGL context */
     Window window;
@@ -309,8 +309,8 @@ int main(int argc, char *argv[])
     "gl_Position = mvps[objID]*vec4(aPos, 1.0);");
     shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
     shaderCodeTest.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
-    shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "albedo", MaterialParameterType::Vector4);
-    shaderCodeTest.AddMaterialParameterToStruct("Material", ShaderStage::Fragment, "intensity", MaterialParameterType::Float);
+    shaderCodeTest.AddMaterialVec4ToStruct("Material", ShaderStage::Fragment, "albedo");
+    shaderCodeTest.AddMaterialFloatToStruct("Material", ShaderStage::Fragment, "intensity", 1.0f);
     shaderCodeTest.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[512];");
     shaderCodeTest.SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");
     shaderCodeTest.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);

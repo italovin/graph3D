@@ -10,7 +10,7 @@ Material::Material(ShaderCode &shaderCode)
     auto materialGlobalParameters = shaderCode.GetUniforms(ShaderStage::Fragment);
     auto materialGlobalVertexParameters = shaderCode.GetUniforms(ShaderStage::Vertex);
     for(auto &&parameter : materialParameters){
-        AddParameter(parameter.first, GetParameterType(parameter.second.dataType));
+        AddParameter(parameter.first, parameter.second);
     }
     for(auto &&parameter : materialGlobalParameters){
         AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), true);
@@ -24,16 +24,8 @@ std::optional<std::reference_wrapper<ShaderCode>> Material::GetShaderCode() cons
     return this->shaderCode;
 }
 
-void Material::AddParameter(const std::string &name, MaterialParameterType type)
+void Material::AddParameter(const std::string &name, const MaterialParameter &parameter)
 {
-    MaterialParameter parameter;
-    parameter.type = type;
-    switch(parameter.type){
-        case MaterialParameterType::Float: parameter.data = 0.0f; break;
-        case MaterialParameterType::Boolean: parameter.data = false; break;
-        case MaterialParameterType::Vector4: parameter.data = glm::vec4(0.0f); break;
-        default: return;
-    }
     parameters.emplace_back(name, parameter);
 }
 

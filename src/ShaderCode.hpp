@@ -35,11 +35,11 @@ struct ShaderStageCode{
     std::unordered_map<std::string, ShaderCodeParameter> uniforms;
     std::unordered_map<std::string, std::unordered_map<std::string, ShaderCodeParameter>> regularStructs;
     // Designed for material parameters batching
-    std::pair<std::string, std::vector<std::pair<std::string, ShaderCodeParameter>>> materialParametersStruct;
+    std::pair<std::string, std::vector<std::pair<std::string, MaterialParameter>>> materialParametersStruct;
     std::pair<std::string, std::string> materialParametersUniformBlock;
     int materialParametersSpaceUsed = 0;
     // This vector are material parameters sorted by larger alignment
-    std::vector<std::pair<std::string, ShaderCodeParameter>> materialSortedParameters;
+    std::vector<std::pair<std::string, MaterialParameter>> materialSortedParameters;
     ////
     std::unordered_map<std::string, std::string> uniformBlocks;
     ///
@@ -61,10 +61,12 @@ private:
     ShaderStageCode tesselationEvaluationShader;
     ShaderStageCode geometryShader;   
     const std::string GLSLTypeToString(ShaderDataType type);
+    const std::string GLSLMatTypeToString(MaterialParameterType type);
     void ProcessVertexShaderCode(const ShaderStageCode &shaderStageCode, std::string &outsideString);
     void ProcessShaderStageCode(const ShaderStageCode &shaderStageCode, std::string &mainString,
     std::string &outsideString, std::string &outsideStringIns);
     void SortMaterialParameters(ShaderStageCode &shaderStageCode);
+    void PushMaterialParameter(ShaderStage shaderStage, const std::string &name, const MaterialParameter &parameter, int toAddSize);
 public:
     void SetVersion(int version);
     void AddExtension(const std::string &extension);
@@ -75,14 +77,14 @@ public:
     void AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
     std::string CreateStruct(ShaderStage shaderStage, const std::string &structType, const std::string &name);
     std::string DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType);
-    void AddMaterialParameterToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, MaterialParameterType dataType);
+    void AddMaterialFloatToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, float defaultValue = 0.0f);
+    void AddMaterialBoolToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, bool defaultValue = false);
+    void AddMaterialVec4ToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, glm::vec4 defaultValue = glm::vec4(0.0f));
     void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void SetMain(ShaderStage shaderStage, const std::string &main);
     std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
-    // std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> GetMaterialParametersStruct(ShaderStage shaderStage) const;
-    // std::pair<std::string, std::unordered_map<std::string, ShaderCodeParameter>> &GetMaterialParametersStruct(ShaderStage shaderStage);
-    std::vector<std::pair<std::string, ShaderCodeParameter>> GetMaterialParameters(ShaderStage shaderStage);
+    std::vector<std::pair<std::string, MaterialParameter>> GetMaterialParameters(ShaderStage shaderStage);
     void SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose);
     std::unordered_map<std::string, std::string> GetBindingsPurposes(ShaderStage shaderStage) const;
     std::optional<Shader> Generate();

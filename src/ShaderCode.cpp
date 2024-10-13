@@ -1,4 +1,6 @@
 #include "ShaderCode.hpp"
+#include "MaterialTypes.hpp"
+#include "glm/fwd.hpp"
 
 const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){ 
     switch (type)
@@ -21,6 +23,15 @@ const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){
         case ShaderDataType::Float4: return "vec4";
         case ShaderDataType::Mat4: return "mat4";
         default: return "undefined"; //It will cause shader compilation error
+    }
+}
+const std::string ShaderCode::GLSLMatTypeToString(MaterialParameterType type){
+    switch(type){
+        case MaterialParameterType::Boolean: return "bool";
+        case MaterialParameterType::Float: return "float";
+        case MaterialParameterType::Vector4: return "vec4";
+        case MaterialParameterType::Map: return "sampler2DArray";
+        default: return "undefined";
     }
 }
 
@@ -109,44 +120,28 @@ std::string ShaderCode::DefineMaterialParametersStruct(ShaderStage shaderStage, 
     return structType;
 }
 
-void ShaderCode::AddMaterialParameterToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, MaterialParameterType dataType)
-{
-    ShaderCodeParameter parameter;
-    int toAddSize = 0;
-    if(dataType == MaterialParameterType::Boolean){
-        parameter.dataType = ShaderDataType::Bool;
-        toAddSize = 4;
-    } else if (dataType == MaterialParameterType::Float) {
-        parameter.dataType = ShaderDataType::Float;
-        toAddSize = 4;
-    } else if (dataType == MaterialParameterType::Vector4) {
-        parameter.dataType = ShaderDataType::Float4;
-        toAddSize = 16;
-    } else {
-        return;
-    }
-    auto checkIfNotGreatherMax = [this](int value){
-        return value <= maxUniformBlockArrayElementSize;
-    };
-    switch(shaderStage){
-        case ShaderStage::Vertex : if(!checkIfNotGreatherMax(vertexShader.materialParametersSpaceUsed + toAddSize)) return;
-        vertexShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        vertexShader.materialParametersSpaceUsed += toAddSize; break;
-        case ShaderStage::TesselationControl : if(!checkIfNotGreatherMax(tesselationControlShader.materialParametersSpaceUsed + toAddSize)) return;
-        tesselationControlShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        tesselationControlShader.materialParametersSpaceUsed += toAddSize; break;
-        case ShaderStage::TesselationEvaluation :
-        if(!checkIfNotGreatherMax(tesselationEvaluationShader.materialParametersSpaceUsed + toAddSize)) return;
-        tesselationEvaluationShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        tesselationEvaluationShader.materialParametersSpaceUsed += toAddSize; break;
-        case ShaderStage::Geometry : if(!checkIfNotGreatherMax(geometryShader.materialParametersSpaceUsed + toAddSize)) return;
-        geometryShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        geometryShader.materialParametersSpaceUsed += toAddSize; break;
-        case ShaderStage::Fragment : if(!checkIfNotGreatherMax(fragmentShader.materialParametersSpaceUsed + toAddSize)) return;
-        fragmentShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        fragmentShader.materialParametersSpaceUsed += toAddSize; break;
-        default: return;
-    }
+void ShaderCode::AddMaterialFloatToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, float defaultValue){
+    MaterialParameter parameter;
+    parameter.type = MaterialParameterType::Float;
+    parameter.data = defaultValue;
+    int toAddSize = 4;
+    PushMaterialParameter(shaderStage, name, parameter, toAddSize);
+}
+
+void ShaderCode::AddMaterialBoolToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, bool defaultValue){
+    MaterialParameter parameter;
+    parameter.type = MaterialParameterType::Boolean;
+    parameter.data = defaultValue;
+    int toAddSize = 4;
+    PushMaterialParameter(shaderStage, name, parameter, toAddSize);
+}
+
+void ShaderCode::AddMaterialVec4ToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, glm::vec4 defaultValue){
+    MaterialParameter parameter;
+    parameter.type = MaterialParameterType::Vector4;
+    parameter.data = defaultValue;
+    int toAddSize = 16;
+    PushMaterialParameter(shaderStage, name, parameter, toAddSize);
 }
 
 void ShaderCode::UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
@@ -217,7 +212,7 @@ std::string &outsideString, std::string &outsideStringIns){
     if(!shaderStageCode.materialSortedParameters.empty()){
         outsideString += "struct " + shaderStageCode.materialParametersStruct.first + "{\n";
         for(auto &&matParameter : shaderStageCode.materialSortedParameters){
-            outsideString += GLSLTypeToString(matParameter.second.dataType) + " " + matParameter.first + ";\n";
+            outsideString += GLSLMatTypeToString(matParameter.second.type) + " " + matParameter.first + ";\n";
         }
         outsideString += "};\n";
     }
@@ -238,28 +233,53 @@ std::string &outsideString, std::string &outsideStringIns){
 }
 
 void ShaderCode::SortMaterialParameters(ShaderStageCode &shaderStageCode){
-    auto compLambda = [](const std::pair<std::string, ShaderCodeParameter> &a, const std::pair<std::string, ShaderCodeParameter> &b){
+    auto compLambda = [](const std::pair<std::string, MaterialParameter> &a, const std::pair<std::string, MaterialParameter> &b){
         size_t aAlignment = 0;
         size_t bAlignment = 0;
-        switch(a.second.dataType){
-            case ShaderDataType::Bool: aAlignment = 4; break;
-            case ShaderDataType::Float: aAlignment = 4; break;
-            case ShaderDataType::Float4: aAlignment = 16; break;
+        switch(a.second.type){
+            case MaterialParameterType::Boolean: aAlignment = 4; break;
+            case MaterialParameterType::Float: aAlignment = 4; break;
+            case MaterialParameterType::Vector4: aAlignment = 16; break;
             default: break;
         }
-        switch(b.second.dataType){
-            case ShaderDataType::Bool: bAlignment = 4; break;
-            case ShaderDataType::Float: bAlignment = 4; break;
-            case ShaderDataType::Float4: bAlignment = 16; break;
+        switch(b.second.type){
+            case MaterialParameterType::Boolean: bAlignment = 4; break;
+            case MaterialParameterType::Float: bAlignment = 4; break;
+            case MaterialParameterType::Vector4: bAlignment = 16; break;
             default: break;
         }
         return aAlignment > bAlignment;
     };
-    shaderStageCode.materialSortedParameters = std::vector<std::pair<std::string, ShaderCodeParameter>>(
+    shaderStageCode.materialSortedParameters = std::vector<std::pair<std::string, MaterialParameter>>(
         shaderStageCode.materialParametersStruct.second.begin(),
         shaderStageCode.materialParametersStruct.second.end()
     );
     std::sort(shaderStageCode.materialSortedParameters.begin(), shaderStageCode.materialSortedParameters.end(), compLambda);
+}
+
+void ShaderCode::PushMaterialParameter(ShaderStage shaderStage, const std::string &name, const MaterialParameter &parameter, int toAddSize){
+    auto checkIfNotGreatherMax = [this](int value){
+        return value <= maxUniformBlockArrayElementSize;
+    };
+    switch(shaderStage){
+        case ShaderStage::Vertex : if(!checkIfNotGreatherMax(vertexShader.materialParametersSpaceUsed + toAddSize)) return;
+        vertexShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
+        vertexShader.materialParametersSpaceUsed += toAddSize; break;
+        case ShaderStage::TesselationControl : if(!checkIfNotGreatherMax(tesselationControlShader.materialParametersSpaceUsed + toAddSize)) return;
+        tesselationControlShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
+        tesselationControlShader.materialParametersSpaceUsed += toAddSize; break;
+        case ShaderStage::TesselationEvaluation :
+        if(!checkIfNotGreatherMax(tesselationEvaluationShader.materialParametersSpaceUsed + toAddSize)) return;
+        tesselationEvaluationShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
+        tesselationEvaluationShader.materialParametersSpaceUsed += toAddSize; break;
+        case ShaderStage::Geometry : if(!checkIfNotGreatherMax(geometryShader.materialParametersSpaceUsed + toAddSize)) return;
+        geometryShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
+        geometryShader.materialParametersSpaceUsed += toAddSize; break;
+        case ShaderStage::Fragment : if(!checkIfNotGreatherMax(fragmentShader.materialParametersSpaceUsed + toAddSize)) return;
+        fragmentShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
+        fragmentShader.materialParametersSpaceUsed += toAddSize; break;
+        default: return;
+    }
 }
 
 std::optional<Shader> ShaderCode::Generate()
@@ -344,7 +364,7 @@ std::unordered_map<std::string, ShaderCodeParameter> ShaderCode::GetUniforms(Sha
     }
 }
 
-std::vector<std::pair<std::string, ShaderCodeParameter>>
+std::vector<std::pair<std::string, MaterialParameter>>
 ShaderCode::GetMaterialParameters(ShaderStage shaderStage)
 {
     switch(shaderStage){
@@ -353,7 +373,7 @@ ShaderCode::GetMaterialParameters(ShaderStage shaderStage)
         case ShaderStage::TesselationEvaluation : SortMaterialParameters(tesselationEvaluationShader); return tesselationEvaluationShader.materialSortedParameters;
         case ShaderStage::Geometry : SortMaterialParameters(geometryShader); return geometryShader.materialSortedParameters;
         case ShaderStage::Fragment : SortMaterialParameters(fragmentShader); return fragmentShader.materialSortedParameters;
-        default: return std::vector<std::pair<std::string, ShaderCodeParameter>>();
+        default: return std::vector<std::pair<std::string, MaterialParameter>>();
     }
 }
 
