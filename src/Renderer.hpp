@@ -141,8 +141,6 @@ private:
     void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform);
 public:
     Renderer();
-    void SetTexMaxLayers(unsigned int depth);
-    void SetAPIVersion(GLApiVersion version);
     void SetMainWindow(Window *mainWindow);
     void Start(entt::registry &registry) override;
     void Update(entt::registry &registry, float deltaTime) override;

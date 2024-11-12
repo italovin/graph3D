@@ -421,16 +421,16 @@ ShaderCode::GetMaterialParameters(ShaderStage shaderStage)
     }
 }
 
-std::unordered_map<std::string, std::vector<Ref<Texture>>>
+std::vector<std::pair<std::string, std::vector<Ref<Texture>>>>
 ShaderCode::GetMaterialTexturesProperties(ShaderStage shaderStage) const
 {
     switch(shaderStage){
-        case ShaderStage::Vertex : return vertexShader.materialTexturesProperties;
-        case ShaderStage::TesselationControl : return tesselationControlShader.materialTexturesProperties;
-        case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.materialTexturesProperties;
-        case ShaderStage::Geometry : return geometryShader.materialTexturesProperties;
-        case ShaderStage::Fragment : return fragmentShader.materialTexturesProperties;
-        default: return std::unordered_map<std::string, std::vector<Ref<Texture>>>();
+        case ShaderStage::Vertex : return vertexShader.materialTexturesPropertiesOrder;
+        case ShaderStage::TesselationControl : return tesselationControlShader.materialTexturesPropertiesOrder;
+        case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.materialTexturesPropertiesOrder;
+        case ShaderStage::Geometry : return geometryShader.materialTexturesPropertiesOrder;
+        case ShaderStage::Fragment : return fragmentShader.materialTexturesPropertiesOrder;
+        default: return std::vector<std::pair<std::string, std::vector<Ref<Texture>>>>();
     }
 }
 

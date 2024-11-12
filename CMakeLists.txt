@@ -13,7 +13,8 @@ src/Renderer.cpp
 src/Scene.cpp
 src/Entity.cpp
 src/Texture.cpp
-src/GLObjects.cpp)
+src/GLObjects.cpp
+src/RenderCapabilities.cpp)
 if(LINUX)
     target_link_libraries(${PROJECT_NAME} PRIVATE GLEW glfw GL)
 endif()

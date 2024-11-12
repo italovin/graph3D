@@ -4,6 +4,7 @@
 #include "Components.hpp"
 #include "GLApiVersions.hpp"
 #include "Material.hpp"
+#include "RenderCapabilities.hpp"
 #include "ShaderCode.hpp"
 #include "Input.hpp"
 #include "Renderer.hpp"
@@ -43,23 +44,16 @@ int main(int argc, char *argv[])
     /* Make the window's context current */
     window.MakeContextCurrent();
     Input::RegisterWindow(window);
+    // Initialize the renderer API info
+    RenderCapabilities::Initialize();
 
-    GLint uboSize;
-    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &uboSize);
-    std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << uboSize << " bytes." << std::endl;
-    GLint texLayersDepth;
-    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &texLayersDepth);
-    std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << texLayersDepth << std::endl;
-    std::cout << glGetString(GL_VERSION) << std::endl;
-    std::cout << glGetString(GL_VENDOR) << std::endl;
+    std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << RenderCapabilities::GetMaxUBOSize() << " bytes." << std::endl;
+    std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << RenderCapabilities::GetMaxTextureArrayLayers() << std::endl;
+    std::cout << "GL_MAX_TEXTURE_UNITS is " << RenderCapabilities::GetMaxTextureImageUnits() << std::endl;
+    std::cout << RenderCapabilities::GetVersionString() << std::endl;
+    std::cout << RenderCapabilities::GetVendorString() << std::endl;
 
-    GLint no_of_extensions = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &no_of_extensions);
-    int minorVersion = 0;
-    int majorVersion = 0;
-    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-    window.SetContextVersion(majorVersion, minorVersion, 0);
+    window.SetContextVersion(RenderCapabilities::GetMajorVersion(), RenderCapabilities::GetMinorVersion(), 0);
 
     GLenum err=glewInit();
     if(err != GLEW_OK){
@@ -235,7 +229,7 @@ int main(int argc, char *argv[])
     }
     // Useful for indexing objects on shader
     std::string objIDString;
-    if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460){
+    if(RenderCapabilities::GetAPIVersion() < GLApiVersion::V460){
         objIDString = "gl_DrawIDARB + gl_BaseInstanceARB + gl_InstanceID";
     } else {
         objIDString = "gl_BaseInstance + gl_InstanceID";
@@ -248,7 +242,7 @@ int main(int argc, char *argv[])
 
     Ref<ShaderCode> graphShaderCode = CreateRef<ShaderCode>();
     graphShaderCode->SetVersion(glslVersion);
-    if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460)
+    if(RenderCapabilities::GetAPIVersion() < GLApiVersion::V460)
         graphShaderCode->AddExtension("GL_ARB_shader_draw_parameters");
     graphShaderCode->SetStageToPipeline(ShaderStage::Vertex, true);
     graphShaderCode->AddVertexAttribute("params", ShaderDataType::Float2, 0);
@@ -299,7 +293,7 @@ int main(int argc, char *argv[])
 
     Ref<ShaderCode> shaderCodeTest = CreateRef<ShaderCode>();
     shaderCodeTest->SetVersion(glslVersion);
-    if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460)
+    if(RenderCapabilities::GetAPIVersion() < GLApiVersion::V460)
         shaderCodeTest->AddExtension("GL_ARB_shader_draw_parameters");
     shaderCodeTest->SetStageToPipeline(ShaderStage::Vertex, true);
     shaderCodeTest->AddVertexAttribute("aPos", ShaderDataType::Float3, 0);
@@ -354,8 +348,8 @@ int main(int argc, char *argv[])
     shaderCodeTest->SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");
     shaderCodeTest->AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
     shaderCodeTest->SetMain(ShaderStage::Fragment,
-    "vec4 albedo = materials[matID].albedo;"
-    "float intensity = materials[matID].intensity;"
+    "vec4 albedo = materials[matID].albedo;\n"
+    "float intensity = materials[matID].intensity;\n"
     "FragColor = intensity*materials[matID].albedo*texture(texArray, vec3(texCoordOut.x, texCoordOut.y, matID));");
     Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestGreen = CreateRef<Material>(shaderCodeTest);
@@ -487,8 +481,6 @@ int main(int argc, char *argv[])
     Renderer mainRenderer = Renderer();
 
     mainRenderer.SetMainWindow(std::addressof(window));
-    mainRenderer.SetTexMaxLayers(texLayersDepth);
-    mainRenderer.SetAPIVersion(GLApiVersionStruct::GetVersionFromInteger(glslVersion));
     double initialRendererTime = glfwGetTime();
     mainRenderer.Start(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;

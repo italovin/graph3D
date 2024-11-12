@@ -2,6 +2,7 @@
 #include "GLObjects.hpp"
 #include "Material.hpp"
 #include "Mesh.hpp"
+#include "RenderCapabilities.hpp"
 #include "Resource.hpp"
 #include "Texture.hpp"
 #include "VertexArray.hpp"
@@ -826,15 +827,6 @@ void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
     }
 }
 
-void Renderer::SetTexMaxLayers(unsigned int depth){
-    this->objectsCountToGroup = depth;
-}
-
-void Renderer::SetAPIVersion(GLApiVersion version){
-    this->version = version;
-    SetDrawFunction();
-}
-
 void Renderer::SetMainWindow(Window *mainWindow){
     this->mainWindow = mainWindow;
 }
@@ -903,9 +895,13 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
 }
 
 Renderer::Renderer(){
+    version = RenderCapabilities::GetAPIVersion();
+    objectsCountToGroup = RenderCapabilities::GetMaxTextureArrayLayers();
     for(GLuint i = 0; i < maxBindingPoints; i++){
         availableBindingPoints.emplace(i, true);
     }
+
+    SetDrawFunction();
 }
 
 int Renderer::GetDrawGroupsCount(){

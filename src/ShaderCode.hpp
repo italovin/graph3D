@@ -90,7 +90,7 @@ public:
     void SetMain(ShaderStage shaderStage, const std::string &main);
     std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
     std::vector<std::pair<std::string, MaterialParameter>> GetMaterialParameters(ShaderStage shaderStage);
-    std::unordered_map<std::string, std::vector<Ref<Texture>>> GetMaterialTexturesProperties(ShaderStage shaderStage) const;
+    std::vector<std::pair<std::string, std::vector<Ref<Texture>>>> GetMaterialTexturesProperties(ShaderStage shaderStage) const;
     void SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose);
     std::unordered_map<std::string, std::string> GetBindingsPurposes(ShaderStage shaderStage) const;
     Ref<GL::ShaderGL> Generate();
