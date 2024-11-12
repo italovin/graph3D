@@ -4,14 +4,17 @@
 #include "Base.hpp"
 #include "Material.hpp"
 #include "Mesh.hpp"
+#include "Resource.hpp"
 
 struct MeshRendererComponent{
     // Reference to active mesh resource
-    Ref<Mesh> mesh;
+    Resource<Mesh> mesh;
     // Reference to active material
-    Ref<Material> material;
-    MeshRendererComponent(const Ref<Mesh> &mesh, const Ref<Material> &material) :
-    mesh(mesh), material(material){}
+    Resource<Material> material;
+    MeshRendererComponent(Ref<Mesh> mesh, Ref<Material> material){
+        this->mesh = Resource<Mesh>(mesh);
+        this->material = Resource<Material>(material);
+    }
 };
 
 struct CameraComponent{

@@ -139,7 +139,7 @@ struct MeshIndexData{
     indices(indices), indicesSize(indicesSize), type(type){}
 };
 
-class Mesh : public Resource{
+class Mesh{
 private:
     MeshIndexData indicesData;
     MeshTopology topology;

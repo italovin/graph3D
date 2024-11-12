@@ -8,9 +8,14 @@
 #include "Input.hpp"
 #include "Renderer.hpp"
 #include "ShaderTypes.hpp"
+#include "Texture.hpp"
+#include <algorithm>
+#include <cstdlib>
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
@@ -39,12 +44,12 @@ int main(int argc, char *argv[])
     window.MakeContextCurrent();
     Input::RegisterWindow(window);
 
-    GLint size;
-    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &size);
-    std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << size << " bytes." << std::endl;
-    GLint size2;
-    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &size2);
-    std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << size2 << std::endl;
+    GLint uboSize;
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &uboSize);
+    std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << uboSize << " bytes." << std::endl;
+    GLint texLayersDepth;
+    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &texLayersDepth);
+    std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << texLayersDepth << std::endl;
     std::cout << glGetString(GL_VERSION) << std::endl;
     std::cout << glGetString(GL_VENDOR) << std::endl;
 
@@ -241,16 +246,16 @@ int main(int argc, char *argv[])
     graphMesh->PushAttribute("params", 0, MeshAttributeFormat::Vec2, false, parameters);
     graphMesh->SetIndices(indices, MeshTopology::Lines);
 
-    ShaderCode graphShaderCode = ShaderCode();
-    graphShaderCode.SetVersion(glslVersion);
+    Ref<ShaderCode> graphShaderCode = CreateRef<ShaderCode>();
+    graphShaderCode->SetVersion(glslVersion);
     if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460)
-        graphShaderCode.AddExtension("GL_ARB_shader_draw_parameters");
-    graphShaderCode.SetStageToPipeline(ShaderStage::Vertex, true);
-    graphShaderCode.AddVertexAttribute("params", ShaderDataType::Float2, 0);
-    graphShaderCode.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
-    graphShaderCode.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
-    graphShaderCode.AddUniform(ShaderStage::Vertex, timeString, ShaderDataType::Float);
-    graphShaderCode.SetMain(ShaderStage::Vertex,
+        graphShaderCode->AddExtension("GL_ARB_shader_draw_parameters");
+    graphShaderCode->SetStageToPipeline(ShaderStage::Vertex, true);
+    graphShaderCode->AddVertexAttribute("params", ShaderDataType::Float2, 0);
+    graphShaderCode->CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
+    graphShaderCode->SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
+    graphShaderCode->AddUniform(ShaderStage::Vertex, timeString, ShaderDataType::Float);
+    graphShaderCode->SetMain(ShaderStage::Vertex,
     "int objID = " + objIDString + ";"
     "float " + var1 + "= params.x;"
     "float " + var2 + "= params.y;"
@@ -258,11 +263,10 @@ int main(int argc, char *argv[])
     "float y =" + equationY + ";"
     "float z =" + equationZ + ";"
     + "gl_Position = mvps[objID]*vec4(x, z, y, 1.0);");
-    graphShaderCode.SetStageToPipeline(ShaderStage::Fragment, true);
-    graphShaderCode.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
-    graphShaderCode.SetMain(ShaderStage::Fragment, "FragColor = vec4(1.0, 0.0, 0.0, 1.0);");
+    graphShaderCode->SetStageToPipeline(ShaderStage::Fragment, true);
+    graphShaderCode->AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
+    graphShaderCode->SetMain(ShaderStage::Fragment, "FragColor = vec4(1.0, 0.0, 0.0, 1.0);");
     Ref<Material> graphMaterial = CreateRef<Material>(graphShaderCode);
-
 
     Ref<Mesh> mesh = CreateRef<Mesh>();
     Ref<Mesh> mesh2 = CreateRef<Mesh>();
@@ -285,48 +289,86 @@ int main(int argc, char *argv[])
     0.5f, -0.5f, 0.0f,
     0.0f, 0.5f, 0.0f};
     mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, quad);
+    mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 1,1, 0,1});
     //mesh->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color1);
     mesh->SetIndices(quadIndices, MeshTopology::Triangles);
     mesh2->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, triangle);
+    mesh2->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 0.5f,0.5f});
     //mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
     mesh2->SetIndices(std::vector<unsigned short>{0, 1, 2}, MeshTopology::Triangles);
 
-    ShaderCode shaderCodeTest = ShaderCode();
-    shaderCodeTest.SetVersion(glslVersion);
+    Ref<ShaderCode> shaderCodeTest = CreateRef<ShaderCode>();
+    shaderCodeTest->SetVersion(glslVersion);
     if(GLApiVersionStruct::GetVersionFromInteger(glslVersion) < GLApiVersion::V460)
-        shaderCodeTest.AddExtension("GL_ARB_shader_draw_parameters");
-    shaderCodeTest.SetStageToPipeline(ShaderStage::Vertex, true);
-    shaderCodeTest.AddVertexAttribute("aPos", ShaderDataType::Float3, 0);
-    shaderCodeTest.AddVertexAttribute("aColor", ShaderDataType::Float4, 1);
-    shaderCodeTest.AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
-    shaderCodeTest.AddOutput(ShaderStage::Vertex, "matID", ShaderDataType::Int);
-    shaderCodeTest.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
-    shaderCodeTest.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
-    shaderCodeTest.SetMain(ShaderStage::Vertex,
+        shaderCodeTest->AddExtension("GL_ARB_shader_draw_parameters");
+    shaderCodeTest->SetStageToPipeline(ShaderStage::Vertex, true);
+    shaderCodeTest->AddVertexAttribute("aPos", ShaderDataType::Float3, 0);
+    shaderCodeTest->AddVertexAttribute("aColor", ShaderDataType::Float4, 1);
+    shaderCodeTest->AddVertexAttribute("aTexCoord", ShaderDataType::Float2, 2);
+    shaderCodeTest->AddOutput(ShaderStage::Vertex, "colorOut", ShaderDataType::Float4);
+    shaderCodeTest->AddOutput(ShaderStage::Vertex, "texCoordOut", ShaderDataType::Float2);
+    shaderCodeTest->AddOutput(ShaderStage::Vertex, "matID", ShaderDataType::Int);
+    shaderCodeTest->CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[512];");
+    shaderCodeTest->SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
+    shaderCodeTest->SetMain(ShaderStage::Vertex,
     "int objID = " + objIDString + ";\n"
     "colorOut = aColor;\n"
+    "texCoordOut = aTexCoord;\n"
     "matID = objID;\n"
     "gl_Position = mvps[objID]*vec4(aPos, 1.0);");
-    shaderCodeTest.SetStageToPipeline(ShaderStage::Fragment, true);
-    shaderCodeTest.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
-    shaderCodeTest.AddMaterialVec4ToStruct("Material", ShaderStage::Fragment, "albedo");
-    shaderCodeTest.AddMaterialFloatToStruct("Material", ShaderStage::Fragment, "intensity", 1.0f);
-    shaderCodeTest.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[512];");
-    shaderCodeTest.SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");
-    shaderCodeTest.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
-    shaderCodeTest.SetMain(ShaderStage::Fragment,
+    shaderCodeTest->SetStageToPipeline(ShaderStage::Fragment, true);
+    shaderCodeTest->DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
+    shaderCodeTest->AddMaterialVec4ToStruct("Material", ShaderStage::Fragment, "albedo");
+    shaderCodeTest->AddMaterialFloatToStruct("Material", ShaderStage::Fragment, "intensity", 1.0f);
+
+    stbi_set_flip_vertically_on_load(true);
+    Ref<Texture> tex0;
+    {
+        int width, height, channels;
+        GLubyte *data = stbi_load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").c_str(),
+        &width, &height, &channels, 0);
+        std::vector<GLubyte> pixels;
+        if(data){
+            pixels = std::vector<GLubyte>(data, data + width*height*channels);
+            stbi_image_free(data);
+        } else {
+            width = 256;
+            height = 256;
+            channels = 3;
+            int pixelsCount = width * height;
+            pixels.reserve(pixelsCount);
+            for(int i = 0; i < pixelsCount; i++){
+                pixels.push_back(0xFF);
+                pixels.push_back(0xFF);
+                pixels.push_back(0xFF);
+            }
+        }
+
+        tex0 = CreateRef<Texture>(width, height);
+        tex0->SetPixelsData(pixels, channels);
+    }
+
+    shaderCodeTest->AddMaterialMapArray(ShaderStage::Fragment, "texArray");
+
+    shaderCodeTest->UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[512];");
+    shaderCodeTest->SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");
+    shaderCodeTest->AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
+    shaderCodeTest->SetMain(ShaderStage::Fragment,
     "vec4 albedo = materials[matID].albedo;"
     "float intensity = materials[matID].intensity;"
-    "FragColor = intensity*materials[matID].albedo;");
+    "FragColor = intensity*materials[matID].albedo*texture(texArray, vec3(texCoordOut.x, texCoordOut.y, matID));");
     Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestGreen = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestRed = CreateRef<Material>(shaderCodeTest);
     materialTest->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
     materialTest->SetParameterFloat("intensity", 0.2f);
+    materialTest->SetParameterMap("texArray", tex0);
     materialTestGreen->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
     materialTestGreen->SetParameterFloat("intensity", 0.6f);
+    materialTestGreen->SetParameterMap("texArray", tex0);
     materialTestRed->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
     materialTestRed->SetParameterFloat("intensity", 1.0f);
+    materialTestRed->SetParameterMap("texArray", tex0);
 
     std::filesystem::path modelsDirectory;
     if(std::filesystem::exists(std::filesystem::path("../resources/modelos"))){
@@ -357,10 +399,12 @@ int main(int argc, char *argv[])
     std::vector<unsigned short> model1Indices = model1Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model1Mesh = CreateRef<Mesh>();
     model1Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model1Vertices);
+    model1Mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>(model1Vertices.size()/3 * 2, 0));
     model1Mesh->SetIndices(model1Indices, MeshTopology::Triangles);
     Ref<Material> model1Material = CreateRef<Material>(shaderCodeTest);
     model1Material->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
     model1Material->SetParameterFloat("intensity", 1.0f);
+    model1Material->SetParameterMap("texArray", tex0);
 
     std::ifstream model2Stream(modelsDirectory/"cone1.json");
     if(!model2Stream || !nlohmann::json::accept(model2Stream)){
@@ -374,10 +418,12 @@ int main(int argc, char *argv[])
     std::vector<unsigned short> model2Indices = model2Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model2Mesh = CreateRef<Mesh>();
     model2Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model2Vertices);
+    model2Mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>(model2Vertices.size()/3 * 2, 0));
     model2Mesh->SetIndices(model2Indices, MeshTopology::Triangles);
     Ref<Material> model2Material = CreateRef<Material>(shaderCodeTest);
     model2Material->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
     model2Material->SetParameterFloat("intensity", 1.0f);
+    model2Material->SetParameterMap("texArray", tex0);
 
     std::ifstream model3Stream(modelsDirectory/"cylinder.json");
     if(!model3Stream || !nlohmann::json::accept(model3Stream)){
@@ -391,10 +437,12 @@ int main(int argc, char *argv[])
     std::vector<unsigned short> model3Indices = model3Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model3Mesh = CreateRef<Mesh>();
     model3Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model3Vertices);
+    model3Mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>(model3Vertices.size()/3 * 2, 0));
     model3Mesh->SetIndices(model3Indices, MeshTopology::Triangles);
     Ref<Material> model3Material = CreateRef<Material>(shaderCodeTest);
     model3Material->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
     model3Material->SetParameterFloat("intensity", 1.0f);
+    model3Material->SetParameterMap("texArray", tex0);
 
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
@@ -439,6 +487,7 @@ int main(int argc, char *argv[])
     Renderer mainRenderer = Renderer();
 
     mainRenderer.SetMainWindow(std::addressof(window));
+    mainRenderer.SetTexMaxLayers(texLayersDepth);
     mainRenderer.SetAPIVersion(GLApiVersionStruct::GetVersionFromInteger(glslVersion));
     double initialRendererTime = glfwGetTime();
     mainRenderer.Start(mainScene.registry);

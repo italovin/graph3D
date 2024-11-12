@@ -8,7 +8,7 @@
 #include "Base.hpp"
 #include "ShaderCode.hpp"
 
-class Material : public Resource {
+class Material{
 private:
     std::function<void(const std::string&, float)> floatGlobalChangeCallback;
     std::function<void(const std::string&, bool)> booleanGlobalChangeCallback;
@@ -18,7 +18,7 @@ private:
     // Global parameters sets a uniform in the shader. The last material to set overrides the value
     std::unordered_map<std::string, MaterialParameter> globalShaderParameters;
     std::unordered_map<std::string, MaterialParameter> globalVertexShaderParameters;
-    std::optional<std::reference_wrapper<ShaderCode>> shaderCode;
+    Ref<ShaderCode> shaderCode;
     void AddParameter(const std::string &name, const MaterialParameter &parameter);
     void AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert);
     void DeleteParameters();
@@ -26,8 +26,8 @@ private:
     std::vector<std::pair<std::string, MaterialParameter>>::iterator FindParameter(const std::string &name);
 public:
     Material() = delete;
-    Material(ShaderCode &shaderCode);
-    std::optional<std::reference_wrapper<ShaderCode>> GetShaderCode() const;
+    Material(Ref<ShaderCode> shaderCode);
+    Ref<ShaderCode> GetShaderCode() const;
     void SetParameterMap(const std::string &name, Ref<Texture> value);
     void SetParameterFloat(const std::string &name, float value);
     void SetParameterBoolean(const std::string &name, bool value);

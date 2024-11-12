@@ -6,6 +6,7 @@
 #include "Entity.hpp"
 #include "System.hpp"
 #include "Window.hpp"
+#include "GLObjects.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
 
@@ -50,6 +51,7 @@ public:
 class Renderer : public System{
 private:
     Window* mainWindow = nullptr;
+    unsigned int objectsCountToGroup = 512;
     const GLuint maxBindingPoints = 50;
     std::unordered_map<int, bool> availableBindingPoints;
     std::unordered_map<std::string, int> uboBindingsPurposes;
@@ -94,9 +96,12 @@ private:
     };
     struct RenderGroup{
         VertexArray vao;
-        Shader shader;
+        Ref<GL::ShaderGL> shader;
         std::vector<Buffer> attributesBuffers;
         Buffer indicesBuffer;
+        // Textures
+        // Each texture in vector is a texture array with objectsCountToGroup layers count
+        std::vector<GL::TextureGLResource> texturesArrays;
         ////
         int objectsCount;
         Buffer mvpsUniformBuffer;
@@ -136,6 +141,7 @@ private:
     void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform);
 public:
     Renderer();
+    void SetTexMaxLayers(unsigned int depth);
     void SetAPIVersion(GLApiVersion version);
     void SetMainWindow(Window *mainWindow);
     void Start(entt::registry &registry) override;

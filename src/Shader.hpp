@@ -15,7 +15,7 @@ struct uniform_info
     GLenum type;
 };
 
-class Shader : public Resource {
+class Shader{
 private:
     GLuint handle = 0;
     bool debugInfo;

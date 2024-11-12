@@ -1,16 +1,24 @@
 #include "Material.hpp"
+#include "MaterialTypes.hpp"
 
-Material::Material(ShaderCode &shaderCode)
+Material::Material(Ref<ShaderCode> shaderCode)
 {
     this->shaderCode = shaderCode;
     if(parameters.size() > 0)
         DeleteParameters();
     
-    auto materialParameters = shaderCode.GetMaterialParameters(ShaderStage::Fragment);
-    auto materialGlobalParameters = shaderCode.GetUniforms(ShaderStage::Fragment);
-    auto materialGlobalVertexParameters = shaderCode.GetUniforms(ShaderStage::Vertex);
+    auto materialParameters = shaderCode->GetMaterialParameters(ShaderStage::Fragment);
+    auto materialTexturesProperties = shaderCode->GetMaterialTexturesProperties(ShaderStage::Fragment);
+    auto materialGlobalParameters = shaderCode->GetUniforms(ShaderStage::Fragment);
+    auto materialGlobalVertexParameters = shaderCode->GetUniforms(ShaderStage::Vertex);
     for(auto &&parameter : materialParameters){
         AddParameter(parameter.first, parameter.second);
+    }
+    for(auto &&textureProperty : materialTexturesProperties){
+        MaterialParameter matParameter;
+        matParameter.type = MaterialParameterType::Map;
+        matParameter.data = nullptr;
+        AddParameter(textureProperty.first, matParameter);
     }
     for(auto &&parameter : materialGlobalParameters){
         AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), true);
@@ -20,7 +28,7 @@ Material::Material(ShaderCode &shaderCode)
     }
 }
 
-std::optional<std::reference_wrapper<ShaderCode>> Material::GetShaderCode() const{
+Ref<ShaderCode> Material::GetShaderCode() const{
     return this->shaderCode;
 }
 

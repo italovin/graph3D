@@ -1,6 +1,8 @@
 #include "ShaderCode.hpp"
+#include "GLObjects.hpp"
 #include "MaterialTypes.hpp"
 #include "glm/fwd.hpp"
+#include <cstddef>
 
 const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){ 
     switch (type)
@@ -110,11 +112,11 @@ std::string ShaderCode::CreateStruct(ShaderStage shaderStage, const std::string 
 std::string ShaderCode::DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType)
 {
     switch(shaderStage){
-        case ShaderStage::Vertex : vertexShader.materialParametersStruct.first = structType; return structType;
-        case ShaderStage::TesselationControl : tesselationControlShader.materialParametersStruct.first = structType; return structType;
-        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialParametersStruct.first = structType; return structType;
-        case ShaderStage::Geometry : geometryShader.materialParametersStruct.first = structType; return structType;
-        case ShaderStage::Fragment : fragmentShader.materialParametersStruct.first = structType; return structType;
+        case ShaderStage::Vertex : vertexShader.materialProperties.first = structType; return structType;
+        case ShaderStage::TesselationControl : tesselationControlShader.materialProperties.first = structType; return structType;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.materialProperties.first = structType; return structType;
+        case ShaderStage::Geometry : geometryShader.materialProperties.first = structType; return structType;
+        case ShaderStage::Fragment : fragmentShader.materialProperties.first = structType; return structType;
         default: return std::string();
     }
     return structType;
@@ -142,6 +144,36 @@ void ShaderCode::AddMaterialVec4ToStruct(const std::string &structType, ShaderSt
     parameter.data = defaultValue;
     int toAddSize = 16;
     PushMaterialParameter(shaderStage, name, parameter, toAddSize);
+}
+
+void ShaderCode::AddMaterialMapArray(ShaderStage shaderStage, const std::string &name){
+    switch(shaderStage){
+        case ShaderStage::Vertex :
+        if(vertexShader.materialTexturesProperties.count(name) == 0){
+            vertexShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
+            vertexShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+        } break;
+        case ShaderStage::TesselationControl :
+        if(tesselationControlShader.materialTexturesProperties.count(name) == 0){
+            tesselationControlShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
+            tesselationControlShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+        } break;
+        case ShaderStage::TesselationEvaluation :
+        if(tesselationEvaluationShader.materialTexturesProperties.count(name) == 0){
+            tesselationEvaluationShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
+            tesselationEvaluationShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+        } break;
+        case ShaderStage::Geometry :
+        if(geometryShader.materialTexturesProperties.count(name) == 0){
+            geometryShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
+            geometryShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+        } break;
+        case ShaderStage::Fragment : if(fragmentShader.materialTexturesProperties.count(name) == 0){
+            fragmentShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
+            fragmentShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+        } break;
+        default: return;
+    }
 }
 
 void ShaderCode::UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body)
@@ -209,12 +241,16 @@ std::string &outsideString, std::string &outsideStringIns){
         + " " + parameter.first + ";\n";
     }
 
-    if(!shaderStageCode.materialSortedParameters.empty()){
-        outsideString += "struct " + shaderStageCode.materialParametersStruct.first + "{\n";
-        for(auto &&matParameter : shaderStageCode.materialSortedParameters){
+    if(!shaderStageCode.materialPropertiesOrder.empty()){
+        outsideString += "struct " + shaderStageCode.materialProperties.first + "{\n";
+        for(auto &&matParameter : shaderStageCode.materialPropertiesOrder){
             outsideString += GLSLMatTypeToString(matParameter.second.type) + " " + matParameter.first + ";\n";
         }
         outsideString += "};\n";
+    }
+
+    for(auto &&textureProperty : shaderStageCode.materialTexturesProperties){
+        outsideString += "uniform sampler2DArray " + textureProperty.first + ";\n";
     }
 
     if(!shaderStageCode.materialParametersUniformBlock.first.empty()){
@@ -250,11 +286,7 @@ void ShaderCode::SortMaterialParameters(ShaderStageCode &shaderStageCode){
         }
         return aAlignment > bAlignment;
     };
-    shaderStageCode.materialSortedParameters = std::vector<std::pair<std::string, MaterialParameter>>(
-        shaderStageCode.materialParametersStruct.second.begin(),
-        shaderStageCode.materialParametersStruct.second.end()
-    );
-    std::sort(shaderStageCode.materialSortedParameters.begin(), shaderStageCode.materialSortedParameters.end(), compLambda);
+    std::sort(shaderStageCode.materialPropertiesOrder.begin(), shaderStageCode.materialPropertiesOrder.end(), compLambda);
 }
 
 void ShaderCode::PushMaterialParameter(ShaderStage shaderStage, const std::string &name, const MaterialParameter &parameter, int toAddSize){
@@ -263,52 +295,67 @@ void ShaderCode::PushMaterialParameter(ShaderStage shaderStage, const std::strin
     };
     switch(shaderStage){
         case ShaderStage::Vertex : if(!checkIfNotGreatherMax(vertexShader.materialParametersSpaceUsed + toAddSize)) return;
-        vertexShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        vertexShader.materialParametersSpaceUsed += toAddSize; break;
+        if(vertexShader.materialProperties.second.count(name) == 0){
+            vertexShader.materialProperties.second.emplace(std::make_pair(name,parameter));
+            vertexShader.materialPropertiesOrder.push_back(std::make_pair(name,parameter));
+            vertexShader.materialParametersSpaceUsed += toAddSize;
+        } break;
         case ShaderStage::TesselationControl : if(!checkIfNotGreatherMax(tesselationControlShader.materialParametersSpaceUsed + toAddSize)) return;
-        tesselationControlShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        tesselationControlShader.materialParametersSpaceUsed += toAddSize; break;
+        if(tesselationControlShader.materialProperties.second.count(name) == 0){
+            tesselationControlShader.materialProperties.second.emplace(std::make_pair(name,parameter));
+            tesselationControlShader.materialPropertiesOrder.push_back(std::make_pair(name,parameter));
+            tesselationControlShader.materialParametersSpaceUsed += toAddSize;
+        } break;
         case ShaderStage::TesselationEvaluation :
         if(!checkIfNotGreatherMax(tesselationEvaluationShader.materialParametersSpaceUsed + toAddSize)) return;
-        tesselationEvaluationShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        tesselationEvaluationShader.materialParametersSpaceUsed += toAddSize; break;
+        if(tesselationEvaluationShader.materialProperties.second.count(name) == 0){
+            tesselationEvaluationShader.materialProperties.second.emplace(std::make_pair(name,parameter));
+            tesselationEvaluationShader.materialPropertiesOrder.push_back(std::make_pair(name,parameter));
+            tesselationEvaluationShader.materialParametersSpaceUsed += toAddSize;
+        }  break;
         case ShaderStage::Geometry : if(!checkIfNotGreatherMax(geometryShader.materialParametersSpaceUsed + toAddSize)) return;
-        geometryShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        geometryShader.materialParametersSpaceUsed += toAddSize; break;
+        if(geometryShader.materialProperties.second.count(name) == 0){
+            geometryShader.materialProperties.second.emplace(std::make_pair(name,parameter));
+            geometryShader.materialPropertiesOrder.push_back(std::make_pair(name,parameter));
+            geometryShader.materialParametersSpaceUsed += toAddSize;
+        }  break;
         case ShaderStage::Fragment : if(!checkIfNotGreatherMax(fragmentShader.materialParametersSpaceUsed + toAddSize)) return;
-        fragmentShader.materialParametersStruct.second.push_back(std::make_pair(name,parameter));
-        fragmentShader.materialParametersSpaceUsed += toAddSize; break;
+       if(fragmentShader.materialProperties.second.count(name) == 0){
+            fragmentShader.materialProperties.second.emplace(std::make_pair(name,parameter));
+            fragmentShader.materialPropertiesOrder.push_back(std::make_pair(name,parameter));
+            fragmentShader.materialParametersSpaceUsed += toAddSize;
+        }  break;
         default: return;
     }
 }
 
-std::optional<Shader> ShaderCode::Generate()
+Ref<GL::ShaderGL> ShaderCode::Generate()
 {
-    std::vector<ShaderObject> shaderObjects;
+    std::vector<GL::ShaderObjectGL> shaderObjects;
     // Reserve for vertex and fragment shader
     shaderObjects.reserve(2);
     
     // Vertex Shader is needed
     if(vertexShader.enabled)
-        shaderObjects.emplace_back(ShaderObject(GL_VERTEX_SHADER));
+        shaderObjects.emplace_back(GL::ShaderObjectGL(GL_VERTEX_SHADER));
     else
-        return std::nullopt;
+        return nullptr;
 
     if(tesselationControlShader.enabled && tesselationEvaluationShader.enabled){
-        shaderObjects.emplace_back(ShaderObject(GL_TESS_CONTROL_SHADER));
-        shaderObjects.emplace_back(ShaderObject(GL_TESS_EVALUATION_SHADER));
+        shaderObjects.emplace_back(GL::ShaderObjectGL(GL_TESS_CONTROL_SHADER));
+        shaderObjects.emplace_back(GL::ShaderObjectGL(GL_TESS_EVALUATION_SHADER));
     } else if(!tesselationControlShader.enabled && tesselationEvaluationShader.enabled){
-        shaderObjects.emplace_back(ShaderObject(GL_TESS_EVALUATION_SHADER));
+        shaderObjects.emplace_back(GL::ShaderObjectGL(GL_TESS_EVALUATION_SHADER));
     } else if(tesselationControlShader.enabled && !tesselationEvaluationShader.enabled){
         // Tess control cannot be used without tess evaluation
-        return std::nullopt;
+        return nullptr;
     }
 
     if(geometryShader.enabled)
-        shaderObjects.emplace_back(ShaderObject(GL_GEOMETRY_SHADER));
+        shaderObjects.emplace_back(GL::ShaderObjectGL(GL_GEOMETRY_SHADER));
 
     if(fragmentShader.enabled)
-        shaderObjects.emplace_back(ShaderObject(GL_FRAGMENT_SHADER));
+        shaderObjects.emplace_back(GL::ShaderObjectGL(GL_FRAGMENT_SHADER));
     std::string outsideStringInsPrevious;
     for(size_t i = 0; i < shaderObjects.size(); i++){
         std::string versionString = "#version " + std::to_string(version) + "\n";
@@ -346,10 +393,7 @@ std::optional<Shader> ShaderCode::Generate()
         outsideStringInsPrevious = outsideStringIns;
         shaderObjects[i].Compile(shaderSource);
     }
-    Shader shader(shaderObjects);
-    for(auto &&shaderObject : shaderObjects){
-        shaderObject.Delete();
-    }
+    Ref<GL::ShaderGL> shader = CreateRef<GL::ShaderGL>(shaderObjects);
     return shader;
 }
 
@@ -368,12 +412,25 @@ std::vector<std::pair<std::string, MaterialParameter>>
 ShaderCode::GetMaterialParameters(ShaderStage shaderStage)
 {
     switch(shaderStage){
-        case ShaderStage::Vertex : SortMaterialParameters(vertexShader); return vertexShader.materialSortedParameters;
-        case ShaderStage::TesselationControl : SortMaterialParameters(tesselationControlShader); return tesselationControlShader.materialSortedParameters;
-        case ShaderStage::TesselationEvaluation : SortMaterialParameters(tesselationEvaluationShader); return tesselationEvaluationShader.materialSortedParameters;
-        case ShaderStage::Geometry : SortMaterialParameters(geometryShader); return geometryShader.materialSortedParameters;
-        case ShaderStage::Fragment : SortMaterialParameters(fragmentShader); return fragmentShader.materialSortedParameters;
+        case ShaderStage::Vertex : SortMaterialParameters(vertexShader); return vertexShader.materialPropertiesOrder;
+        case ShaderStage::TesselationControl : SortMaterialParameters(tesselationControlShader); return tesselationControlShader.materialPropertiesOrder;
+        case ShaderStage::TesselationEvaluation : SortMaterialParameters(tesselationEvaluationShader); return tesselationEvaluationShader.materialPropertiesOrder;
+        case ShaderStage::Geometry : SortMaterialParameters(geometryShader); return geometryShader.materialPropertiesOrder;
+        case ShaderStage::Fragment : SortMaterialParameters(fragmentShader); return fragmentShader.materialPropertiesOrder;
         default: return std::vector<std::pair<std::string, MaterialParameter>>();
+    }
+}
+
+std::unordered_map<std::string, std::vector<Ref<Texture>>>
+ShaderCode::GetMaterialTexturesProperties(ShaderStage shaderStage) const
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : return vertexShader.materialTexturesProperties;
+        case ShaderStage::TesselationControl : return tesselationControlShader.materialTexturesProperties;
+        case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.materialTexturesProperties;
+        case ShaderStage::Geometry : return geometryShader.materialTexturesProperties;
+        case ShaderStage::Fragment : return fragmentShader.materialTexturesProperties;
+        default: return std::unordered_map<std::string, std::vector<Ref<Texture>>>();
     }
 }
 

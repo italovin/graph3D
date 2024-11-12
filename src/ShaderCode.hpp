@@ -4,9 +4,9 @@
 #include <string>
 #include <optional>
 #include <algorithm>
-#include "Shader.hpp"
 #include "ShaderTypes.hpp"
 #include "MaterialTypes.hpp"
+#include "GLObjects.hpp"
 #include <chrono>
 enum class ShaderStage{
     Vertex,
@@ -26,6 +26,10 @@ struct UniformBlock{
     std::unordered_map<std::string, ShaderCodeParameter> parameters;
 };
 
+struct MaterialBlock{
+    std::pair<std::string, std::vector<std::pair<std::string, MaterialParameter>>> parametersStruct;
+};
+
 struct ShaderStageCode{
     bool enabled = false;
     // This map is used only for vertex shader attributes
@@ -35,12 +39,12 @@ struct ShaderStageCode{
     std::unordered_map<std::string, ShaderCodeParameter> uniforms;
     std::unordered_map<std::string, std::unordered_map<std::string, ShaderCodeParameter>> regularStructs;
     // Designed for material parameters batching
-    std::pair<std::string, std::vector<std::pair<std::string, MaterialParameter>>> materialParametersStruct;
+    std::pair<std::string, std::unordered_map<std::string, MaterialParameter>> materialProperties;
+    std::vector<std::pair<std::string, MaterialParameter>> materialPropertiesOrder;
+    std::unordered_map<std::string, std::vector<Ref<Texture>>> materialTexturesProperties;
+    std::vector<std::pair<std::string, std::vector<Ref<Texture>>>> materialTexturesPropertiesOrder;
     std::pair<std::string, std::string> materialParametersUniformBlock;
     int materialParametersSpaceUsed = 0;
-    // This vector are material parameters sorted by larger alignment
-    std::vector<std::pair<std::string, MaterialParameter>> materialSortedParameters;
-    ////
     std::unordered_map<std::string, std::string> uniformBlocks;
     ///
     std::unordered_map<std::string, std::string> uniformBlockBindingPurposes;
@@ -48,7 +52,7 @@ struct ShaderStageCode{
 };
 
 // Intermediary representation of shader program. Compound by shader objects
-class ShaderCode : public Resource {
+class ShaderCode{
 private:
     int version = 330;
     // Each member in elements of array of structs sums even this max value
@@ -80,13 +84,15 @@ public:
     void AddMaterialFloatToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, float defaultValue = 0.0f);
     void AddMaterialBoolToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, bool defaultValue = false);
     void AddMaterialVec4ToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, glm::vec4 defaultValue = glm::vec4(0.0f));
+    void AddMaterialMapArray(ShaderStage shaderStage, const std::string &name);
     void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void SetMain(ShaderStage shaderStage, const std::string &main);
     std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
     std::vector<std::pair<std::string, MaterialParameter>> GetMaterialParameters(ShaderStage shaderStage);
+    std::unordered_map<std::string, std::vector<Ref<Texture>>> GetMaterialTexturesProperties(ShaderStage shaderStage) const;
     void SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose);
     std::unordered_map<std::string, std::string> GetBindingsPurposes(ShaderStage shaderStage) const;
-    std::optional<Shader> Generate();
+    Ref<GL::ShaderGL> Generate();
 };
 #endif

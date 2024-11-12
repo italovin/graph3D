@@ -1,6 +1,9 @@
 #include "Renderer.hpp"
+#include "GLObjects.hpp"
 #include "Material.hpp"
 #include "Mesh.hpp"
+#include "Resource.hpp"
+#include "Texture.hpp"
 #include "VertexArray.hpp"
 #include <chrono>
 
@@ -151,7 +154,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     }
 
     struct ShaderGroup{
-        Shader shader;
+        Ref<GL::ShaderGL> shader;
         std::vector<Renderable> batchGroup;
         std::vector<std::vector<Renderable>> instancesGroups;
         std::vector<Renderable> &GetBatchGroup(){
@@ -164,38 +167,36 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     std::vector<ShaderGroup> shaderGroups;
 
     std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderMap;
-    std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderCodeMap;
-    std::unordered_map<ResourceHandle, Shader> shaderCache;
+    std::unordered_map<Ref<ShaderCode>, std::vector<Renderable>> shaderCodeMap;
+    std::unordered_map<ResourceHandle, GL::ShaderGLResource> shaderCache;
     for(auto &&x: componentsPairs){
-        auto shaderCodeOpt = x.first.get().material->GetShaderCode();
-        if(!shaderCodeOpt.has_value()){
+        auto shaderCode = x.first.get().material->GetShaderCode();
+        if(!shaderCode){
             continue;
         }
-        auto shaderCode = shaderCodeOpt.value();
-        shaderCodeMap[shaderCode.get().resourceHandle].push_back(std::move(x));
+        shaderCodeMap[shaderCode].push_back(std::move(x));
     }
     for(auto &&x : shaderCodeMap){
-        std::optional<Shader> shaderGeneratedOpt = x.second[0].first.get().material->GetShaderCode().value().get().Generate();
-        if(!shaderGeneratedOpt.has_value())
+        GL::ShaderGLResource shaderGeneratedGlobal(x.second[0].first.get().material->GetShaderCode()->Generate());
+        if(!shaderGeneratedGlobal.object)
             continue;
-        Shader shaderGeneratedGlobal = shaderGeneratedOpt.value();
         std::vector<std::vector<Renderable>> shaderGeneratedGroups;
-        const int groupSize = 512;
+        const int groupSize = this->objectsCountToGroup;
         shaderGeneratedGroups.reserve(std::ceil(x.second.size()/groupSize));
         for(size_t i = 0; i < x.second.size(); i+=groupSize){
             std::vector<Renderable> vec(x.second.begin() + i, x.second.begin() + std::min(i+groupSize, x.second.size()));
             shaderGeneratedGroups.push_back(std::move(vec));
         }
         for(auto &&group : shaderGeneratedGroups){
-            Shader shaderGenerated = shaderGeneratedGlobal;
+            GL::ShaderGLResource shaderGenerated(shaderGeneratedGlobal.object);
             // Setting shader mvp binding point;
-            for(auto &&bindingPurpose : x.second[0].first.get().material->GetShaderCode().value().get().GetBindingsPurposes(ShaderStage::Vertex)){
+            for(auto &&bindingPurpose : x.second[0].first.get().material->GetShaderCode()->GetBindingsPurposes(ShaderStage::Vertex)){
                 std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
                 if(!binding.has_value()){
                     // No binding point available
                     return;
                 }
-                shaderGenerated.SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
+                shaderGenerated->SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
             }
             shaderMap[shaderGenerated.resourceHandle].reserve(group.size());
             for(auto &&renderable : group){
@@ -206,16 +207,16 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     }
     for(auto &&group : shaderMap){
         ShaderGroup shaderGroup;
-        shaderGroup.shader = shaderCache[group.first];
-        std::unordered_map<ResourceHandle, std::vector<Renderable>> groupMap;
+        shaderGroup.shader = shaderCache[group.first].object;
+        std::unordered_map<Ref<Mesh>, std::vector<Renderable>> groupMap;
         int batchSize = 0;
         for(auto &&x : group.second){
-            if(groupMap[x.first.get().mesh->resourceHandle].size() == 0)
+            if(groupMap[x.first.get().mesh.object].size() == 0)
                 batchSize++;
-            else if(groupMap[x.first.get().mesh->resourceHandle].size() == 1)
+            else if(groupMap[x.first.get().mesh.object].size() == 1)
                 batchSize--; // Reverts when instances are found
 
-            groupMap[x.first.get().mesh->resourceHandle].push_back(std::move(x));
+            groupMap[x.first.get().mesh.object].push_back(std::move(x));
         }
         shaderGroup.batchGroup.reserve(batchSize);
         for(auto &&x : groupMap){
@@ -331,6 +332,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         //Temp auxiliary variables
         int objectIndex = 0; // Indexer for every object
         int meshIndex = 0; // Index for each mesh
+        int textureParametersCounter = 0; // Counter for texture parameters
         int baseVertex = 0;
         unsigned int firstIndex = 0;
         unsigned int baseInstance = 0;
@@ -342,6 +344,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         // Boolean to check if material parameters struct layout is calculated
         bool areParametersMembersSet = false;
         StructArray matParamStructArray;
+
+        bool areTexturesArraysInitialized = false;
 
         for(auto &&object : batchGroup){
 
@@ -436,13 +440,13 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             renderGroup.materials.emplace_back(*objectMaterial);
             // Register material callbacks
             objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
-                renderGroup.shader.SetFloat(name, value);
+                renderGroup.shader->SetFloat(name, value);
             });
             objectMaterial->SetOnGlobalBooleanChangeCallback([renderGroup](const std::string &name, bool value){
-                renderGroup.shader.SetBool(name, value);
+                renderGroup.shader->SetBool(name, value);
             });
             objectMaterial->SetOnGlobalVector4ChangeCallback([renderGroup](const std::string &name, glm::vec4 value){
-                renderGroup.shader.SetVec4(name, value);
+                renderGroup.shader->SetVec4(name, value);
             });
 
             auto matParameters = objectMaterial->GetParameters();
@@ -450,12 +454,15 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             if(!areParametersMembersSet){
                 std::vector<Member> members;
                 for(auto &&parameter : matParameters){
+                    if(parameter.second.type == MaterialParameterType::Map)
+                        continue;
+ 
                     size_t mSize, mAlignment = 0;
                     switch(parameter.second.type){
                         case MaterialParameterType::Boolean: mSize = 4; mAlignment = 4; break;
                         case MaterialParameterType::Float: mSize = 4; mAlignment = 4; break;
                         case MaterialParameterType::Vector4: mSize = 16; mAlignment = 16; break;
-                        case MaterialParameterType::Map: break;
+                        default: break;
                     }
                     members.emplace_back(parameter.first, mSize, mAlignment, 0, 0);
                 }
@@ -465,6 +472,26 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             // Setting material struct array data
             if(areParametersMembersSet){
                 for(auto &&parameter : matParameters){
+                    if(parameter.second.type == MaterialParameterType::Map){
+                        auto texture = std::get<Ref<Texture>>(parameter.second.data);
+                        if(!texture){
+                            continue;
+                        }
+                        if(!areTexturesArraysInitialized){
+                            Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
+                            textureGL->SetupParameters();
+                            textureGL->SetupStorage3D(texture->GetWidth(), texture->GetHeight(), objectsCount);
+                            renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
+                            renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
+                        }
+                        if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                            renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                        } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                            renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                        }
+                        textureParametersCounter++;
+                    }
+
                     switch(parameter.second.type){
                         case MaterialParameterType::Float: matParamStructArray.setMember(objectIndex, parameter.first, std::get<float>(parameter.second.data)); break;
                         case MaterialParameterType::Boolean: matParamStructArray.setMember(objectIndex, parameter.first, std::get<bool>(parameter.second.data)); break;
@@ -472,6 +499,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                         default: break;
                     }
                 }
+                textureParametersCounter = 0;
+                areTexturesArraysInitialized = true;
             }
 
             objectIndex++;
@@ -576,13 +605,13 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 renderGroup.materials.push_back(*objectMaterial);
                 // Register material callbacks
                 objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
-                    renderGroup.shader.SetFloat(name, value);
+                    renderGroup.shader->SetFloat(name, value);
                 });
                 objectMaterial->SetOnGlobalBooleanChangeCallback([renderGroup](const std::string &name, bool value){
-                    renderGroup.shader.SetBool(name, value);
+                    renderGroup.shader->SetBool(name, value);
                 });
                 objectMaterial->SetOnGlobalVector4ChangeCallback([renderGroup](const std::string &name, glm::vec4 value){
-                    renderGroup.shader.SetVec4(name, value);
+                    renderGroup.shader->SetVec4(name, value);
                 });
 
                 auto matParameters = objectMaterial->GetParameters();
@@ -590,6 +619,9 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 if(!areParametersMembersSet){
                     std::vector<Member> members;
                     for(auto &&parameter : matParameters){
+                        if(parameter.second.type == MaterialParameterType::Map)
+                            continue;
+
                         size_t mSize, mAlignment = 0;
                         switch(parameter.second.type){
                             case MaterialParameterType::Boolean: mSize = 4; mAlignment = 4; break;
@@ -605,6 +637,26 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 // Setting material struct array data
                 if(areParametersMembersSet){
                     for(auto &&parameter : matParameters){
+                        if(parameter.second.type == MaterialParameterType::Map){
+                            auto texture = std::get<Ref<Texture>>(parameter.second.data);
+                            if(!texture){
+                                continue;
+                            }
+                            if(!areTexturesArraysInitialized){
+                                Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
+                                textureGL->SetupParameters();
+                                textureGL->SetupStorage3D(texture->GetWidth(), texture->GetHeight(), objectsCount);
+                                renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
+                                renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
+                            }
+                            if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                                renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                            } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                                renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                            }
+                            textureParametersCounter++;
+                        }
+
                         switch(parameter.second.type){
                             case MaterialParameterType::Float: matParamStructArray.setMember(objectIndex, parameter.first, std::get<float>(parameter.second.data)); break;
                             case MaterialParameterType::Boolean: matParamStructArray.setMember(objectIndex, parameter.first, std::get<bool>(parameter.second.data)); break;
@@ -612,6 +664,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                             default: break;
                         }
                     }
+                    textureParametersCounter = 0;
+                    areTexturesArraysInitialized = true;
                 }
                 objectIndex++;
             }
@@ -648,7 +702,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
 
         auto setupEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "Time to setup: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << "μs" << std::endl;
+        std::cout << "Time to setup batch and instance groups: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << "μs" << std::endl;
         auto bufferBegin = std::chrono::high_resolution_clock::now();
         {
             int index = 0;
@@ -772,6 +826,10 @@ void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
     }
 }
 
+void Renderer::SetTexMaxLayers(unsigned int depth){
+    this->objectsCountToGroup = depth;
+}
+
 void Renderer::SetAPIVersion(GLApiVersion version){
     this->version = version;
     SetDrawFunction();
@@ -818,7 +876,10 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         mainCameraView = rotate * translate;
     }
     for(auto &&renderGroup : renderGroups){
-        renderGroup.shader.Use();
+        for(size_t i = 0; i < renderGroup.texturesArrays.size(); i++){
+            renderGroup.texturesArrays[i]->Bind(i);
+        }
+        renderGroup.shader->Use();
         renderGroup.vao.Bind();
 
         for(int i = 0; i < renderGroup.objectsCount; i++){
