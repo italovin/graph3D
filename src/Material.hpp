@@ -40,6 +40,10 @@ public:
     std::optional<bool> GetParameterBoolean(const std::string &name);
     std::optional<glm::vec4> GetParameterVector4(const std::string &name);
     std::vector<std::pair<std::string, MaterialParameter>> GetParameters() const;
+    std::vector<std::pair<std::string, MaterialParameter>> GetMapParameters() const;
+    std::vector<std::pair<std::string, MaterialParameter>> GetFloatParameters() const;
+    std::vector<std::pair<std::string, MaterialParameter>> GetBooleanParameters() const;
+    std::vector<std::pair<std::string, MaterialParameter>> GetVector4Parameters() const;
     void SetGlobalParameterMap(const std::string &name, Ref<Texture> value);
     void SetGlobalParameterFloat(const std::string &name, float value);
     void SetGlobalParameterBoolean(const std::string &name, bool value);

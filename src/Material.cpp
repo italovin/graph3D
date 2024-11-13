@@ -17,7 +17,7 @@ Material::Material(Ref<ShaderCode> shaderCode)
     for(auto &&textureProperty : materialTexturesProperties){
         MaterialParameter matParameter;
         matParameter.type = MaterialParameterType::Map;
-        matParameter.data = nullptr;
+        matParameter.data = textureProperty.second;
         AddParameter(textureProperty.first, matParameter);
     }
     for(auto &&parameter : materialGlobalParameters){
@@ -158,6 +158,17 @@ std::optional<glm::vec4> Material::GetParameterVector4(const std::string &name)
 std::vector<std::pair<std::string, MaterialParameter>> Material::GetParameters() const
 {
     return this->parameters;
+}
+
+std::vector<std::pair<std::string, MaterialParameter>> Material::GetMapParameters() const
+{
+    std::vector<std::pair<std::string, MaterialParameter>> mapParameters;
+    for(auto &&parameter : this->parameters){
+        if(parameter.second.type == MaterialParameterType::Map){
+            mapParameters.emplace_back(parameter.first, parameter.second);
+        }
+    }
+    return mapParameters;
 }
 
 void Material::SetGlobalParameterMap(const std::string &name, Ref<Texture> value)

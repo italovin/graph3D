@@ -1,6 +1,7 @@
 #include "Renderer.hpp"
 #include "GLObjects.hpp"
 #include "Material.hpp"
+#include "MaterialTypes.hpp"
 #include "Mesh.hpp"
 #include "RenderCapabilities.hpp"
 #include "Resource.hpp"
@@ -168,14 +169,14 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     std::vector<ShaderGroup> shaderGroups;
 
     std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderMap;
-    std::unordered_map<Ref<ShaderCode>, std::vector<Renderable>> shaderCodeMap;
+    std::unordered_map<ShaderCode*, std::vector<Renderable>> shaderCodeMap;
     std::unordered_map<ResourceHandle, GL::ShaderGLResource> shaderCache;
     for(auto &&x: componentsPairs){
         auto shaderCode = x.first.get().material->GetShaderCode();
         if(!shaderCode){
             continue;
         }
-        shaderCodeMap[shaderCode].push_back(std::move(x));
+        shaderCodeMap[shaderCode.get()].push_back(std::move(x));
     }
     for(auto &&x : shaderCodeMap){
         GL::ShaderGLResource shaderGeneratedGlobal(x.second[0].first.get().material->GetShaderCode()->Generate());
@@ -209,15 +210,15 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     for(auto &&group : shaderMap){
         ShaderGroup shaderGroup;
         shaderGroup.shader = shaderCache[group.first].object;
-        std::unordered_map<Ref<Mesh>, std::vector<Renderable>> groupMap;
+        std::unordered_map<Mesh*, std::vector<Renderable>> groupMap;
         int batchSize = 0;
         for(auto &&x : group.second){
-            if(groupMap[x.first.get().mesh.object].size() == 0)
+            if(groupMap[x.first.get().mesh.object.get()].size() == 0)
                 batchSize++;
-            else if(groupMap[x.first.get().mesh.object].size() == 1)
+            else if(groupMap[x.first.get().mesh.object.get()].size() == 1)
                 batchSize--; // Reverts when instances are found
 
-            groupMap[x.first.get().mesh.object].push_back(std::move(x));
+            groupMap[x.first.get().mesh.object.get()].push_back(std::move(x));
         }
         shaderGroup.batchGroup.reserve(batchSize);
         for(auto &&x : groupMap){
@@ -346,7 +347,59 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         bool areParametersMembersSet = false;
         StructArray matParamStructArray;
 
+        // Boolean to check if texture array is initialized
         bool areTexturesArraysInitialized = false;
+        // Store max dimensions for build each texture array
+        struct MaxTexDimensions{
+            size_t maxWidth = 0;
+            size_t maxHeight = 0;
+        };
+        std::vector<MaxTexDimensions> maxTexDimensions;
+        if(batchGroup.size() > 0){
+            maxTexDimensions = std::vector<MaxTexDimensions>(batchGroup[0].first.get().material->GetMapParameters().size());
+        } else if(instancesGroups.size() > 0){
+            if(instancesGroups[0].size() > 0)
+                maxTexDimensions = std::vector<MaxTexDimensions>(instancesGroups[0][0].first.get().material->GetMapParameters().size());
+        }
+
+        for(auto &&object : batchGroup){
+            auto texParameters = object.first.get().material->GetMapParameters();
+            int texParameterIndexer = 0;
+            for(auto &&texParameter : texParameters){
+                auto tex = std::get<Ref<Texture>>(texParameter.second.data);
+                if(!tex)
+                    continue;
+                size_t texWidth = tex->GetWidth();
+                size_t texHeight = tex->GetHeight();
+                if(texWidth > maxTexDimensions[texParameterIndexer].maxWidth){
+                    maxTexDimensions[texParameterIndexer].maxWidth = texWidth;
+                }
+                if(texHeight > maxTexDimensions[texParameterIndexer].maxHeight){
+                    maxTexDimensions[texParameterIndexer].maxHeight = texHeight;
+                }
+                texParameterIndexer++;
+            }
+        }
+        for(auto &&instanceGroup : instancesGroups){
+            for(auto &&object : instanceGroup){
+                auto texParameters = object.first.get().material->GetMapParameters();
+                int texParameterIndexer = 0;
+                for(auto &&texParameter : texParameters){
+                    auto tex = std::get<Ref<Texture>>(texParameter.second.data);
+                    if(!tex)
+                        continue;
+                    size_t texWidth = tex->GetWidth();
+                    size_t texHeight = tex->GetHeight();
+                    if(texWidth > maxTexDimensions[texParameterIndexer].maxWidth){
+                        maxTexDimensions[texParameterIndexer].maxWidth = texWidth;
+                    }
+                    if(texHeight > maxTexDimensions[texParameterIndexer].maxHeight){
+                        maxTexDimensions[texParameterIndexer].maxHeight = texHeight;
+                    }
+                    texParameterIndexer++;
+                }
+            }
+        }
 
         for(auto &&object : batchGroup){
 
@@ -473,25 +526,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             // Setting material struct array data
             if(areParametersMembersSet){
                 for(auto &&parameter : matParameters){
-                    if(parameter.second.type == MaterialParameterType::Map){
-                        auto texture = std::get<Ref<Texture>>(parameter.second.data);
-                        if(!texture){
-                            continue;
-                        }
-                        if(!areTexturesArraysInitialized){
-                            Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
-                            textureGL->SetupParameters();
-                            textureGL->SetupStorage3D(texture->GetWidth(), texture->GetHeight(), objectsCount);
-                            renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
-                            renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
-                        }
-                        if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
-                            renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
-                        } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
-                            renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
-                        }
-                        textureParametersCounter++;
-                    }
+                    if(parameter.second.type == MaterialParameterType::Map)
+                        continue;
 
                     switch(parameter.second.type){
                         case MaterialParameterType::Float: matParamStructArray.setMember(objectIndex, parameter.first, std::get<float>(parameter.second.data)); break;
@@ -500,9 +536,32 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                         default: break;
                     }
                 }
-                textureParametersCounter = 0;
-                areTexturesArraysInitialized = true;
+
             }
+            auto matTexParameters = objectMaterial->GetMapParameters();
+            for(auto &&parameter : matTexParameters){
+                auto texture = std::get<Ref<Texture>>(parameter.second.data);
+                if(!texture){
+                    continue;
+                }
+                if(!areTexturesArraysInitialized){
+                    Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
+                    textureGL->SetupParameters();
+                    textureGL->SetupStorage3D(maxTexDimensions[textureParametersCounter].maxWidth, maxTexDimensions[textureParametersCounter].maxHeight, objectsCount);
+                    renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
+                    renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
+                }
+                if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                    renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                    renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                }
+                textureParametersCounter++;
+            }
+            // Resets indexer for which texture array choose
+            textureParametersCounter = 0;
+            // Texture array is initialized
+            areTexturesArraysInitialized = true;
 
             objectIndex++;
             meshIndex++;
@@ -638,25 +697,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 // Setting material struct array data
                 if(areParametersMembersSet){
                     for(auto &&parameter : matParameters){
-                        if(parameter.second.type == MaterialParameterType::Map){
-                            auto texture = std::get<Ref<Texture>>(parameter.second.data);
-                            if(!texture){
-                                continue;
-                            }
-                            if(!areTexturesArraysInitialized){
-                                Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
-                                textureGL->SetupParameters();
-                                textureGL->SetupStorage3D(texture->GetWidth(), texture->GetHeight(), objectsCount);
-                                renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
-                                renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
-                            }
-                            if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
-                                renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
-                            } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
-                                renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
-                            }
-                            textureParametersCounter++;
-                        }
+                        if(parameter.second.type == MaterialParameterType::Map)
+                            continue;
 
                         switch(parameter.second.type){
                             case MaterialParameterType::Float: matParamStructArray.setMember(objectIndex, parameter.first, std::get<float>(parameter.second.data)); break;
@@ -668,6 +710,31 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                     textureParametersCounter = 0;
                     areTexturesArraysInitialized = true;
                 }
+                auto matTexParameters = objectMaterial->GetMapParameters();
+                for(auto &&parameter : matTexParameters){
+                    auto texture = std::get<Ref<Texture>>(parameter.second.data);
+                    if(!texture){
+                        continue;
+                    }
+                    if(!areTexturesArraysInitialized){
+                        Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
+                        textureGL->SetupParameters();
+                        textureGL->SetupStorage3D(maxTexDimensions[textureParametersCounter].maxWidth, maxTexDimensions[textureParametersCounter].maxHeight, objectsCount);
+                        renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
+                        renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
+                    }
+                    if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                        renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                    } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                        renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                    }
+                    textureParametersCounter++;
+                }
+                // Resets indexer for which texture array choose
+                textureParametersCounter = 0;
+                // Texture array is initialized
+                areTexturesArraysInitialized = true;
+
                 objectIndex++;
             }
             meshIndex++;

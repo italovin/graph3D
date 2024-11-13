@@ -41,8 +41,8 @@ struct ShaderStageCode{
     // Designed for material parameters batching
     std::pair<std::string, std::unordered_map<std::string, MaterialParameter>> materialProperties;
     std::vector<std::pair<std::string, MaterialParameter>> materialPropertiesOrder;
-    std::unordered_map<std::string, std::vector<Ref<Texture>>> materialTexturesProperties;
-    std::vector<std::pair<std::string, std::vector<Ref<Texture>>>> materialTexturesPropertiesOrder;
+    std::unordered_map<std::string, Ref<Texture>> materialTexturesProperties;
+    std::vector<std::pair<std::string, Ref<Texture>>> materialTexturesPropertiesOrder;
     std::pair<std::string, std::string> materialParametersUniformBlock;
     int materialParametersSpaceUsed = 0;
     std::unordered_map<std::string, std::string> uniformBlocks;
@@ -84,13 +84,13 @@ public:
     void AddMaterialFloatToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, float defaultValue = 0.0f);
     void AddMaterialBoolToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, bool defaultValue = false);
     void AddMaterialVec4ToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, glm::vec4 defaultValue = glm::vec4(0.0f));
-    void AddMaterialMapArray(ShaderStage shaderStage, const std::string &name);
+    void AddMaterialMapArray(ShaderStage shaderStage, const std::string &name, Ref<Texture> defaultValue = nullptr);
     void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void SetMain(ShaderStage shaderStage, const std::string &main);
     std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
     std::vector<std::pair<std::string, MaterialParameter>> GetMaterialParameters(ShaderStage shaderStage);
-    std::vector<std::pair<std::string, std::vector<Ref<Texture>>>> GetMaterialTexturesProperties(ShaderStage shaderStage) const;
+    std::vector<std::pair<std::string, Ref<Texture>>> GetMaterialTexturesProperties(ShaderStage shaderStage) const;
     void SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose);
     std::unordered_map<std::string, std::string> GetBindingsPurposes(ShaderStage shaderStage) const;
     Ref<GL::ShaderGL> Generate();

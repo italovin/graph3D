@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
     //mesh->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color1);
     mesh->SetIndices(quadIndices, MeshTopology::Triangles);
     mesh2->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, triangle);
-    mesh2->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 0.5f,0.5f});
+    mesh2->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 0.5f,1});
     //mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
     mesh2->SetIndices(std::vector<unsigned short>{0, 1, 2}, MeshTopology::Triangles);
 
@@ -316,6 +316,22 @@ int main(int argc, char *argv[])
     shaderCodeTest->AddMaterialFloatToStruct("Material", ShaderStage::Fragment, "intensity", 1.0f);
 
     stbi_set_flip_vertically_on_load(true);
+    Ref<Texture> defaultTexture;
+    {
+        int width = 256;
+        int height = 256;
+        int channels = 3;
+        int pixelsCount = width * height;
+        std::vector<GLubyte> pixels;
+        pixels.reserve(pixelsCount);
+        for(int i = 0; i < pixelsCount; i++){
+            pixels.push_back(0xFF);
+            pixels.push_back(0xFF);
+            pixels.push_back(0xFF);
+        }
+        defaultTexture = CreateRef<Texture>(width, height);
+        defaultTexture->SetPixelsData(pixels, channels);
+    }
     Ref<Texture> tex0;
     {
         int width, height, channels;
@@ -325,24 +341,14 @@ int main(int argc, char *argv[])
         if(data){
             pixels = std::vector<GLubyte>(data, data + width*height*channels);
             stbi_image_free(data);
+            tex0 = CreateRef<Texture>(width, height);
+            tex0->SetPixelsData(pixels, channels);
         } else {
-            width = 256;
-            height = 256;
-            channels = 3;
-            int pixelsCount = width * height;
-            pixels.reserve(pixelsCount);
-            for(int i = 0; i < pixelsCount; i++){
-                pixels.push_back(0xFF);
-                pixels.push_back(0xFF);
-                pixels.push_back(0xFF);
-            }
+            tex0 = defaultTexture;
         }
-
-        tex0 = CreateRef<Texture>(width, height);
-        tex0->SetPixelsData(pixels, channels);
     }
 
-    shaderCodeTest->AddMaterialMapArray(ShaderStage::Fragment, "texArray");
+    shaderCodeTest->AddMaterialMapArray(ShaderStage::Fragment, "texArray", defaultTexture);
 
     shaderCodeTest->UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[512];");
     shaderCodeTest->SetBindingPurpose(ShaderStage::Fragment, "matUBO", "materials");

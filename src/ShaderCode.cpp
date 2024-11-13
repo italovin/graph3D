@@ -146,31 +146,31 @@ void ShaderCode::AddMaterialVec4ToStruct(const std::string &structType, ShaderSt
     PushMaterialParameter(shaderStage, name, parameter, toAddSize);
 }
 
-void ShaderCode::AddMaterialMapArray(ShaderStage shaderStage, const std::string &name){
+void ShaderCode::AddMaterialMapArray(ShaderStage shaderStage, const std::string &name, Ref<Texture> defaultValue){
     switch(shaderStage){
         case ShaderStage::Vertex :
         if(vertexShader.materialTexturesProperties.count(name) == 0){
-            vertexShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
-            vertexShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+            vertexShader.materialTexturesProperties.emplace(std::make_pair(name, defaultValue));
+            vertexShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, defaultValue));
         } break;
         case ShaderStage::TesselationControl :
         if(tesselationControlShader.materialTexturesProperties.count(name) == 0){
-            tesselationControlShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
-            tesselationControlShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+            tesselationControlShader.materialTexturesProperties.emplace(std::make_pair(name, defaultValue));
+            tesselationControlShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, defaultValue));
         } break;
         case ShaderStage::TesselationEvaluation :
         if(tesselationEvaluationShader.materialTexturesProperties.count(name) == 0){
-            tesselationEvaluationShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
-            tesselationEvaluationShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+            tesselationEvaluationShader.materialTexturesProperties.emplace(std::make_pair(name, defaultValue));
+            tesselationEvaluationShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, defaultValue));
         } break;
         case ShaderStage::Geometry :
         if(geometryShader.materialTexturesProperties.count(name) == 0){
-            geometryShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
-            geometryShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+            geometryShader.materialTexturesProperties.emplace(std::make_pair(name, defaultValue));
+            geometryShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, defaultValue));
         } break;
         case ShaderStage::Fragment : if(fragmentShader.materialTexturesProperties.count(name) == 0){
-            fragmentShader.materialTexturesProperties.emplace(std::make_pair(name, std::vector<Ref<Texture>>()));
-            fragmentShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, std::vector<Ref<Texture>>()));
+            fragmentShader.materialTexturesProperties.emplace(std::make_pair(name, defaultValue));
+            fragmentShader.materialTexturesPropertiesOrder.push_back(std::make_pair(name, defaultValue));
         } break;
         default: return;
     }
@@ -421,7 +421,7 @@ ShaderCode::GetMaterialParameters(ShaderStage shaderStage)
     }
 }
 
-std::vector<std::pair<std::string, std::vector<Ref<Texture>>>>
+std::vector<std::pair<std::string, Ref<Texture>>>
 ShaderCode::GetMaterialTexturesProperties(ShaderStage shaderStage) const
 {
     switch(shaderStage){
@@ -430,7 +430,7 @@ ShaderCode::GetMaterialTexturesProperties(ShaderStage shaderStage) const
         case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.materialTexturesPropertiesOrder;
         case ShaderStage::Geometry : return geometryShader.materialTexturesPropertiesOrder;
         case ShaderStage::Fragment : return fragmentShader.materialTexturesPropertiesOrder;
-        default: return std::vector<std::pair<std::string, std::vector<Ref<Texture>>>>();
+        default: return std::vector<std::pair<std::string, Ref<Texture>>>();
     }
 }
 
