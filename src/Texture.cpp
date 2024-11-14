@@ -1,5 +1,4 @@
 #include "Texture.hpp"
-#include "VertexArray.hpp"
 
 Texture::Texture(size_t width, size_t height){
     this->width = width;

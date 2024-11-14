@@ -32,6 +32,13 @@ Ref<ShaderCode> Material::GetShaderCode() const{
     return this->shaderCode;
 }
 
+template <typename T>
+void Material::SetParameter(const std::string &name, T value){
+    auto parameterIt = FindParameter(name);
+    if(parameterIt != parameters.end())
+        parameterIt->second.data = value;
+}
+
 void Material::AddParameter(const std::string &name, const MaterialParameter &parameter)
 {
     parameters.emplace_back(name, parameter);
@@ -77,30 +84,22 @@ std::vector<std::pair<std::string, MaterialParameter>>::iterator Material::FindP
 
 void Material::SetParameterMap(const std::string &name, Ref<Texture> value)
 {
-    auto parameterIt = FindParameter(name);
-    if(parameterIt != parameters.end())
-        parameterIt->second.data = value;
+    SetParameter(name, value);
 }
 
 void Material::SetParameterFloat(const std::string &name, float value)
 {
-    auto parameterIt = FindParameter(name);
-    if(parameterIt != parameters.end())
-        parameterIt->second.data = value;
+    SetParameter(name, value);
 }
 
 void Material::SetParameterBoolean(const std::string &name, bool value)
 {
-    auto parameterIt = FindParameter(name);
-    if(parameterIt != parameters.end())
-        parameterIt->second.data = value;
+    SetParameter(name, value);
 }
 
 void Material::SetParameterVector4(const std::string &name, glm::vec4 value)
 {
-    auto parameterIt = FindParameter(name);
-    if(parameterIt != parameters.end())
-        parameterIt->second.data = value;
+    SetParameter(name, value);
 }
 
 void Material::SetOnGlobalFloatChangeCallback(std::function<void(const std::string&, float)> callback){

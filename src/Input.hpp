@@ -36,6 +36,8 @@ private:
         float yDelta;
         bool firstMove;
         std::unordered_map<int, MouseButtonState> monitoredButtons;
+        Mouse(glm::vec2 position, float xDelta, float yDelta, bool firstMove, std::unordered_map<int, MouseButtonState> monitoredButtons):
+        position(position),xDelta(xDelta),yDelta(yDelta),firstMove(firstMove),monitoredButtons(monitoredButtons){}
     };
     static Mouse mouse;
     struct Keyboard{
@@ -44,6 +46,8 @@ private:
         int negativeHorizontalKey;
         int positiveVerticalKey;
         int negativeVerticalKey;
+        Keyboard(std::unordered_map<int, KeyState> monitoredKeys, int positiveHorizontalKey, int negativeHorizontalKey, int positiveVerticalKey, int negativeVerticalKey):
+        monitoredKeys(monitoredKeys),positiveHorizontalKey(positiveHorizontalKey),negativeHorizontalKey(negativeHorizontalKey),positiveVerticalKey(positiveVerticalKey),negativeVerticalKey(negativeVerticalKey){}
     }; 
     static Keyboard keyboard;
     struct Joystick{

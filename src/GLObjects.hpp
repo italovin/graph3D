@@ -61,7 +61,6 @@ namespace GL{
         ShaderObjectGL(GLenum shaderType, const std::string &shaderPath, bool debugInfo);
         void Compile(const std::string &source);
         void CompileFromPath(const std::string &shaderPath);
-        GLuint GetHandle() const;
         GLenum GetType() const;
         void Release() override;
     };
@@ -81,8 +80,6 @@ namespace GL{
 
     public:
         ShaderGL();
-        ShaderGL(const ShaderGL& other);
-        ShaderGL& operator=(const ShaderGL& other);
         ShaderGL(bool debugInfo);
         ShaderGL(const std::vector<ShaderObjectGL> &shaderObjects, bool debugInfo = false);
         ShaderGL(std::vector<ShaderObjectGL> &&shaderObjects, bool debugInfo = false);
@@ -91,7 +88,6 @@ namespace GL{
         void Create();
         void Link();
         void Use();
-        GLuint GetHandle() const;
         void SetBool(const std::string &name, bool value) const;
         void SetInt(const std::string &name, int value) const;
         void SetFloat(const std::string &name, float value) const;
@@ -102,6 +98,13 @@ namespace GL{
         void DetachShaderObject(const ShaderObjectGL &shaderObject);
         void DetachShaderObject(ShaderObjectGL &&shaderObject);
         std::unordered_map<std::string, uniform_info> GetUniforms();
+        void Release() override;
+    };
+
+    class VertexArrayGL : public ObjectGL {
+    public:
+        VertexArrayGL();
+        void Bind();
         void Release() override;
     };
 

@@ -3,18 +3,18 @@ project(graph3D)
 add_compile_options(-mavx -mtune=native -O2 -Wall -Wpedantic)
 include_directories(3rdparty)
 add_executable(${PROJECT_NAME} src/main.cpp
-src/VertexArray.cpp
-src/Material.cpp
-src/ShaderCode.cpp
-src/Input.cpp
-src/Window.cpp
-src/Mesh.cpp
-src/Renderer.cpp
-src/Scene.cpp
 src/Entity.cpp
-src/Texture.cpp
 src/GLObjects.cpp
-src/RenderCapabilities.cpp)
+src/Input.cpp
+src/Material.cpp
+src/Mesh.cpp
+src/RenderCapabilities.cpp
+src/Renderer.cpp
+src/ShaderCode.cpp
+src/Scene.cpp
+src/Texture.cpp
+src/Window.cpp
+)
 if(LINUX)
     target_link_libraries(${PROJECT_NAME} PRIVATE GLEW glfw GL)
 endif()

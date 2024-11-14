@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
     std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << RenderCapabilities::GetMaxUBOSize() << " bytes." << std::endl;
     std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << RenderCapabilities::GetMaxTextureArrayLayers() << std::endl;
     std::cout << "GL_MAX_TEXTURE_UNITS is " << RenderCapabilities::GetMaxTextureImageUnits() << std::endl;
+    std::cout << "GL_MAX_VERTEX_ATTRIBS is " << RenderCapabilities::GetMaxVertexAttributes() << std::endl;
     std::cout << RenderCapabilities::GetVersionString() << std::endl;
     std::cout << RenderCapabilities::GetVendorString() << std::endl;
 
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(GLDebugCallback, nullptr);
 
-    const int glslVersion = window.GetGLSLVersion();
+    const int glslVersion = RenderCapabilities::GetGLSLVersion();
 
     std::string var1 = "s";
     std::string var2 = "t";
@@ -200,6 +201,8 @@ int main(int argc, char *argv[])
     }
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
+    std::cout << "Graph parameter S resolution: " << s_stepSize << std::endl;
+    std::cout << "Graph parameter T resolution: " << t_stepSize << std::endl;
 
     std::vector<GLfloat> parameters;
     parameters.reserve(2*(s_steps+1)*(t_steps+1));
@@ -356,7 +359,8 @@ int main(int argc, char *argv[])
     shaderCodeTest->SetMain(ShaderStage::Fragment,
     "vec4 albedo = materials[matID].albedo;\n"
     "float intensity = materials[matID].intensity;\n"
-    "FragColor = intensity*materials[matID].albedo*texture(texArray, vec3(texCoordOut.x, texCoordOut.y, matID));");
+    "vec4 baseColor = intensity * albedo;\n"
+    "FragColor = baseColor * texture(texArray, vec3(texCoordOut.x, texCoordOut.y, matID));");
     Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestGreen = CreateRef<Material>(shaderCodeTest);
     Ref<Material> materialTestRed = CreateRef<Material>(shaderCodeTest);

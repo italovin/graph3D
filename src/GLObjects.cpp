@@ -22,7 +22,7 @@ GL::ObjectGL &GL::ObjectGL::operator=(GL::ObjectGL &&other)
     if(this != &other)
     {
         if (this->handle != 0) {
-            glDeleteTextures(1, &this->handle);
+            Release();
             this->handle = 0;
         }
         //handle is now 0.
@@ -199,10 +199,6 @@ void GL::ShaderObjectGL::CompileFromPath(const std::string &shaderPath){
     Compile(source);
 }
 
-GLuint GL::ShaderObjectGL::GetHandle() const{
-    return handle;
-}
-
 GLenum GL::ShaderObjectGL::GetType() const{
     return shaderType;
 }
@@ -245,21 +241,6 @@ void GL::ShaderGL::GetUniformsInfo(){
 GL::ShaderGL::ShaderGL(){
     debugInfo = false;
     handle = glCreateProgram();
-}
-
-GL::ShaderGL::ShaderGL(const GL::ShaderGL &other)
-{
-    handle = other.handle;
-    debugInfo = other.debugInfo;
-    uniforms = other.uniforms;
-}
-
-GL::ShaderGL &GL::ShaderGL::operator=(const GL::ShaderGL &other)
-{
-    handle = other.handle;
-    debugInfo = other.debugInfo;
-    uniforms = other.uniforms;
-    return *this;
 }
 
 GL::ShaderGL::ShaderGL(bool debugInfo){
@@ -324,9 +305,6 @@ void GL::ShaderGL::Link(){
 void GL::ShaderGL::Use(){
     glUseProgram(handle);
 }
-GLuint GL::ShaderGL::GetHandle() const{
-    return handle;
-}
 void GL::ShaderGL::SetBool(const std::string &name, bool value) const {
     if(uniforms.count(name) > 0)
         glProgramUniform1i(handle, uniforms.at(name).location, (int)value);
@@ -372,6 +350,22 @@ std::unordered_map<std::string, GL::ShaderGL::uniform_info> GL::ShaderGL::GetUni
 
 void GL::ShaderGL::Release(){
     glDeleteProgram(this->handle);
+}
+
+/////
+
+// VertexArrayGL
+
+GL::VertexArrayGL::VertexArrayGL(){
+    glCreateVertexArrays(1, &this->handle);
+}
+
+void GL::VertexArrayGL::Bind(){
+    glBindVertexArray(this->handle);
+}
+
+void GL::VertexArrayGL::Release(){
+    glDeleteVertexArrays(1, &handle);
 }
 
 /////

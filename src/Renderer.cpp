@@ -1,13 +1,4 @@
 #include "Renderer.hpp"
-#include "GLObjects.hpp"
-#include "Material.hpp"
-#include "MaterialTypes.hpp"
-#include "Mesh.hpp"
-#include "RenderCapabilities.hpp"
-#include "Resource.hpp"
-#include "Texture.hpp"
-#include "VertexArray.hpp"
-#include <chrono>
 
 // Implementation for StructArray
 size_t StructArray::alignOffset(size_t offset, size_t alignment) {
@@ -233,11 +224,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         shaderGroups.push_back(std::move(shaderGroup));
     }
     auto mapEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "Mapping and shaders compiling: " << std::chrono::duration_cast<std::chrono::nanoseconds>(mapEnd-mapBegin).count()/1000 << "μs" << std::endl;
+    std::cout << "Time to shaders mapping and compiling: " << std::chrono::duration_cast<std::chrono::nanoseconds>(mapEnd-mapBegin).count()/1000 << " (μs)" << std::endl;
     for(auto &&shaderGroup : shaderGroups){
         auto setupBegin = std::chrono::high_resolution_clock::now();
-        RenderGroup renderGroup;
-        renderGroup.vao = VertexArray();
+        renderGroups.push_back(RenderGroup());
+        RenderGroup& renderGroup = renderGroups.back();
         renderGroup.shader = shaderGroup.shader;
         MeshLayout layout;
 
@@ -493,13 +484,13 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             auto objectMaterial = object.first.get().material;
             renderGroup.materials.emplace_back(*objectMaterial);
             // Register material callbacks
-            objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
+            objectMaterial->SetOnGlobalFloatChangeCallback([&renderGroup](const std::string &name, float value){
                 renderGroup.shader->SetFloat(name, value);
             });
-            objectMaterial->SetOnGlobalBooleanChangeCallback([renderGroup](const std::string &name, bool value){
+            objectMaterial->SetOnGlobalBooleanChangeCallback([&renderGroup](const std::string &name, bool value){
                 renderGroup.shader->SetBool(name, value);
             });
-            objectMaterial->SetOnGlobalVector4ChangeCallback([renderGroup](const std::string &name, glm::vec4 value){
+            objectMaterial->SetOnGlobalVector4ChangeCallback([&renderGroup](const std::string &name, glm::vec4 value){
                 renderGroup.shader->SetVec4(name, value);
             });
 
@@ -510,7 +501,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 for(auto &&parameter : matParameters){
                     if(parameter.second.type == MaterialParameterType::Map)
                         continue;
- 
+
                     size_t mSize, mAlignment = 0;
                     switch(parameter.second.type){
                         case MaterialParameterType::Boolean: mSize = 4; mAlignment = 4; break;
@@ -664,13 +655,13 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 auto objectMaterial = object.first.get().material;
                 renderGroup.materials.push_back(*objectMaterial);
                 // Register material callbacks
-                objectMaterial->SetOnGlobalFloatChangeCallback([renderGroup](const std::string &name, float value){
+                objectMaterial->SetOnGlobalFloatChangeCallback([&renderGroup](const std::string &name, float value){
                     renderGroup.shader->SetFloat(name, value);
                 });
-                objectMaterial->SetOnGlobalBooleanChangeCallback([renderGroup](const std::string &name, bool value){
+                objectMaterial->SetOnGlobalBooleanChangeCallback([&renderGroup](const std::string &name, bool value){
                     renderGroup.shader->SetBool(name, value);
                 });
-                objectMaterial->SetOnGlobalVector4ChangeCallback([renderGroup](const std::string &name, glm::vec4 value){
+                objectMaterial->SetOnGlobalVector4ChangeCallback([&renderGroup](const std::string &name, glm::vec4 value){
                     renderGroup.shader->SetVec4(name, value);
                 });
 
@@ -764,13 +755,13 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         GLuint materialUniformBufferName = 0;
         glCreateBuffers(1, std::addressof(materialUniformBufferName));
         renderGroup.materialUniformBuffer.name = materialUniformBufferName;
-        renderGroup.materialUniformBuffer.bufferSize = matParamStructArray.structSize *matParamStructArray.numStructs;
-        renderGroup.materialUniformBuffer.stride = matParamStructArray.structSize;
+        renderGroup.materialUniformBuffer.bufferSize = renderGroup.materialsStructArray.structSize *renderGroup.materialsStructArray.numStructs;
+        renderGroup.materialUniformBuffer.stride = renderGroup.materialsStructArray.structSize;
         renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes["materials"];
 
 
         auto setupEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "Time to setup batch and instance groups: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << "μs" << std::endl;
+        std::cout << "Time to setup batch and instance groups: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << " (μs)" << std::endl;
         auto bufferBegin = std::chrono::high_resolution_clock::now();
         {
             int index = 0;
@@ -810,7 +801,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         // Material UBO
         if(renderGroup.materialUniformBuffer.bufferSize > 0)
             glNamedBufferStorage(renderGroup.materialUniformBuffer.name, renderGroup.materialUniformBuffer.bufferSize,
-            matParamStructArray.GetData().data(), GL_DYNAMIC_STORAGE_BIT);
+            renderGroup.materialsStructArray.GetData().data(), GL_DYNAMIC_STORAGE_BIT);
 
         SetRenderGroupLayout(renderGroup, meshGlobalLayout);
         BindRenderGroupAttributesBuffers(renderGroup);
@@ -825,10 +816,9 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
 
         auto bufferEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "Time to buffer data: " << std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count() << "μs" << std::endl;
+        std::cout << "Time to buffer data: " << std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count() << " (μs)" << std::endl;
 
         renderGroup.drawCmdBuffer.commandsCount = renderGroup.commands.size();
-        this->renderGroups.push_back(std::move(renderGroup));
     }
 }
 

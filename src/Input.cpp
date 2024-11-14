@@ -2,12 +2,9 @@
 
 Window Input::registeredWindow = Window();
 
-Input::Mouse Input::mouse = { .position = glm::vec2(0), .xDelta = 0, .yDelta = 0, .firstMove = true,
-.monitoredButtons = std::unordered_map<int, MouseButtonState>()};
+Input::Mouse Input::mouse = Input::Mouse(glm::vec2(0), 0, 0, true, std::unordered_map<int, MouseButtonState>());
 
-Input::Keyboard Input::keyboard = { .monitoredKeys = std::unordered_map<int, KeyState>(),
-.positiveHorizontalKey = GLFW_KEY_D, .negativeHorizontalKey = GLFW_KEY_A, .positiveVerticalKey = GLFW_KEY_W,
-.negativeVerticalKey = GLFW_KEY_S};
+Input::Keyboard Input::keyboard = Input::Keyboard(std::unordered_map<int, KeyState>(), GLFW_KEY_D, GLFW_KEY_A, GLFW_KEY_W, GLFW_KEY_S);
 
 std::map<int, Input::Joystick> Input::joysticks = std::map<int, Joystick>();
 int Input::maxJoysticksToSearch = 8;

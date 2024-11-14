@@ -1,14 +1,14 @@
 #ifndef RENDERER_H
 #define RENDERER_H
+#include <glm/gtc/matrix_transform.hpp>
+#include <unordered_map>
 #include "GLApiVersions.hpp"
-#include "VertexArray.hpp"
 #include "Components.hpp"
 #include "Entity.hpp"
 #include "System.hpp"
 #include "Window.hpp"
 #include "GLObjects.hpp"
-#include <glm/gtc/matrix_transform.hpp>
-#include <unordered_map>
+#include "RenderCapabilities.hpp"
 
 struct Member {
     std::string name;
@@ -95,25 +95,26 @@ private:
         GLuint baseInstance = 0;
     };
     struct RenderGroup{
-        VertexArray vao;
-        Ref<GL::ShaderGL> shader;
+        GL::VertexArrayGL vao;
+        Ref<GL::ShaderGL> shader; // Needs to use a shared reference because somes render groups may
+        // the same shader program and the ShaderGL object can't be copied, only moved
         std::vector<Buffer> attributesBuffers;
         Buffer indicesBuffer;
         // Textures
         // Each texture in vector is a texture array with objectsCountToGroup layers count
         std::vector<GL::TextureGLResource> texturesArrays;
         ////
-        int objectsCount;
+        int objectsCount = 0;
         Buffer mvpsUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
-        std::vector<glm::mat4> mvps;
+        std::vector<glm::mat4> mvps; // Derived from transforms. This prevents a reallocation of MVPs memory space
         Buffer materialUniformBuffer;
         std::vector<std::reference_wrapper<Material>> materials;
-        StructArray materialsStructArray;
+        StructArray materialsStructArray; // Contains material uniform block layout and data
         GLenum mode; // Equivalent to Topology
         GLenum indicesType; // Equivalent to mesh indices data type
         MeshIndexType indicesTypeEnum;
-        int indicesTypeSize;
+        int indicesTypeSize = 0;
         /// Used in multi draw indirect type
         DrawCmdBuffer drawCmdBuffer;
         std::vector<DrawElementsIndirectCommand> commands;

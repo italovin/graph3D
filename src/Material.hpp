@@ -19,6 +19,8 @@ private:
     std::unordered_map<std::string, MaterialParameter> globalShaderParameters;
     std::unordered_map<std::string, MaterialParameter> globalVertexShaderParameters;
     Ref<ShaderCode> shaderCode;
+    template <typename T>
+    void SetParameter(const std::string &name, T value);
     void AddParameter(const std::string &name, const MaterialParameter &parameter);
     void AddGlobalParameter(const std::string &name, MaterialParameterType type, bool isFragOrVert);
     void DeleteParameters();
