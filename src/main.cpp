@@ -20,7 +20,7 @@
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
     /* Initialize the library */
     if (!glfwInit())

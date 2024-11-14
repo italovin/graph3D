@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <variant>
+#include <algorithm>
 #include "Resource.hpp"
 
 enum class MeshTopology{
@@ -142,7 +143,7 @@ struct MeshIndexData{
 class Mesh{
 private:
     MeshIndexData indicesData;
-    MeshTopology topology;
+    MeshTopology topology = MeshTopology::Triangles;
     std::vector<MeshAttributeData> attributesData;
     int verticesCount = 0;
     MeshLayout layout;

@@ -50,6 +50,6 @@ public:
     void SetGlobalParameterFloat(const std::string &name, float value);
     void SetGlobalParameterBoolean(const std::string &name, bool value);
     void SetGlobalParameterVector4(const std::string &name, glm::vec4 value);
-    std::unordered_map<std::string, MaterialParameter> GetGlobalVertexParameters() const;
+    const std::unordered_map<std::string, MaterialParameter> &GetGlobalVertexParameters() const;
 };
 #endif

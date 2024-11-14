@@ -200,6 +200,6 @@ void Material::SetGlobalParameterVector4(const std::string &name, glm::vec4 valu
         vector4GlobalChangeCallback(name, value);
 }
 
-std::unordered_map<std::string, MaterialParameter> Material::GetGlobalVertexParameters() const{
+const std::unordered_map<std::string, MaterialParameter> &Material::GetGlobalVertexParameters() const{
     return globalVertexShaderParameters;
 }

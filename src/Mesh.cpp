@@ -1,4 +1,5 @@
 #include "Mesh.hpp"
+#include <numeric>
 
 Mesh::~Mesh(){ 
 }
@@ -110,18 +111,20 @@ int Mesh::GetAttributesCount() const{
 }
 
 std::vector<int> Mesh::GetAttributesSizes() const{
-    std::vector<int> sizes;
-    for(auto &&attributeData : attributesData){
-        sizes.emplace_back(attributeData.attribute.AttributeDataSize());
-    }
+    std::vector<int> sizes(attributesData.size());
+    std::transform(attributesData.begin(), attributesData.end(), sizes.begin(),
+    [](const MeshAttributeData& attributeData) {
+        return attributeData.attribute.AttributeDataSize();
+    });
     return sizes;
 }
 
 std::vector<int> Mesh::GetAttributesDatasSizes() const{
-    std::vector<int> datasSizes;
-    for(auto &&attributeData : attributesData){
-        datasSizes.emplace_back(attributeData.dataSize);
-    }
+    std::vector<int> datasSizes(attributesData.size());
+    std::transform(attributesData.begin(), attributesData.end(), datasSizes.begin(),
+    [](const MeshAttributeData& attributeData) {
+        return attributeData.dataSize;
+    });
     return datasSizes;
 }
 
@@ -130,12 +133,9 @@ const std::vector<MeshAttributeData> &Mesh::GetAttributesDatas(){
 }
 
 int Mesh::GetTotalAttributesDataSize(){
-    int size = 0;
-    for (auto &&attributeData : attributesData)
-    {
-        size += attributeData.dataSize;
-    }
-    return size;
+    return std::accumulate(attributesData.begin(), attributesData.end(), 0, [](int acc, const MeshAttributeData &attribData){
+        return acc + attribData.dataSize;
+    });
 }
 
 const MeshIndexData &Mesh::GetIndices(){

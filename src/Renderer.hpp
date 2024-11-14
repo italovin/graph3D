@@ -127,7 +127,7 @@ private:
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
-    void SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout);
+    void SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLayout &layout);
     void BindRenderGroupAttributesBuffers(RenderGroup &renderGroup);
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);

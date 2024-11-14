@@ -82,7 +82,7 @@ void Renderer::BufferSubDataMVPs(RenderGroup &renderGroup){
     glNamedBufferSubData(renderGroup.mvpsUniformBuffer.name, 0, sizeof(glm::mat4)*renderGroup.mvps.size(), renderGroup.mvps.data());
 }
 
-void Renderer::SetRenderGroupLayout(RenderGroup &renderGroup, MeshLayout &layout){
+void Renderer::SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLayout &layout){
     int bindingPoint = 0;
     for(auto &&attribute : layout.attributes){
         GLenum type;
@@ -267,7 +267,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             meshGlobalLayout = instancesGroups[0][0].first.get().mesh->GetLayout();
             meshGlobalTopology = instancesGroups[0][0].first.get().mesh->GetTopology();
             meshGlobalIndicesType = instancesGroups[0][0].first.get().mesh->GetIndicesType();
-        } else if(batchGroup.size() > 0 && instancesGroups.size() > 0 && instancesGroups[0].size() > 0){
+        } else if(instancesGroups.size() > 0 && instancesGroups[0].size() > 0){
             if(!(batchGroup[0].first.get().mesh->GetLayout() == instancesGroups[0][0].first.get().mesh->GetLayout()) ||
             !(batchGroup[0].first.get().mesh->GetTopology() == instancesGroups[0][0].first.get().mesh->GetTopology()) ||
             !(batchGroup[0].first.get().mesh->GetIndicesType() == instancesGroups[0][0].first.get().mesh->GetIndicesType())){
