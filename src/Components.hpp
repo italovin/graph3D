@@ -31,4 +31,9 @@ struct CameraComponent{
     float nearPlane = 0.1f;
 };
 
+struct LightComponent{
+    bool isMain = true;
+    glm::vec3 color;
+};
+
 #endif

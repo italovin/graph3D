@@ -1,4 +1,8 @@
 #include "Renderer.hpp"
+#include "Mesh.hpp"
+#include "RenderCapabilities.hpp"
+#include "ShaderCode.hpp"
+#include "ShaderStandard.hpp"
 
 // Implementation for StructArray
 size_t StructArray::alignOffset(size_t offset, size_t alignment) {
@@ -159,31 +163,88 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     };
     std::vector<ShaderGroup> shaderGroups;
 
-    std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderMap;
-    std::unordered_map<ShaderCode*, std::vector<Renderable>> shaderCodeMap;
-    std::unordered_map<ResourceHandle, GL::ShaderGLResource> shaderCache;
+    std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderProgramMap;
+    std::unordered_map<Shader, std::vector<Renderable>, ShaderHash> shaderModelMap;
+    std::unordered_map<Shader, ShaderCode, ShaderHash> shaderCodeMap;
+    std::unordered_map<ResourceHandle, GL::ShaderGLResource> shaderProgramCache;
     for(auto &&x: componentsPairs){
-        auto shaderCode = x.first.get().material->GetShaderCode();
-        if(!shaderCode){
-            continue;
+        auto &material = x.first.get().material;
+        auto &mesh = x.first.get().mesh;
+        auto shaderCast = dynamic_cast<ShaderStandard*>(x.first.get().material->GetShader().get());
+        if(!shaderCast)
+            continue; // Check if shader is a shader standard implementation
+        ShaderStandard shader = *shaderCast;
+        auto meshLayout = mesh->GetLayout();
+        for(auto &&attribute : meshLayout.attributes){
+            MeshAttributeAlias alias = attribute.alias;
+            switch(alias){
+                case MeshAttributeAlias::None: break;
+                case MeshAttributeAlias::Position: shader.EnableAttribPosition(attribute.location); break;
+                case MeshAttributeAlias::TexCoord0:shader.EnableAttribTexCoord_0(attribute.location); break;
+                case MeshAttributeAlias::TexCoord1:shader.EnableAttribTexCoord_1(attribute.location); break;
+                case MeshAttributeAlias::TexCoord2:shader.EnableAttribTexCoord_2(attribute.location); break;
+                case MeshAttributeAlias::TexCoord3:shader.EnableAttribTexCoord_3(attribute.location); break;
+                case MeshAttributeAlias::TexCoord4:shader.EnableAttribTexCoord_4(attribute.location); break;
+                case MeshAttributeAlias::TexCoord5:shader.EnableAttribTexCoord_5(attribute.location); break;
+                case MeshAttributeAlias::TexCoord6:shader.EnableAttribTexCoord_6(attribute.location); break;
+                case MeshAttributeAlias::TexCoord7:shader.EnableAttribTexCoord_7(attribute.location); break;
+                case MeshAttributeAlias::Normal: shader.EnableAttribNormal(attribute.location); break;
+                case MeshAttributeAlias::Tangent:shader.EnableAttribTangent(attribute.location); break;
+                case MeshAttributeAlias::Bitangent:shader.EnableAttribBiTangent(attribute.location); break;
+                case MeshAttributeAlias::Color:shader.EnableAttribColor(attribute.location); break;
+            }
         }
-        shaderCodeMap[shaderCode.get()].push_back(std::move(x));
+        auto materialMaps = material->GetMapParameters();
+        for(auto &&materialMap : materialMaps){
+            if(std::get<Ref<Texture>>(materialMap.second.data) == nullptr)
+                continue; // Parameter contain no map
+
+            if(materialMap.first == "diffuseMap"){
+                shader.ActivateDiffuseMap();
+            } else if(materialMap.first == "specularMap"){
+                shader.ActivateSpecularMap();
+            } else if(materialMap.first == "normalMap"){
+                shader.ActivateNormalMap();
+            }
+        }
+        auto materialFlags = material->GetFlags();
+        for(auto &&flag : materialFlags){
+            if(flag.first == "lighting" && flag.second)
+                shader.ActivateLighting();
+        }
+
+        if(shaderModelMap.count(shader) == 0){
+            ShaderCode shaderCode = shader.ProcessCode();
+            shaderCodeMap[shader] = shaderCode;
+        }
+        shaderModelMap[shader].push_back(std::move(x));
     }
-    for(auto &&x : shaderCodeMap){
-        GL::ShaderGLResource shaderGeneratedGlobal(x.second[0].first.get().material->GetShaderCode()->Generate());
+    for(auto &&x : shaderModelMap){
+        if(x.second.empty())
+            continue;
+        GL::ShaderGLResource shaderGeneratedGlobal(shaderCodeMap[x.first].Generate());
         if(!shaderGeneratedGlobal.object)
             continue;
-        std::vector<std::vector<Renderable>> shaderGeneratedGroups;
-        const int groupSize = this->objectsCountToGroup;
-        shaderGeneratedGroups.reserve(std::ceil(x.second.size()/groupSize));
-        for(size_t i = 0; i < x.second.size(); i+=groupSize){
-            std::vector<Renderable> vec(x.second.begin() + i, x.second.begin() + std::min(i+groupSize, x.second.size()));
-            shaderGeneratedGroups.push_back(std::move(vec));
+        
+        const size_t groupSize = this->objectsCountToGroup;
+        size_t groupCount = (x.second.size() + groupSize - 1) / groupSize;
+        // Last Group reserve size
+        size_t lastGroupSize = x.second.size() % groupSize == 0 ? groupSize : x.second.size() % groupSize;
+        std::vector<std::vector<Renderable>> shaderGeneratedGroups(groupCount);
+        
+        for(size_t i = 0; i < groupCount; i++){
+            if(i == groupCount - 1)
+                shaderGeneratedGroups[i].reserve(lastGroupSize);
+            else
+                shaderGeneratedGroups[i].reserve(groupSize);
+        }
+        for(size_t i = 0; i < x.second.size(); i++){
+            shaderGeneratedGroups[i/groupSize].push_back(std::move(x.second[i]));
         }
         for(auto &&group : shaderGeneratedGroups){
             GL::ShaderGLResource shaderGenerated(shaderGeneratedGlobal.object);
             // Setting shader mvp binding point;
-            for(auto &&bindingPurpose : x.second[0].first.get().material->GetShaderCode()->GetBindingsPurposes(ShaderStage::Vertex)){
+            for(auto &&bindingPurpose : shaderCodeMap[x.first].GetBindingsPurposes(ShaderStage::Vertex)){
                 std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
                 if(!binding.has_value()){
                     // No binding point available
@@ -191,40 +252,47 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 }
                 shaderGenerated->SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
             }
-            shaderMap[shaderGenerated.resourceHandle].reserve(group.size());
-            for(auto &&renderable : group){
-                shaderMap[shaderGenerated.resourceHandle].push_back(std::move(renderable));
-                shaderCache[shaderGenerated.resourceHandle] = shaderGenerated;
-            }
+            auto &programGroup = shaderProgramMap[shaderGenerated.resourceHandle];
+            programGroup.insert(programGroup.end(), std::make_move_iterator(group.begin()), std::make_move_iterator(group.end()));
+            shaderProgramCache[shaderGenerated.resourceHandle] = shaderGenerated;
         }
     }
-    for(auto &&group : shaderMap){
+    // Reserve shader groups for each shader programs UUID
+    shaderGroups.reserve(shaderProgramMap.size());
+    for(auto &&group : shaderProgramMap){
         ShaderGroup shaderGroup;
-        shaderGroup.shader = shaderCache[group.first].object;
+        shaderGroup.shader = shaderProgramCache[group.first].object;
         std::unordered_map<Mesh*, std::vector<Renderable>> groupMap;
-        int batchSize = 0;
+        groupMap.reserve(group.second.size());
+        int batchSize = 0; // Number of elements in batch group
+        int instancesSize = 0; // Number of instances groups
         for(auto &&x : group.second){
-            if(groupMap[x.first.get().mesh.object.get()].size() == 0)
+            if(groupMap[x.first.get().mesh.object.get()].size() == 0){
                 batchSize++;
-            else if(groupMap[x.first.get().mesh.object.get()].size() == 1)
-                batchSize--; // Reverts when instances are found
-
+            } else if(groupMap[x.first.get().mesh.object.get()].size() == 1){
+                batchSize--; // Reverts when instances (duplied meshes)are found
+                instancesSize++; // Add instance group count when there is duplied mesh
+            }
             groupMap[x.first.get().mesh.object.get()].push_back(std::move(x));
         }
         shaderGroup.batchGroup.reserve(batchSize);
+        shaderGroup.instancesGroups.reserve(instancesSize);
         for(auto &&x : groupMap){
             if(x.second.size() >= 2){
                 shaderGroup.instancesGroups.push_back(std::move(x.second));
             } else {
-                for(auto &&y : x.second){
-                    shaderGroup.batchGroup.push_back(std::move(y));
-                }
+                shaderGroup.batchGroup.insert(
+                    shaderGroup.batchGroup.end(),
+                    std::make_move_iterator(x.second.begin()),
+                    std::make_move_iterator(x.second.end())
+                );
             }
         }
         shaderGroups.push_back(std::move(shaderGroup));
     }
     auto mapEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to shaders mapping and compiling: " << std::chrono::duration_cast<std::chrono::nanoseconds>(mapEnd-mapBegin).count()/1000 << " (μs)" << std::endl;
+    std::cout << "Time to shaders mapping and compiling: " << std::chrono::duration_cast<std::chrono::microseconds>(mapEnd-mapBegin).count() << " (μs)" << std::endl;
+    renderGroups.reserve(shaderGroups.size());
     for(auto &&shaderGroup : shaderGroups){
         auto setupBegin = std::chrono::high_resolution_clock::now();
         renderGroups.push_back(RenderGroup());
@@ -345,6 +413,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             size_t maxWidth = 0;
             size_t maxHeight = 0;
         };
+        // Calculating max texture dimensions for each texture array (each material map parameter)
         std::vector<MaxTexDimensions> maxTexDimensions;
         if(batchGroup.size() > 0){
             maxTexDimensions = std::vector<MaxTexDimensions>(batchGroup[0].first.get().material->GetMapParameters().size());
@@ -352,11 +421,24 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             if(instancesGroups[0].size() > 0)
                 maxTexDimensions = std::vector<MaxTexDimensions>(instancesGroups[0][0].first.get().material->GetMapParameters().size());
         }
+        struct TexCoords{
+            float u;
+            float v;
+        };
+        std::vector<glm::vec4> texCoord0Scalings(objectsCount);
+        int uv0scaleIndex = 0;
+        bool uv0scaleIndexSet = false;
 
         for(auto &&object : batchGroup){
             auto texParameters = object.first.get().material->GetMapParameters();
             int texParameterIndexer = 0;
             for(auto &&texParameter : texParameters){
+                if(!uv0scaleIndexSet){
+                    if(texParameter.first == "diffuseMap"){
+                        uv0scaleIndex = texParameterIndexer;
+                        uv0scaleIndexSet = true;
+                    }
+                }
                 auto tex = std::get<Ref<Texture>>(texParameter.second.data);
                 if(!tex)
                     continue;
@@ -376,6 +458,12 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 auto texParameters = object.first.get().material->GetMapParameters();
                 int texParameterIndexer = 0;
                 for(auto &&texParameter : texParameters){
+                    if(!uv0scaleIndexSet){
+                        if(texParameter.first == "diffuseMap"){
+                            uv0scaleIndex = texParameterIndexer;
+                            uv0scaleIndexSet = true;
+                        }
+                    }
                     auto tex = std::get<Ref<Texture>>(texParameter.second.data);
                     if(!tex)
                         continue;
@@ -391,12 +479,61 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 }
             }
         }
+        {
+            int objectIndexer = 0;
+            for(auto &&object : batchGroup){
+                auto texParameters = object.first.get().material->GetMapParameters();
+                int texParameterIndexer = 0;
+                for(auto &&texParameter : texParameters){
+                    auto tex = std::get<Ref<Texture>>(texParameter.second.data);
+                    if(!tex)
+                        continue;
+                    size_t texWidth = tex->GetWidth();
+                    size_t texHeight = tex->GetHeight();
+                    TexCoords coords;
+                    coords.u = (float)texWidth / (float)maxTexDimensions[texParameterIndexer].maxWidth;
+                    coords.v = (float)texHeight / (float)maxTexDimensions[texParameterIndexer].maxHeight;
+                    if(texParameterIndexer == uv0scaleIndex)
+                        texCoord0Scalings[objectIndexer] = glm::vec4(coords.u, coords.v, 0, 0);
+                    texParameterIndexer++;
+                }
+                objectIndexer++;
+            }
+            for(auto &&instanceGroup : instancesGroups){
+                for(auto &&object : instanceGroup){
+                    auto texParameters = object.first.get().material->GetMapParameters();
+                    int texParameterIndexer = 0;
+                    for(auto &&texParameter : texParameters){
+                        auto tex = std::get<Ref<Texture>>(texParameter.second.data);
+                        if(!tex)
+                            continue;
+                        size_t texWidth = tex->GetWidth();
+                        size_t texHeight = tex->GetHeight();
+                        TexCoords coords;
+                        coords.u = (float)texWidth / (float)maxTexDimensions[texParameterIndexer].maxWidth;
+                        coords.v = (float)texHeight / (float)maxTexDimensions[texParameterIndexer].maxHeight;
+                        if(texParameterIndexer == uv0scaleIndex)
+                            texCoord0Scalings[objectIndexer] = glm::vec4(coords.u, coords.v, 0, 0);
+                        texParameterIndexer++;
+                    }
+                    objectIndexer++;
+                }
+            }
+        }
+        GLuint texCoord0ScalesUniformBufferName = 0;
+        glCreateBuffers(1, std::addressof(texCoord0ScalesUniformBufferName));
+        renderGroup.texCoord0ScalesUniformBuffer.name = texCoord0ScalesUniformBufferName;
+        renderGroup.texCoord0ScalesUniformBuffer.bufferSize = sizeof(glm::vec4)*texCoord0Scalings.size();
+        renderGroup.texCoord0ScalesUniformBuffer.stride = sizeof(glm::vec4);
+        renderGroup.texCoord0ScalesUniformBuffer.bindingPoint = uboBindingsPurposes["texCoord0Scales"];
+
+        glNamedBufferStorage(renderGroup.texCoord0ScalesUniformBuffer.name, renderGroup.texCoord0ScalesUniformBuffer.bufferSize, texCoord0Scalings.data(), GL_DYNAMIC_STORAGE_BIT);
 
         for(auto &&object : batchGroup){
 
             auto& mesh = object.first.get().mesh;
 
-            int attributeIndex = 0;
+            size_t attributeIndex = 0;
             for(auto &&attributesData : mesh->GetAttributesDatas()){
                 attributesBatchedChunks[attributeIndex].dataSize += attributesData.dataSize;
                 switch(attributesData.attribute.type){
@@ -908,10 +1045,23 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
             break;
         }
     }
-    Draw(mainCamera, mainCameraTransform);
+    LightComponent mainLight;
+    TransformComponent mainLightTransform;
+
+    auto lightView = registry.view<LightComponent, TransformComponent>();
+    for(auto entity : lightView){
+        auto &light = lightView.get<LightComponent>(entity);
+        auto &lightTransform = lightView.get<TransformComponent>(entity);
+        if(light.isMain){
+            mainLight = light;
+            mainLightTransform = lightTransform;
+            break;
+        }
+    }
+    Draw(mainCamera, mainCameraTransform, mainLight, mainLightTransform);
 }
 
-void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform){
+void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform, const LightComponent &mainLight, const TransformComponent &lightTransform){
     glm::mat4 mainCameraProjection = mainCamera.isPerspective ?
     glm::perspectiveLH(glm::radians(mainCamera.fieldOfView), mainCamera.aspectRatio,
     mainCamera.nearPlane, mainCamera.farPlane) :
@@ -929,6 +1079,9 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
             renderGroup.texturesArrays[i]->Bind(i);
         }
         renderGroup.shader->Use();
+        renderGroup.shader->SetVec3("lightPos", lightTransform.position);
+        renderGroup.shader->SetVec3("viewPos", mainCameraTransform.position);
+        renderGroup.shader->SetVec3("lightColor", mainLight.color);
         renderGroup.vao.Bind();
 
         for(int i = 0; i < renderGroup.objectsCount; i++){
@@ -944,6 +1097,7 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
 
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         BufferSubDataMVPs(renderGroup);
+        glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.texCoord0ScalesUniformBuffer.bindingPoint, renderGroup.texCoord0ScalesUniformBuffer.name);
         if(renderGroup.materialUniformBuffer.name > 0)
             glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.materialUniformBuffer.bindingPoint, renderGroup.materialUniformBuffer.name);
 

@@ -321,6 +321,10 @@ void GL::ShaderGL::SetDouble(const std::string &name, double value) const{
     if(uniforms.count(name) > 0)
         glProgramUniform1d(handle, uniforms.at(name).location, value);
 }
+void GL::ShaderGL::SetVec3(const std::string &name, glm::vec3 value) const{
+    if(uniforms.count(name) > 0)
+        glProgramUniform3f(handle, uniforms.at(name).location, value.x, value.y, value.z);
+}
 void GL::ShaderGL::SetVec4(const std::string &name, glm::vec4 value) const{
     if(uniforms.count(name) > 0)
         glProgramUniform4f(handle, uniforms.at(name).location, value.x, value.y, value.z, value.w);

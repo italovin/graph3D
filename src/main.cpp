@@ -8,6 +8,7 @@
 #include "ShaderCode.hpp"
 #include "Input.hpp"
 #include "Renderer.hpp"
+#include "ShaderStandard.hpp"
 #include "ShaderTypes.hpp"
 #include "Texture.hpp"
 #include <algorithm>
@@ -65,8 +66,6 @@ int main(int argc, const char *argv[])
     if(GLEW_ARB_direct_state_access)
         std::cout << "Direct access extension suported\n\n";
 
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(GLDebugCallback, nullptr);
 
     const int glslVersion = RenderCapabilities::GetGLSLVersion();
 
@@ -190,6 +189,11 @@ int main(int argc, const char *argv[])
                 continue;
             }
         }
+        if(argvString == "-d"){
+            glEnable(GL_DEBUG_OUTPUT);
+            glDebugMessageCallback(GLDebugCallback, nullptr);
+            continue;
+        }
     }
     if(min_s > max_s){
         std::swap(min_s, max_s);
@@ -201,8 +205,10 @@ int main(int argc, const char *argv[])
     }
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
+    float graphTotalSize = sizeof(GLfloat)*(2*(s_steps+1)*(t_steps+1)) + sizeof(GLuint)*(2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1));
     std::cout << "Graph parameter S resolution: " << s_stepSize << std::endl;
     std::cout << "Graph parameter T resolution: " << t_stepSize << std::endl;
+    std::cout << "Graph total size (vertices + indices): " << graphTotalSize/1024 << " KB / " << graphTotalSize/(1024*1024) << " MB\n";
 
     std::vector<GLfloat> parameters;
     parameters.reserve(2*(s_steps+1)*(t_steps+1));
@@ -263,7 +269,9 @@ int main(int argc, const char *argv[])
     graphShaderCode->SetStageToPipeline(ShaderStage::Fragment, true);
     graphShaderCode->AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4);
     graphShaderCode->SetMain(ShaderStage::Fragment, "FragColor = vec4(1.0, 0.0, 0.0, 1.0);");
-    Ref<Material> graphMaterial = CreateRef<Material>(graphShaderCode);
+    Ref<ShaderStandard> shaderStandard = CreateRef<ShaderStandard>();
+    Ref<Shader> tempShader = CreateRef<Shader>();
+    Ref<Material> graphMaterial = CreateRef<Material>(tempShader);
 
     Ref<Mesh> mesh = CreateRef<Mesh>();
     Ref<Mesh> mesh2 = CreateRef<Mesh>();
@@ -285,12 +293,14 @@ int main(int argc, const char *argv[])
     std::vector<float> triangle = {-0.5f, -0.5f, 0.0f,
     0.5f, -0.5f, 0.0f,
     0.0f, 0.5f, 0.0f};
-    mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, quad);
-    mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 1,1, 0,1});
+    mesh->PushAttributePosition(quad);
+    mesh->PushAttributeTexCoord0(std::vector<float>{0,0, 1,0, 1,1, 0,1});
+    // mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, quad);
+    // mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 1,1, 0,1});
     //mesh->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color1);
     mesh->SetIndices(quadIndices, MeshTopology::Triangles);
-    mesh2->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, triangle);
-    mesh2->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 0.5f,1});
+    mesh2->PushAttributePosition(triangle);
+    mesh2->PushAttributeTexCoord0(std::vector<float>{0,0, 1,0, 0.5f,1});
     //mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
     mesh2->SetIndices(std::vector<unsigned short>{0, 1, 2}, MeshTopology::Triangles);
 
@@ -361,18 +371,15 @@ int main(int argc, const char *argv[])
     "float intensity = materials[matID].intensity;\n"
     "vec4 baseColor = intensity * albedo;\n"
     "FragColor = baseColor * texture(texArray, vec3(texCoordOut.x, texCoordOut.y, matID));");
-    Ref<Material> materialTest = CreateRef<Material>(shaderCodeTest);
-    Ref<Material> materialTestGreen = CreateRef<Material>(shaderCodeTest);
-    Ref<Material> materialTestRed = CreateRef<Material>(shaderCodeTest);
-    materialTest->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
-    materialTest->SetParameterFloat("intensity", 0.2f);
-    materialTest->SetParameterMap("texArray", tex0);
-    materialTestGreen->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
-    materialTestGreen->SetParameterFloat("intensity", 0.6f);
-    materialTestGreen->SetParameterMap("texArray", tex0);
-    materialTestRed->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
-    materialTestRed->SetParameterFloat("intensity", 1.0f);
-    materialTestRed->SetParameterMap("texArray", tex0);
+    Ref<Material> materialTest = CreateRef<Material>(shaderStandard);
+    Ref<Material> materialTestGreen = CreateRef<Material>(shaderStandard);
+    Ref<Material> materialTestRed = CreateRef<Material>(shaderStandard);
+    materialTest->SetParameterMap("diffuseMap", tex0);
+    materialTest->SetFlag("lighting", false);
+    materialTestGreen->SetParameterMap("diffuseMap", tex0);
+    materialTestGreen->SetFlag("lighting", false);
+    materialTestRed->SetParameterMap("diffuseMap", defaultTexture);
+    materialTestRed->SetFlag("lighting", false);
 
     std::filesystem::path modelsDirectory;
     if(std::filesystem::exists(std::filesystem::path("../resources/modelos"))){
@@ -402,13 +409,12 @@ int main(int argc, const char *argv[])
     std::vector<float> model1Vertices = model1Json[modelsVerticesKey].get<std::vector<float>>();
     std::vector<unsigned short> model1Indices = model1Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model1Mesh = CreateRef<Mesh>();
-    model1Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model1Vertices);
-    model1Mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>(model1Vertices.size()/3 * 2, 0));
+    model1Mesh->PushAttributePosition(model1Vertices);
+    model1Mesh->PushAttributeTexCoord0(std::vector<float>(model1Vertices.size()/3 * 2, 0));
     model1Mesh->SetIndices(model1Indices, MeshTopology::Triangles);
-    Ref<Material> model1Material = CreateRef<Material>(shaderCodeTest);
-    model1Material->SetParameterVector4("albedo", glm::vec4(1, 0, 0, 1));
-    model1Material->SetParameterFloat("intensity", 1.0f);
-    model1Material->SetParameterMap("texArray", tex0);
+    Ref<Material> model1Material = CreateRef<Material>(shaderStandard);
+    model1Material->SetFlag("lighting", false);
+    model1Material->SetParameterMap("diffuseMap", tex0);
 
     std::ifstream model2Stream(modelsDirectory/"cone1.json");
     if(!model2Stream || !nlohmann::json::accept(model2Stream)){
@@ -421,13 +427,12 @@ int main(int argc, const char *argv[])
     std::vector<float> model2Vertices = model2Json[modelsVerticesKey].get<std::vector<float>>();
     std::vector<unsigned short> model2Indices = model2Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model2Mesh = CreateRef<Mesh>();
-    model2Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model2Vertices);
-    model2Mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>(model2Vertices.size()/3 * 2, 0));
+    model2Mesh->PushAttributePosition(model2Vertices);
+    model2Mesh->PushAttributeTexCoord0(std::vector<float>(model2Vertices.size()/3 * 2, 0));
     model2Mesh->SetIndices(model2Indices, MeshTopology::Triangles);
-    Ref<Material> model2Material = CreateRef<Material>(shaderCodeTest);
-    model2Material->SetParameterVector4("albedo", glm::vec4(0, 1, 0, 1));
-    model2Material->SetParameterFloat("intensity", 1.0f);
-    model2Material->SetParameterMap("texArray", tex0);
+    Ref<Material> model2Material = CreateRef<Material>(shaderStandard);
+    model2Material->SetFlag("lighting", false);
+    model2Material->SetParameterMap("diffuseMap", tex0);
 
     std::ifstream model3Stream(modelsDirectory/"cylinder.json");
     if(!model3Stream || !nlohmann::json::accept(model3Stream)){
@@ -440,13 +445,12 @@ int main(int argc, const char *argv[])
     std::vector<float> model3Vertices = model3Json[modelsVerticesKey].get<std::vector<float>>();
     std::vector<unsigned short> model3Indices = model3Json[modelsIndicesKey].get<std::vector<unsigned short>>();
     Ref<Mesh> model3Mesh = CreateRef<Mesh>();
-    model3Mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, model3Vertices);
-    model3Mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>(model3Vertices.size()/3 * 2, 0));
+    model3Mesh->PushAttributePosition(model3Vertices);
+    model3Mesh->PushAttributeTexCoord0(std::vector<float>(model3Vertices.size()/3 * 2, 0));
     model3Mesh->SetIndices(model3Indices, MeshTopology::Triangles);
-    Ref<Material> model3Material = CreateRef<Material>(shaderCodeTest);
-    model3Material->SetParameterVector4("albedo", glm::vec4(0, 0, 1, 1));
-    model3Material->SetParameterFloat("intensity", 1.0f);
-    model3Material->SetParameterMap("texArray", tex0);
+    Ref<Material> model3Material = CreateRef<Material>(shaderStandard);
+    model3Material->SetFlag("lighting", false);
+    model3Material->SetParameterMap("diffuseMap", tex0);
 
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
@@ -457,6 +461,7 @@ int main(int argc, const char *argv[])
     Entity model2 = mainScene.CreateEntity();
     Entity model3 = mainScene.CreateEntity();
     Entity mainCamera = mainScene.CreateEntity();
+    Entity mainLight = mainScene.CreateEntity();
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
     TransformComponent freeCameraTransform;
@@ -488,13 +493,15 @@ int main(int argc, const char *argv[])
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
+    mainLight.AddComponent<LightComponent>().color = glm::vec3(1, 1, 1);
+    mainLight.transform.position = glm::vec3(0, 0, 1);
     Renderer mainRenderer = Renderer();
 
     mainRenderer.SetMainWindow(std::addressof(window));
     double initialRendererTime = glfwGetTime();
     mainRenderer.Start(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;
-    std::cout << "Time to prepare for meshes for grouping: " << 1000*prepareTime << " (ms)\n";
+    std::cout << "Time to prepare meshes for grouping: " << 1000*prepareTime << " (ms)\n";
     std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n";
 
     glClearColor(0, 0, 0, 1);

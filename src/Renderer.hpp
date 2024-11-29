@@ -2,13 +2,13 @@
 #define RENDERER_H
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
+#include "BasicComponents.hpp"
 #include "GLApiVersions.hpp"
 #include "Components.hpp"
 #include "Entity.hpp"
 #include "System.hpp"
 #include "Window.hpp"
 #include "GLObjects.hpp"
-#include "RenderCapabilities.hpp"
 
 struct Member {
     std::string name;
@@ -103,6 +103,8 @@ private:
         // Textures
         // Each texture in vector is a texture array with objectsCountToGroup layers count
         std::vector<GL::TextureGLResource> texturesArrays;
+        // Scaling factors buffer to adjust different sizes of textures in texture array
+        Buffer texCoord0ScalesUniformBuffer;
         ////
         int objectsCount = 0;
         Buffer mvpsUniformBuffer;
@@ -122,6 +124,8 @@ private:
         /// These variables are used when using multidraw (non indirect) for batch group in each render group
         BatchGroup batchGroup; // Objects that were batched
         std::vector<InstanceGroup> instancesGroups;
+        //
+        bool useLighting = false;
     };
     std::vector<RenderGroup> renderGroups;
     GLenum GetDrawMode(MeshTopology topology);
@@ -135,11 +139,11 @@ private:
     //Defaulft drawing is direct type
     bool isIndirect = false;
     void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;
-    // Performs grouping operations for batching and instancing
+    // Performs grouping operations for batching and instancing. This process work for now only with standard shaders
     void PrepareRenderGroups(entt::registry &registry);
     std::optional<int> AddUBOBindingPurpose(const std::string &purpose);
     // Executes the drawing at update call
-    void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform);
+    void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform, const LightComponent &mainLight, const TransformComponent &lightTransform);
 public:
     Renderer();
     void SetMainWindow(Window *mainWindow);

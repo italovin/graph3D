@@ -397,14 +397,14 @@ Ref<GL::ShaderGL> ShaderCode::Generate()
     return shader;
 }
 
-std::unordered_map<std::string, ShaderCodeParameter> ShaderCode::GetUniforms(ShaderStage shaderStage) const{
+const std::unordered_map<std::string, ShaderCodeParameter> &ShaderCode::GetUniforms(ShaderStage shaderStage){
     switch(shaderStage){
         case ShaderStage::Vertex : return vertexShader.uniforms;
         case ShaderStage::TesselationControl : return tesselationControlShader.uniforms;
         case ShaderStage::TesselationEvaluation : return tesselationEvaluationShader.uniforms;
         case ShaderStage::Geometry : return geometryShader.uniforms;
         case ShaderStage::Fragment : return fragmentShader.uniforms;
-        default: return std::unordered_map<std::string, ShaderCodeParameter>();
+        default: return vertexShader.uniforms;
     }
 }
 

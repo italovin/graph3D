@@ -52,6 +52,8 @@ void RenderCapabilities::Initialize() {
             glslVersion = 140;
         } else if(minorVersion == 2){
             glslVersion = 150;
+        } else if(minorVersion == 3){
+            glslVersion = 330;
         }
     } else {
         glslVersion = majorVersion * 100 + minorVersion * 10;

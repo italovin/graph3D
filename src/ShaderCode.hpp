@@ -56,14 +56,14 @@ class ShaderCode{
 private:
     int version = 330;
     // Each member in elements of array of structs sums even this max value
-    const int maxUniformBlockArrayElementSize = 128;
+    int maxUniformBlockArrayElementSize = 128;
     std::vector<std::string> extensions;
     std::string additionalOutsideString;
     ShaderStageCode vertexShader;
     ShaderStageCode fragmentShader;
     ShaderStageCode tesselationControlShader;
     ShaderStageCode tesselationEvaluationShader;
-    ShaderStageCode geometryShader;   
+    ShaderStageCode geometryShader;
     const std::string GLSLTypeToString(ShaderDataType type);
     const std::string GLSLMatTypeToString(MaterialParameterType type);
     void ProcessVertexShaderCode(const ShaderStageCode &shaderStageCode, std::string &outsideString);
@@ -88,7 +88,7 @@ public:
     void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void SetMain(ShaderStage shaderStage, const std::string &main);
-    std::unordered_map<std::string, ShaderCodeParameter> GetUniforms(ShaderStage shaderStage) const;
+    const std::unordered_map<std::string, ShaderCodeParameter> &GetUniforms(ShaderStage shaderStage);
     std::vector<std::pair<std::string, MaterialParameter>> GetMaterialParameters(ShaderStage shaderStage);
     std::vector<std::pair<std::string, Ref<Texture>>> GetMaterialTexturesProperties(ShaderStage shaderStage) const;
     void SetBindingPurpose(ShaderStage shaderStage, const std::string &uniformBlockName, const std::string &purpose);

@@ -6,7 +6,7 @@
 #include <optional>
 #include <glm/glm.hpp>
 #include "Base.hpp"
-#include "ShaderCode.hpp"
+#include "Shader.hpp"
 
 class Material{
 private:
@@ -15,10 +15,11 @@ private:
     std::function<void(const std::string&, glm::vec4)> vector4GlobalChangeCallback;
     bool changingBuffer = false;
     std::vector<std::pair<std::string, MaterialParameter>> parameters;
+    std::vector<std::pair<std::string, bool>> flags; // Used only to activate certain shader fragments
     // Global parameters sets a uniform in the shader. The last material to set overrides the value
     std::unordered_map<std::string, MaterialParameter> globalShaderParameters;
     std::unordered_map<std::string, MaterialParameter> globalVertexShaderParameters;
-    Ref<ShaderCode> shaderCode;
+    Ref<Shader> shader;
     template <typename T>
     void SetParameter(const std::string &name, T value);
     void AddParameter(const std::string &name, const MaterialParameter &parameter);
@@ -28,12 +29,13 @@ private:
     std::vector<std::pair<std::string, MaterialParameter>>::iterator FindParameter(const std::string &name);
 public:
     Material() = delete;
-    Material(Ref<ShaderCode> shaderCode);
-    Ref<ShaderCode> GetShaderCode() const;
+    Material(Ref<Shader> shader);
+    Ref<Shader> GetShader();
     void SetParameterMap(const std::string &name, Ref<Texture> value);
     void SetParameterFloat(const std::string &name, float value);
     void SetParameterBoolean(const std::string &name, bool value);
     void SetParameterVector4(const std::string &name, glm::vec4 value);
+    void SetFlag(const std::string &name, bool value);
     void SetOnGlobalFloatChangeCallback(std::function<void(const std::string&, float)> callback);
     void SetOnGlobalBooleanChangeCallback(std::function<void(const std::string&, bool)> callback);
     void SetOnGlobalVector4ChangeCallback(std::function<void(const std::string&, glm::vec4)> callback);
@@ -43,6 +45,7 @@ public:
     std::optional<glm::vec4> GetParameterVector4(const std::string &name);
     std::vector<std::pair<std::string, MaterialParameter>> GetParameters() const;
     std::vector<std::pair<std::string, MaterialParameter>> GetMapParameters() const;
+    const std::vector<std::pair<std::string, bool>> &GetFlags();
     std::vector<std::pair<std::string, MaterialParameter>> GetFloatParameters() const;
     std::vector<std::pair<std::string, MaterialParameter>> GetBooleanParameters() const;
     std::vector<std::pair<std::string, MaterialParameter>> GetVector4Parameters() const;

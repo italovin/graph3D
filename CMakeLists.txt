@@ -10,8 +10,10 @@ src/Material.cpp
 src/Mesh.cpp
 src/RenderCapabilities.cpp
 src/Renderer.cpp
-src/ShaderCode.cpp
 src/Scene.cpp
+src/Shader.cpp
+src/ShaderCode.cpp
+src/ShaderStandard.cpp
 src/Texture.cpp
 src/Window.cpp
 )

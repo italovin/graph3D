@@ -1,35 +1,48 @@
 #include "Material.hpp"
 #include "MaterialTypes.hpp"
 
-Material::Material(Ref<ShaderCode> shaderCode)
+Material::Material(Ref<Shader> shader)
 {
-    this->shaderCode = shaderCode;
+    this->shader = shader;
     if(parameters.size() > 0)
         DeleteParameters();
     
-    auto materialParameters = shaderCode->GetMaterialParameters(ShaderStage::Fragment);
-    auto materialTexturesProperties = shaderCode->GetMaterialTexturesProperties(ShaderStage::Fragment);
-    auto materialGlobalParameters = shaderCode->GetUniforms(ShaderStage::Fragment);
-    auto materialGlobalVertexParameters = shaderCode->GetUniforms(ShaderStage::Vertex);
-    for(auto &&parameter : materialParameters){
-        AddParameter(parameter.first, parameter.second);
-    }
-    for(auto &&textureProperty : materialTexturesProperties){
+    auto materialMaps = this->shader->GetMaps();
+    // auto materialParameters = shader->GetCode().GetMaterialParameters(ShaderStage::Fragment);
+    // auto materialTexturesProperties = shader->GetCode().GetMaterialTexturesProperties(ShaderStage::Fragment);
+    // auto materialGlobalParameters = shader->GetCode().GetUniforms(ShaderStage::Fragment);
+    // auto materialGlobalVertexParameters = shader->GetCode().GetUniforms(ShaderStage::Vertex);
+
+    for(auto &&materialMap : materialMaps){
+        // Add every declared shader map. The activated condition matters when processing code
         MaterialParameter matParameter;
         matParameter.type = MaterialParameterType::Map;
-        matParameter.data = textureProperty.second;
-        AddParameter(textureProperty.first, matParameter);
+        matParameter.data = nullptr;
+        AddParameter(materialMap.first, matParameter);
     }
-    for(auto &&parameter : materialGlobalParameters){
-        AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), true);
+    auto materialFlags = this->shader->GetFlags();
+    for(auto &materialFlag : materialFlags){
+        flags.push_back(materialFlag);
     }
-    for(auto &&parameter : materialGlobalVertexParameters){
-        AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), false);
-    }
+    // for(auto &&parameter : materialParameters){
+    //     AddParameter(parameter.first, parameter.second);
+    // }
+    // for(auto &&textureProperty : materialTexturesProperties){
+    //     MaterialParameter matParameter;
+    //     matParameter.type = MaterialParameterType::Map;
+    //     matParameter.data = textureProperty.second;
+    //     AddParameter(textureProperty.first, matParameter);
+    // }
+    // for(auto &&parameter : materialGlobalParameters){
+    //     AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), true);
+    // }
+    // for(auto &&parameter : materialGlobalVertexParameters){
+    //     AddGlobalParameter(parameter.first, GetParameterType(parameter.second.dataType), false);
+    // }
 }
 
-Ref<ShaderCode> Material::GetShaderCode() const{
-    return this->shaderCode;
+Ref<Shader> Material::GetShader(){
+    return this->shader;
 }
 
 template <typename T>
@@ -102,6 +115,15 @@ void Material::SetParameterVector4(const std::string &name, glm::vec4 value)
     SetParameter(name, value);
 }
 
+void Material::SetFlag(const std::string &name, bool value){
+    std::vector<std::pair<std::string, bool>>::iterator flagsIt = std::find_if(flags.begin(), flags.end(),
+    [name](const std::pair<std::string, bool> &flagPair){
+        return name == flagPair.first;
+    });
+    if(flagsIt != flags.end())
+        flagsIt->second = value;
+}
+
 void Material::SetOnGlobalFloatChangeCallback(std::function<void(const std::string&, float)> callback){
     floatGlobalChangeCallback = callback;
 }
@@ -168,6 +190,10 @@ std::vector<std::pair<std::string, MaterialParameter>> Material::GetMapParameter
         }
     }
     return mapParameters;
+}
+
+const std::vector<std::pair<std::string, bool>> &Material::GetFlags(){
+    return flags;
 }
 
 void Material::SetGlobalParameterMap(const std::string &name, Ref<Texture> value)
