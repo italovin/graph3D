@@ -36,7 +36,7 @@ int main(int argc, const char *argv[])
     /* Create a windowed mode window and its OpenGL context */
     Window window;
 
-    if (!window.Create("Graph 3D", WIDTH, HEIGHT))
+    if (!window.Create(std::string("Graph 3D"), WIDTH, HEIGHT))
     {
         glfwTerminate();
         return -1;
@@ -348,7 +348,7 @@ int main(int argc, const char *argv[])
     Ref<Texture> tex0;
     {
         int width, height, channels;
-        GLubyte *data = stbi_load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").c_str(),
+        GLubyte *data = stbi_load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").generic_string().c_str(),
         &width, &height, &channels, 0);
         std::vector<GLubyte> pixels;
         if(data){
