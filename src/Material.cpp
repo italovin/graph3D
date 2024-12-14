@@ -17,7 +17,7 @@ Material::Material(Ref<Shader> shader)
         // Add every declared shader map. The activated condition matters when processing code
         MaterialParameter matParameter;
         matParameter.type = MaterialParameterType::Map;
-        matParameter.data = nullptr;
+        matParameter.data = Ref<Texture>(nullptr);
         AddParameter(materialMap.first, matParameter);
     }
     auto materialFlags = this->shader->GetFlags();
