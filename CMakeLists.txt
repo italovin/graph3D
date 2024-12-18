@@ -55,7 +55,27 @@ if(MINGW)
     IMPORTED_LOCATION ${glew_SOURCE_DIR}/mingw64/bin/glew32.dll
     INTERFACE_INCLUDE_DIRECTORIES ${glew_SOURCE_DIR}/mingw64/include
     )
-    
+
+    # Resolve onetbb dependency
+    FetchContent_Declare(
+    tbb
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-tbb-2022.0.0-1-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(tbb)
+    add_library(tbb::tbb SHARED IMPORTED)
+    set_target_properties(tbb::tbb PROPERTIES
+    IMPORTED_IMPLIB ${tbb_SOURCE_DIR}/ucrt64/lib/libtbb12.dll.a
+    IMPORTED_LOCATION ${tbb_SOURCE_DIR}/ucrt64/bin/libtbb12.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${tbb_SOURCE_DIR}/ucrt64/include
+    )
+
+    add_library(tbb::tbbmalloc SHARED IMPORTED)
+    set_target_properties(tbb::tbbmalloc PROPERTIES
+    IMPORTED_IMPLIB ${tbb_SOURCE_DIR}/ucrt64/lib/libtbbmalloc.dll.a
+    IMPORTED_LOCATION ${tbb_SOURCE_DIR}/ucrt64/bin/libtbbmalloc.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${tbb_SOURCE_DIR}/ucrt64/include
+    )
+    target_include_directories(${PROJECT_NAME} PRIVATE ${tbb_SOURCE_DIR}/ucrt64/include)
     find_library(STDCXX_LIB stdc++)
     get_filename_component(STDCXX_LIB_DIR ${STDCXX_LIB} PATH)
     cmake_path(GET STDCXX_LIB PARENT_PATH SYS_LIB_PATH)
@@ -64,7 +84,22 @@ if(MINGW)
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS ${SYS_BIN_PATH}/libstdc++-6.dll 
     ${SYS_BIN_PATH}/libgcc_s_seh-1.dll ${SYS_BIN_PATH}/libwinpthread-1.dll)
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE glew::glew glfw3::glfw3 opengl32)
+    add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy 
+            ${glfw3_SOURCE_DIR}/lib-mingw-w64/glfw3.dll 
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy 
+            ${glew_SOURCE_DIR}/mingw64/bin/glew32.dll 
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy 
+            ${tbb_SOURCE_DIR}/ucrt64/bin/libtbb12.dll 
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy 
+            ${tbb_SOURCE_DIR}/ucrt64/bin/libtbbmalloc.dll 
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE glew::glew glfw3::glfw3 opengl32 tbb::tbb)
     
     # Install portable build
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/portable)

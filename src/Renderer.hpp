@@ -94,6 +94,19 @@ private:
         GLint baseVertex = 0;
         GLuint baseInstance = 0;
     };
+    using Renderable = std::pair<std::reference_wrapper<MeshRendererComponent>,
+    std::reference_wrapper<TransformComponent>>;
+    struct ShaderGroup{
+        Ref<GL::ShaderGL> shader;
+        std::vector<Renderable> batchGroup;
+        std::vector<std::vector<Renderable>> instancesGroups;
+        const std::vector<Renderable> &GetBatchGroup() const{
+            return batchGroup;
+        }
+        const std::vector<std::vector<Renderable>> &GetInstancesGroups() const{
+            return instancesGroups;
+        }
+    };
     struct RenderGroup{
         GL::VertexArrayGL vao;
         Ref<GL::ShaderGL> shader; // Needs to use a shared reference because somes render groups may
@@ -136,6 +149,7 @@ private:
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();
+    void BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &shaderGroup);
     //Defaulft drawing is direct type
     bool isIndirect = false;
     void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;

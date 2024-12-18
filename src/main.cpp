@@ -1,5 +1,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+#include <cmath>
 #include "Base.hpp"
 #include "Components.hpp"
 #include "GLApiVersions.hpp"
@@ -23,6 +27,7 @@ void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLs
 
 int main(int argc, const char *argv[])
 {
+    setlocale(LC_ALL, ".UTF-8");
     /* Initialize the library */
     if (!glfwInit())
         return -1;
@@ -501,8 +506,8 @@ int main(int argc, const char *argv[])
     double initialRendererTime = glfwGetTime();
     mainRenderer.Start(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;
-    std::cout << "Time to prepare meshes for grouping: " << 1000*prepareTime << " (ms)\n";
-    std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n";
+    std::cout << "\nTime to prepare meshes for grouping: " << 1000*prepareTime << " (ms)\n";
+    std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n\n";
 
     glClearColor(0, 0, 0, 1);
     glEnable(GL_DEPTH_TEST);

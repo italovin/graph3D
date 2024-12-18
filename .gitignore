@@ -35,5 +35,7 @@
 build
 build-mingw
 
+out
 .vscode
+.vs
 .cache
