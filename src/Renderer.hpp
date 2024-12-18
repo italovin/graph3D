@@ -50,6 +50,7 @@ public:
 };
 class Renderer : public System{
 private:
+    GLuint lastShaderProgram = 0;
     Window* mainWindow = nullptr;
     unsigned int objectsCountToGroup = 512;
     const GLuint maxBindingPoints = 50;
@@ -111,7 +112,8 @@ private:
         GL::VertexArrayGL vao;
         Ref<GL::ShaderGL> shader; // Needs to use a shared reference because somes render groups may
         // the same shader program and the ShaderGL object can't be copied, only moved
-        std::vector<Buffer> attributesBuffers;
+        Buffer attributesBuffer;
+        int attributesCount = 0;
         Buffer indicesBuffer;
         // Textures
         // Each texture in vector is a texture array with objectsCountToGroup layers count
@@ -145,7 +147,7 @@ private:
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
     void SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLayout &layout);
-    void BindRenderGroupAttributesBuffers(RenderGroup &renderGroup);
+    void BindRenderGroupAttributesBuffers(RenderGroup &renderGroup, const std::vector<GLintptr> &offsets, const std::vector<GLsizei> &strides);
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();

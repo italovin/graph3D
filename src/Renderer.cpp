@@ -4,8 +4,6 @@
 #include "ShaderCode.hpp"
 #include "ShaderStandard.hpp"
 #include <thread>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
 // Implementation for StructArray
 size_t StructArray::alignOffset(size_t offset, size_t alignment) {
     return (offset + alignment - 1) & ~(alignment - 1);
@@ -119,22 +117,11 @@ void Renderer::SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLa
     }
 }
 
-void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup)
+void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup, const std::vector<GLintptr> &offsets, const std::vector<GLsizei> &strides)
 {
-    std::vector<GLuint> buffers;
-    std::vector<GLintptr> offsets;
-    std::vector<GLsizei> strides;
-    //Attributes buffer
-    GLsizei buffersCount = renderGroup.attributesBuffers.size();
-    buffers.reserve(buffersCount);
-    offsets.reserve(buffersCount);
-    strides.reserve(buffersCount);
-    for(auto &&buffer : renderGroup.attributesBuffers){
-        buffers.emplace_back(buffer.name);
-        offsets.emplace_back(0);
-        strides.emplace_back(buffer.stride);
-    }
-    glVertexArrayVertexBuffers(renderGroup.vao.GetHandle(), 0, buffersCount, buffers.data(), offsets.data(), strides.data());
+    std::vector<GLuint> buffers(renderGroup.attributesCount, renderGroup.attributesBuffer.name);
+
+    glVertexArrayVertexBuffers(renderGroup.vao.GetHandle(), 0, renderGroup.attributesCount, buffers.data(), offsets.data(), strides.data());
     glVertexArrayElementBuffer(renderGroup.vao.GetHandle(), renderGroup.indicesBuffer.name);
 }
 
@@ -265,7 +252,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             if(groupMap[x.first.get().mesh.object.get()].size() == 0){
                 batchSize++;
             } else if(groupMap[x.first.get().mesh.object.get()].size() == 1){
-                batchSize--; // Reverts when instances (duplied meshes)are found
+                batchSize--; // Reverts when instances (duplied meshes) are found
                 instancesSize++; // Add instance group count when there is duplied mesh
             }
             groupMap[x.first.get().mesh.object.get()].push_back(std::move(x));
@@ -899,13 +886,26 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
     }
     renderGroup.objectsCount = objectsCount;
     renderGroup.materialsStructArray = matParamStructArray;
-    std::vector<GLuint> attributesBuffersNames(attributesCount);
-    glCreateBuffers(attributesCount, attributesBuffersNames.data());
-    std::vector<Buffer> attributesBuffers(attributesCount);
-    for(size_t i = 0; i < attributesBuffers.size(); i++){
-        renderGroup.attributesBuffers.emplace_back(attributesBuffersNames[i],
-        attributesBatchedChunks[i].dataSize, attributesBatchedChunks[i].attribute.AttributeDataSize(), i);
+
+    renderGroup.attributesCount = attributesCount;
+    int attributesBufferTotalSize = 0;
+    std::vector<GLintptr> attributesOffsets(attributesCount);
+    std::vector<GLsizei> attributesStrides(attributesCount);
+    for(size_t i = 0; i < attributesBatchedChunks.size(); i++){
+        attributesOffsets[i] = attributesBufferTotalSize;
+        attributesStrides[i] = attributesBatchedChunks[i].attribute.AttributeDataSize();
+        attributesBufferTotalSize += attributesBatchedChunks[i].dataSize;
+        //renderGroup.attributesBuffers.emplace_back(attributesBuffersNames[i],
+        //attributesBatchedChunks[i].dataSize, attributesBatchedChunks[i].attribute.AttributeDataSize(), i);
     }
+    GLuint attributesBuffersName = 0;
+    glCreateBuffers(1, std::addressof(attributesBuffersName));
+    renderGroup.attributesBuffer.name = attributesBuffersName;
+    renderGroup.attributesBuffer.bufferSize = attributesBufferTotalSize;
+    renderGroup.attributesBuffer.stride = attributesBufferTotalSize;
+    renderGroup.attributesBuffer.bindingPoint = 0;
+    glNamedBufferStorage(renderGroup.attributesBuffer.name, renderGroup.attributesBuffer.bufferSize,
+    nullptr, GL_DYNAMIC_STORAGE_BIT);
 
     GLuint indicesBufferName = 0;
     glCreateBuffers(1, std::addressof(indicesBufferName));
@@ -931,26 +931,24 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
     std::cout << "Time to setup batch and instance groups: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << " (μs)\n";
     auto bufferBegin = std::chrono::high_resolution_clock::now();
     {
-        int index = 0;
-        for(auto &&buffer : renderGroup.attributesBuffers){
-            switch(attributesBatchedChunks[index].attribute.type){
+        for(size_t i = 0; i < attributesBatchedChunks.size(); i++){
+            switch(attributesBatchedChunks[i].attribute.type){
                 case MeshAttributeType::Float:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<float>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<float>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::Int:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<int>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<int>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::UnsignedInt:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned int>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<unsigned int>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::Byte:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<char>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<char>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::UnsignedByte:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned char>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<unsigned char>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::Short:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<short>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::UnsignedShort:
-                glNamedBufferStorage(buffer.name, attributesBatchedChunks[index].dataSize, std::get<std::vector<unsigned short>>(attributesBatchedChunks[index].data).data(), GL_DYNAMIC_STORAGE_BIT); break;
+                glNamedBufferSubData(renderGroup.attributesBuffer.name, attributesOffsets[i], attributesBatchedChunks[i].dataSize, std::get<std::vector<unsigned short>>(attributesBatchedChunks[i].data).data()); break;
                 case MeshAttributeType::None: break;
             }
-            index++;
         }
     }
 
@@ -971,7 +969,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
         renderGroup.materialsStructArray.GetData().data(), GL_DYNAMIC_STORAGE_BIT);
 
     SetRenderGroupLayout(renderGroup, meshGlobalLayout);
-    BindRenderGroupAttributesBuffers(renderGroup);
+    BindRenderGroupAttributesBuffers(renderGroup, attributesOffsets, attributesStrides);
 
     if(isIndirect){
         GLuint drawCmdBufferName = 0;
@@ -1079,7 +1077,11 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         for(size_t i = 0; i < renderGroup.texturesArrays.size(); i++){
             renderGroup.texturesArrays[i]->Bind(i);
         }
-        renderGroup.shader->Use();
+        // Remember last shader program handle
+        if(renderGroup.shader->GetHandle() != lastShaderProgram){
+            renderGroup.shader->Use();
+            lastShaderProgram = renderGroup.shader->GetHandle();
+        }
         renderGroup.shader->SetVec3("lightPos", lightTransform.position);
         renderGroup.shader->SetVec3("viewPos", mainCameraTransform.position);
         renderGroup.shader->SetVec3("lightColor", mainLight.color);
