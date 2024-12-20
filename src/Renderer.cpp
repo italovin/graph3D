@@ -225,8 +225,16 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         }
         for(auto &&group : shaderGeneratedGroups){
             GL::ShaderGLResource shaderGenerated(shaderGeneratedGlobal.object);
-            // Setting shader mvp binding point;
+            // Setting shaders binding points
             for(auto &&bindingPurpose : shaderCodeMap[x.first].GetBindingsPurposes(ShaderStage::Vertex)){
+                std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
+                if(!binding.has_value()){
+                    // No binding point available
+                    return;
+                }
+                shaderGenerated->SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
+            }
+            for(auto &&bindingPurpose : shaderCodeMap[x.first].GetBindingsPurposes(ShaderStage::Fragment)){
                 std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
                 if(!binding.has_value()){
                     // No binding point available
@@ -424,6 +432,15 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
     bool areParametersMembersSet = false;
     StructArray matParamStructArray;
 
+    int textureParametersCount = 0;
+    // Each texture array contains a map with texture pointer key and the index of layer
+    // This will be used with a UBO (indexes); ubo[objID] -> layer index; tex(layer index)
+    std::vector<std::unordered_map<Texture*, int>> texturesArraysImagesIndexMap;
+    // Check if texture image is already storage in texture array structure
+    std::unordered_map<Texture*, bool> texturesImagesStored;
+    std::vector<std::vector<glm::ivec4>> texturesArraysIndices;
+    // Map from array index to parameter map name 
+    std::unordered_map<int, std::string> texturesArraysNamesMap;
     // Boolean to check if texture array is initialized
     bool areTexturesArraysInitialized = false;
     // Store max dimensions for build each texture array
@@ -434,45 +451,37 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
     // Calculating max texture dimensions for each texture array (each material map parameter)
     std::vector<MaxTexDimensions> maxTexDimensions;
     if(batchGroup.size() > 0){
-        maxTexDimensions = std::vector<MaxTexDimensions>(batchGroup[0].first.get().material->GetMapParameters().size());
+        auto map = batchGroup[0].first.get().material->GetMapParameters();
+        for(auto &&x : map){
+            if(std::get<Ref<Texture>>(x.second.data) != nullptr)
+                textureParametersCount++;
+        }
+        maxTexDimensions = std::vector<MaxTexDimensions>(textureParametersCount);
     } else if(instancesGroups.size() > 0){
-        if(instancesGroups[0].size() > 0)
-            maxTexDimensions = std::vector<MaxTexDimensions>(instancesGroups[0][0].first.get().material->GetMapParameters().size());
+        if(instancesGroups[0].size() > 0){
+            auto map = batchGroup[0].first.get().material->GetMapParameters();
+            for(auto &&x : map){
+                if(std::get<Ref<Texture>>(x.second.data) != nullptr)
+                    textureParametersCount++;
+            }
+            maxTexDimensions = std::vector<MaxTexDimensions>(textureParametersCount);
+        } 
     }
     struct TexCoords{
         float u;
         float v;
     };
+    texturesArraysImagesIndexMap = std::vector<std::unordered_map<Texture*, int>>(textureParametersCount);
+    texturesArraysIndices = std::vector<std::vector<glm::ivec4>>(textureParametersCount);
+    for(auto &vec : texturesArraysIndices){
+        vec = std::vector<glm::ivec4>(objectsCount);
+    }
     std::vector<glm::vec4> texCoord0Scalings(objectsCount);
     int uv0scaleIndex = 0;
     bool uv0scaleIndexSet = false;
 
-    for(auto &&object : batchGroup){
-        auto texParameters = object.first.get().material->GetMapParameters();
-        int texParameterIndexer = 0;
-        for(auto &&texParameter : texParameters){
-            if(!uv0scaleIndexSet){
-                if(texParameter.first == "diffuseMap"){
-                    uv0scaleIndex = texParameterIndexer;
-                    uv0scaleIndexSet = true;
-                }
-            }
-            auto tex = std::get<Ref<Texture>>(texParameter.second.data);
-            if(!tex)
-                continue;
-            size_t texWidth = tex->GetWidth();
-            size_t texHeight = tex->GetHeight();
-            if(texWidth > maxTexDimensions[texParameterIndexer].maxWidth){
-                maxTexDimensions[texParameterIndexer].maxWidth = texWidth;
-            }
-            if(texHeight > maxTexDimensions[texParameterIndexer].maxHeight){
-                maxTexDimensions[texParameterIndexer].maxHeight = texHeight;
-            }
-            texParameterIndexer++;
-        }
-    }
-    for(auto &&instanceGroup : instancesGroups){
-        for(auto &&object : instanceGroup){
+    {
+        for(auto &&object : batchGroup){
             auto texParameters = object.first.get().material->GetMapParameters();
             int texParameterIndexer = 0;
             for(auto &&texParameter : texParameters){
@@ -493,7 +502,45 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
                 if(texHeight > maxTexDimensions[texParameterIndexer].maxHeight){
                     maxTexDimensions[texParameterIndexer].maxHeight = texHeight;
                 }
+                if(texturesArraysImagesIndexMap[texParameterIndexer].count(tex.get()) == 0){
+                    int index = texturesArraysImagesIndexMap[texParameterIndexer].size();
+                    texturesArraysImagesIndexMap[texParameterIndexer][tex.get()] = index;
+                }
+                if(texturesArraysNamesMap.count(texParameterIndexer) == 0)
+                    texturesArraysNamesMap[texParameterIndexer] = texParameter.first;
                 texParameterIndexer++;
+            }
+        }
+        for(auto &&instanceGroup : instancesGroups){
+            for(auto &&object : instanceGroup){
+                auto texParameters = object.first.get().material->GetMapParameters();
+                int texParameterIndexer = 0;
+                for(auto &&texParameter : texParameters){
+                    if(!uv0scaleIndexSet){
+                        if(texParameter.first == "diffuseMap"){
+                            uv0scaleIndex = texParameterIndexer;
+                            uv0scaleIndexSet = true;
+                        }
+                    }
+                    auto tex = std::get<Ref<Texture>>(texParameter.second.data);
+                    if(!tex)
+                        continue;
+                    size_t texWidth = tex->GetWidth();
+                    size_t texHeight = tex->GetHeight();
+                    if(texWidth > maxTexDimensions[texParameterIndexer].maxWidth){
+                        maxTexDimensions[texParameterIndexer].maxWidth = texWidth;
+                    }
+                    if(texHeight > maxTexDimensions[texParameterIndexer].maxHeight){
+                        maxTexDimensions[texParameterIndexer].maxHeight = texHeight;
+                    }
+                    if(texturesArraysImagesIndexMap[texParameterIndexer].count(tex.get()) == 0){
+                        int index = texturesArraysImagesIndexMap[texParameterIndexer].size();
+                        texturesArraysImagesIndexMap[texParameterIndexer][tex.get()] = index;
+                    }
+                    if(texturesArraysNamesMap.count(texParameterIndexer) == 0)
+                        texturesArraysNamesMap[texParameterIndexer] = texParameter.first;
+                    texParameterIndexer++;
+                }
             }
         }
     }
@@ -546,7 +593,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
     renderGroup.texCoord0ScalesUniformBuffer.bindingPoint = uboBindingsPurposes["texCoord0Scales"];
 
     glNamedBufferStorage(renderGroup.texCoord0ScalesUniformBuffer.name, renderGroup.texCoord0ScalesUniformBuffer.bufferSize, texCoord0Scalings.data(), GL_DYNAMIC_STORAGE_BIT);
-    
+
     for(auto &&object : batchGroup){
         auto& mesh = object.first.get().mesh;
 
@@ -689,18 +736,25 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
             if(!texture){
                 continue;
             }
+            if(texturesImagesStored.count(texture.get()) == 0)
+                texturesImagesStored[texture.get()] = false;
             if(!areTexturesArraysInitialized){
                 Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
                 textureGL->SetupParameters();
-                textureGL->SetupStorage3D(maxTexDimensions[textureParametersCounter].maxWidth, maxTexDimensions[textureParametersCounter].maxHeight, objectsCount);
+                textureGL->SetupStorage3D(maxTexDimensions[textureParametersCounter].maxWidth, maxTexDimensions[textureParametersCounter].maxHeight, texturesArraysImagesIndexMap[textureParametersCounter].size());
                 renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
                 renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
             }
-            if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
-                renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
-            } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
-                renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+            int textureLayerIndex = texturesArraysImagesIndexMap[textureParametersCounter][texture.get()];
+            if(!texturesImagesStored[texture.get()]){
+                if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                    renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                    renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                }
+                texturesImagesStored[texture.get()] = true;
             }
+            texturesArraysIndices[textureParametersCounter][objectIndex] = glm::ivec4(textureLayerIndex,0,0,0);
             textureParametersCounter++;
         }
         // Resets indexer for which texture array choose
@@ -861,18 +915,25 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
                 if(!texture){
                     continue;
                 }
+                if(texturesImagesStored.count(texture.get()) == 0)
+                    texturesImagesStored[texture.get()] = false;
                 if(!areTexturesArraysInitialized){
                     Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, texture->GetFormatGLenum(), texture->GetPixelDataTypeGLenum());
                     textureGL->SetupParameters();
-                    textureGL->SetupStorage3D(maxTexDimensions[textureParametersCounter].maxWidth, maxTexDimensions[textureParametersCounter].maxHeight, objectsCount);
+                    textureGL->SetupStorage3D(maxTexDimensions[textureParametersCounter].maxWidth, maxTexDimensions[textureParametersCounter].maxHeight, texturesArraysImagesIndexMap[textureParametersCounter].size());
                     renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
                     renderGroup.shader->SetInt(parameter.first, textureParametersCounter);
                 }
-                if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
-                    renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
-                } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
-                    renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), objectIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                int textureLayerIndex = texturesArraysImagesIndexMap[textureParametersCounter][texture.get()];
+                if(!texturesImagesStored[texture.get()]){
+                    if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                        renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                    } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                        renderGroup.texturesArrays[textureParametersCounter]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                    }
+                    texturesImagesStored[texture.get()] = true;
                 }
+                texturesArraysIndices[textureParametersCounter][objectIndex] = glm::ivec4(textureLayerIndex,0,0,0);
                 textureParametersCounter++;
             }
             // Resets indexer for which texture array choose
@@ -895,42 +956,19 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
         attributesOffsets[i] = attributesBufferTotalSize;
         attributesStrides[i] = attributesBatchedChunks[i].attribute.AttributeDataSize();
         attributesBufferTotalSize += attributesBatchedChunks[i].dataSize;
-        //renderGroup.attributesBuffers.emplace_back(attributesBuffersNames[i],
-        //attributesBatchedChunks[i].dataSize, attributesBatchedChunks[i].attribute.AttributeDataSize(), i);
     }
-    GLuint attributesBuffersName = 0;
-    glCreateBuffers(1, std::addressof(attributesBuffersName));
-    renderGroup.attributesBuffer.name = attributesBuffersName;
-    renderGroup.attributesBuffer.bufferSize = attributesBufferTotalSize;
-    renderGroup.attributesBuffer.stride = attributesBufferTotalSize;
-    renderGroup.attributesBuffer.bindingPoint = 0;
-    glNamedBufferStorage(renderGroup.attributesBuffer.name, renderGroup.attributesBuffer.bufferSize,
-    nullptr, GL_DYNAMIC_STORAGE_BIT);
-
-    GLuint indicesBufferName = 0;
-    glCreateBuffers(1, std::addressof(indicesBufferName));
-    renderGroup.indicesBuffer.name = indicesBufferName;
-    renderGroup.indicesBuffer.bufferSize = indicesBatchedChunk.indicesSize;
-
-    GLuint mpvsUniformBufferName = 0;
-    glCreateBuffers(1, std::addressof(mpvsUniformBufferName));
-    renderGroup.mvpsUniformBuffer.name = mpvsUniformBufferName;
-    renderGroup.mvpsUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.mvps.size();
-    renderGroup.mvpsUniformBuffer.stride = sizeof(glm::mat4);
-    renderGroup.mvpsUniformBuffer.bindingPoint = uboBindingsPurposes["mvps"];
-
-    GLuint materialUniformBufferName = 0;
-    glCreateBuffers(1, std::addressof(materialUniformBufferName));
-    renderGroup.materialUniformBuffer.name = materialUniformBufferName;
-    renderGroup.materialUniformBuffer.bufferSize = renderGroup.materialsStructArray.structSize *renderGroup.materialsStructArray.numStructs;
-    renderGroup.materialUniformBuffer.stride = renderGroup.materialsStructArray.structSize;
-    renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes["materials"];
-
-
     auto setupEnd = std::chrono::high_resolution_clock::now();
     std::cout << "Time to setup batch and instance groups: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << " (μs)\n";
     auto bufferBegin = std::chrono::high_resolution_clock::now();
     {
+        GLuint attributesBuffersName = 0;
+        glCreateBuffers(1, std::addressof(attributesBuffersName));
+        renderGroup.attributesBuffer.name = attributesBuffersName;
+        renderGroup.attributesBuffer.bufferSize = attributesBufferTotalSize;
+        renderGroup.attributesBuffer.stride = attributesBufferTotalSize;
+        renderGroup.attributesBuffer.bindingPoint = 0;
+        glNamedBufferStorage(renderGroup.attributesBuffer.name, renderGroup.attributesBuffer.bufferSize,
+        nullptr, GL_DYNAMIC_STORAGE_BIT);
         for(size_t i = 0; i < attributesBatchedChunks.size(); i++){
             switch(attributesBatchedChunks[i].attribute.type){
                 case MeshAttributeType::Float:
@@ -951,22 +989,61 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
             }
         }
     }
-
-    switch(indicesBatchedChunk.type){
-        case MeshIndexType::UnsignedInt:
-        glNamedBufferStorage(renderGroup.indicesBuffer.name, renderGroup.indicesBuffer.bufferSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
-        case MeshIndexType::UnsignedShort:
-        glNamedBufferStorage(renderGroup.indicesBuffer.name, renderGroup.indicesBuffer.bufferSize, std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
-        case MeshIndexType::None: break;
+    {
+        GLuint indicesBufferName = 0;
+        glCreateBuffers(1, std::addressof(indicesBufferName));
+        renderGroup.indicesBuffer.name = indicesBufferName;
+        renderGroup.indicesBuffer.bufferSize = indicesBatchedChunk.indicesSize;
+        switch(indicesBatchedChunk.type){
+            case MeshIndexType::UnsignedInt:
+            glNamedBufferStorage(renderGroup.indicesBuffer.name, renderGroup.indicesBuffer.bufferSize, std::get<std::vector<unsigned int>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            case MeshIndexType::UnsignedShort:
+            glNamedBufferStorage(renderGroup.indicesBuffer.name, renderGroup.indicesBuffer.bufferSize, std::get<std::vector<unsigned short>>(indicesBatchedChunk.indices).data(), GL_DYNAMIC_STORAGE_BIT); break;
+            case MeshIndexType::None: break;
+        }
     }
-
     // MVP UBO
-    glNamedBufferStorage(renderGroup.mvpsUniformBuffer.name, renderGroup.mvpsUniformBuffer.bufferSize, renderGroup.mvps.data(), GL_DYNAMIC_STORAGE_BIT);
-
+    {
+        GLuint mpvsUniformBufferName = 0;
+        glCreateBuffers(1, std::addressof(mpvsUniformBufferName));
+        renderGroup.mvpsUniformBuffer.name = mpvsUniformBufferName;
+        renderGroup.mvpsUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.mvps.size();
+        renderGroup.mvpsUniformBuffer.stride = sizeof(glm::mat4);
+        renderGroup.mvpsUniformBuffer.bindingPoint = uboBindingsPurposes["mvps"];
+        glNamedBufferStorage(renderGroup.mvpsUniformBuffer.name, renderGroup.mvpsUniformBuffer.bufferSize, renderGroup.mvps.data(), GL_DYNAMIC_STORAGE_BIT);
+    }
     // Material UBO
-    if(renderGroup.materialUniformBuffer.bufferSize > 0)
-        glNamedBufferStorage(renderGroup.materialUniformBuffer.name, renderGroup.materialUniformBuffer.bufferSize,
-        renderGroup.materialsStructArray.GetData().data(), GL_DYNAMIC_STORAGE_BIT);
+    {
+        GLuint materialUniformBufferName = 0;
+        glCreateBuffers(1, std::addressof(materialUniformBufferName));
+        renderGroup.materialUniformBuffer.name = materialUniformBufferName;
+        renderGroup.materialUniformBuffer.bufferSize = renderGroup.materialsStructArray.structSize *renderGroup.materialsStructArray.numStructs;
+        renderGroup.materialUniformBuffer.stride = renderGroup.materialsStructArray.structSize;
+        renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes["materials"];
+        if(renderGroup.materialUniformBuffer.bufferSize > 0)
+            glNamedBufferStorage(renderGroup.materialUniformBuffer.name, renderGroup.materialUniformBuffer.bufferSize,
+            renderGroup.materialsStructArray.GetData().data(), GL_DYNAMIC_STORAGE_BIT);
+    }
+    // Tex arrays indices UBO
+    {
+        std::vector<GLuint> texLayersIndexBuffersNames(texturesArraysIndices.size());
+        glCreateBuffers(texturesArraysIndices.size(), texLayersIndexBuffersNames.data());
+        for(int i = 0; i < textureParametersCount; i++){
+            std::string bindingName;
+            if(texturesArraysNamesMap[i] == "diffuseMap")
+                bindingName = "diffuseMapIndices";
+            else if(texturesArraysNamesMap[i] == "normalMap")
+                bindingName = "normalMapIndices";
+            else if(texturesArraysNamesMap[i] == "specularMap")
+                bindingName = "specularMapIndices";
+            else
+                continue;
+            renderGroup.texLayersIndexBuffers.emplace_back(texLayersIndexBuffersNames[i], sizeof(glm::ivec4)*objectsCount, 
+            sizeof(int), uboBindingsPurposes[bindingName]);
+            glNamedBufferStorage(renderGroup.texLayersIndexBuffers[i].name, renderGroup.texLayersIndexBuffers[i].bufferSize,
+            texturesArraysIndices[i].data(), GL_DYNAMIC_STORAGE_BIT);
+        }
+    }
 
     SetRenderGroupLayout(renderGroup, meshGlobalLayout);
     BindRenderGroupAttributesBuffers(renderGroup, attributesOffsets, attributesStrides);
@@ -1097,13 +1174,15 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
             renderGroup.mvps[i] = mainCameraProjection * mainCameraView * model;
 
         }
-
-        glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         BufferSubDataMVPs(renderGroup);
+        // UBO bindings
+        glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.texCoord0ScalesUniformBuffer.bindingPoint, renderGroup.texCoord0ScalesUniformBuffer.name);
         if(renderGroup.materialUniformBuffer.name > 0)
             glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.materialUniformBuffer.bindingPoint, renderGroup.materialUniformBuffer.name);
-
+        for(auto &&buffer : renderGroup.texLayersIndexBuffers){
+            glBindBufferBase(GL_UNIFORM_BUFFER, buffer.bindingPoint, buffer.name);
+        }
         (this->*DrawFunction)(renderGroup);
     }
 }

@@ -186,20 +186,22 @@ ShaderCode ShaderStandard::ProcessCode(){
         code.AddOutput(ShaderStage::Vertex, "aColorOut", ShaderDataType::Float4);
         if(diffuseMapActivated){ // Color Attrib + Diffuse Map
             // Added diffuse map sampler array down below
-            albedoString = "vec4 albedo = texture(diffuseMap, vec3(aTexCoord0Out, objID))*aColorOut;\n";
+            albedoString = "vec4 albedo = texture(diffuseMap, vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut;\n";
         } else { // Only color attrib
             albedoString = "vec4 albedo = aColorOut;\n";
         }
     } else {
         if(diffuseMapActivated){
             // Added diffuse map sampler array down below
-            albedoString = "vec4 albedo = texture(diffuseMap, vec3(aTexCoord0Out, objID));\n";
+            albedoString = "vec4 albedo = texture(diffuseMap, vec3(aTexCoord0Out, diffuseMapIndices[objID].x));\n";
         } else {
             albedoString = "vec4 albedo = vec4(1.0);\n";
         }
     }
     if(diffuseMapActivated){ // Only diffuse map
         code.AddMaterialMapArray(ShaderStage::Fragment, "diffuseMap");
+        code.CreateUniformBlock(ShaderStage::Fragment, "diffuseMapIndicesUBO", "ivec4 diffuseMapIndices[" + maxObjectsGroupString + "];"); // UBO diffuse map indices
+        code.SetBindingPurpose(ShaderStage::Fragment, "diffuseMapIndicesUBO", "diffuseMapIndices");
     }
     if(lightingActivated){
         if(normalEnabled){ // Declare normal attribute to do calculations

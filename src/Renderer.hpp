@@ -116,10 +116,14 @@ private:
         int attributesCount = 0;
         Buffer indicesBuffer;
         // Textures
+        int textureParametersCount = 0;
         // Each texture in vector is a texture array with objectsCountToGroup layers count
         std::vector<GL::TextureGLResource> texturesArrays;
         // Scaling factors buffer to adjust different sizes of textures in texture array
         Buffer texCoord0ScalesUniformBuffer;
+        // Buffers vector that stores indices array for acessing texture array layers
+        // This is used to access duplied textures in use
+        std::vector<Buffer> texLayersIndexBuffers;
         ////
         int objectsCount = 0;
         Buffer mvpsUniformBuffer;
