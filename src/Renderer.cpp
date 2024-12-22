@@ -149,7 +149,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         auto shaderCast = dynamic_cast<ShaderStandard*>(x.first.get().material->GetShader().get());
         if(!shaderCast)
             continue; // Check if shader is a shader standard implementation
-        ShaderStandard shader = *shaderCast;
+        ShaderStandard& shader = *shaderCast;
         auto meshLayout = mesh->GetLayout();
         for(auto &&attribute : meshLayout.attributes){
             MeshAttributeAlias alias = attribute.alias;
@@ -208,20 +208,59 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         int64_t generateTime = std::chrono::duration_cast<std::chrono::microseconds>(generateEnd-generateBegin).count();
         generateTimeTotal += generateTime;
 
-        const size_t groupSize = this->objectsCountToGroup;
-        size_t groupCount = (x.second.size() + groupSize - 1) / groupSize;
-        // Last Group reserve size
-        size_t lastGroupSize = x.second.size() % groupSize == 0 ? groupSize : x.second.size() % groupSize;
-        std::vector<std::vector<Renderable>> shaderGeneratedGroups(groupCount);
-        
-        for(size_t i = 0; i < groupCount; i++){
-            if(i == groupCount - 1)
-                shaderGeneratedGroups[i].reserve(lastGroupSize);
-            else
-                shaderGeneratedGroups[i].reserve(groupSize);
+        const size_t maxTextureArrayLayers = RenderCapabilities::GetMaxTextureArrayLayers();  // Máximo de texturas
+        const size_t maxUBOMatrices = RenderCapabilities::GetMaxUBOSize() / sizeof(glm::mat4);
+        size_t mapTypeCount = 0;
+        for(auto &&map : x.second[0].first.get().material->GetMapParameters()){
+            if(std::get<Ref<Texture>>(map.second.data).get())
+                mapTypeCount++; // Count activated maps. All objects in this shader model shares this pattern
         }
-        for(size_t i = 0; i < x.second.size(); i++){
-            shaderGeneratedGroups[i/groupSize].push_back(std::move(x.second[i]));
+        std::vector<std::vector<Renderable>> shaderGeneratedGroups;
+        shaderGeneratedGroups.reserve((x.second.size() + maxUBOMatrices - 1) / maxUBOMatrices); // Estimar o número de grupos
+        std::vector<std::unordered_set<Texture*>> currentGroupTextures(mapTypeCount); // Texturas únicas por tipo de mapa
+        std::vector<Renderable> currentGroup;                            // Objetos no grupo atual
+
+        for (auto& renderable : x.second) {
+            bool exceedsTextureLimit = false;
+
+            // Verificar texturas únicas para cada tipo de mapa
+            std::vector<std::pair<std::string, MaterialParameter>> activatedMaps;
+            activatedMaps.reserve(mapTypeCount);
+            for(auto &map : renderable.first.get().material->GetMapParameters()){
+                if(std::get<Ref<Texture>>(map.second.data).get())
+                    activatedMaps.push_back(map);
+            }
+            for (size_t mapType = 0; mapType < mapTypeCount; ++mapType) {
+                if (currentGroupTextures[mapType].find(std::get<Ref<Texture>>(activatedMaps[mapType].second.data).get()) 
+                    == currentGroupTextures[mapType].end() &&
+                    currentGroupTextures[mapType].size() >= maxTextureArrayLayers) {
+                    exceedsTextureLimit = true;
+                    break;
+                }
+            }
+
+            // Verificar se o grupo atingiu limites
+            if (currentGroup.size() >= maxUBOMatrices || exceedsTextureLimit) {
+                // Finalizar o grupo atual
+                shaderGeneratedGroups.push_back(std::move(currentGroup));
+                for (auto& textureSet : currentGroupTextures) {
+                    textureSet.clear(); // Limpar texturas únicas
+                }
+                currentGroup.clear(); // Limpar objetos
+            }
+
+            // Adicionar o renderable ao grupo atual
+            currentGroup.push_back(std::move(renderable));
+
+            // Atualizar texturas únicas por tipo de mapa
+            for (size_t mapType = 0; mapType < mapTypeCount; ++mapType) {
+                currentGroupTextures[mapType].insert(std::get<Ref<Texture>>(activatedMaps[mapType].second.data).get());
+            }
+        }
+
+        // Adicionar o último grupo se não estiver vazio
+        if (!currentGroup.empty()) {
+            shaderGeneratedGroups.push_back(std::move(currentGroup));
         }
         for(auto &&group : shaderGeneratedGroups){
             GL::ShaderGLResource shaderGenerated(shaderGeneratedGlobal.object);
@@ -459,7 +498,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
         maxTexDimensions = std::vector<MaxTexDimensions>(textureParametersCount);
     } else if(instancesGroups.size() > 0){
         if(instancesGroups[0].size() > 0){
-            auto map = batchGroup[0].first.get().material->GetMapParameters();
+            auto map = instancesGroups[0][0].first.get().material->GetMapParameters();
             for(auto &&x : map){
                 if(std::get<Ref<Texture>>(x.second.data) != nullptr)
                     textureParametersCount++;
@@ -906,8 +945,6 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &sha
                         default: break;
                     }
                 }
-                textureParametersCounter = 0;
-                areTexturesArraysInitialized = true;
             }
             auto matTexParameters = objectMaterial->GetMapParameters();
             for(auto &&parameter : matTexParameters){

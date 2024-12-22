@@ -300,13 +300,9 @@ int main(int argc, const char *argv[])
     0.0f, 0.5f, 0.0f};
     mesh->PushAttributePosition(quad);
     mesh->PushAttributeTexCoord0(std::vector<float>{0,0, 1,0, 1,1, 0,1});
-    // mesh->PushAttribute("pos", 0, MeshAttributeFormat::Vec3, false, quad);
-    // mesh->PushAttribute("uv", 2, MeshAttributeFormat::Vec2, false, std::vector<float>{0,0, 1,0, 1,1, 0,1});
-    //mesh->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color1);
     mesh->SetIndices(quadIndices, MeshTopology::Triangles);
     mesh2->PushAttributePosition(triangle);
     mesh2->PushAttributeTexCoord0(std::vector<float>{0,0, 1,0, 0.5f,1});
-    //mesh2->PushAttribute("color", 1, MeshAttributeFormat::Vec4, true, color2);
     mesh2->SetIndices(std::vector<unsigned short>{0, 1, 2}, MeshTopology::Triangles);
 
     Ref<ShaderCode> shaderCodeTest = CreateRef<ShaderCode>();
@@ -485,6 +481,11 @@ int main(int argc, const char *argv[])
     quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
     quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
 
+    for(int i = 0; i < 100000; i++){
+        Entity newEnt = mainScene.CreateEntity();
+        newEnt.AddComponent<MeshRendererComponent>(mesh, materialTest);
+        newEnt.GetComponent<TransformComponent>().position = glm::vec3(0, 0, -i/25.0f);
+    }
     graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
     graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
@@ -510,6 +511,7 @@ int main(int argc, const char *argv[])
     std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n\n";
 
     glClearColor(0, 0, 0, 1);
+    // Enabling some opengl fragment tests
     glEnable(GL_DEPTH_TEST);
 
     double time = 0;
@@ -542,6 +544,8 @@ int main(int argc, const char *argv[])
             ticks++;
         }
         //Input
+        /* Poll for and process events */
+        glfwPollEvents();
         Input::Update(window);
         ///////
 
@@ -597,9 +601,6 @@ int main(int argc, const char *argv[])
         mainRenderer.Update(mainScene.registry, deltaTime);
         /* Swap front and back buffers */
         glfwSwapBuffers(window.GetHandle());
-
-        /* Poll for and process events */
-        glfwPollEvents();
     }
     glfwDestroyWindow(window.GetHandle());
     glfwTerminate();

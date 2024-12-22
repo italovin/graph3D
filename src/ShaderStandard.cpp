@@ -138,7 +138,7 @@ ShaderCode ShaderStandard::ProcessCode(){
     // Light color - fragment shader
     // Light position - vertex shader (when used with tangent space version) or fragment shader
     // View position - vertex shader (when used with tangent space version) or fragment shader
-    std::string maxObjectsGroupString = std::to_string(glm::min(RenderCapabilities::GetMaxTextureArrayLayers(), RenderCapabilities::GetMaxUBOSize()/64));
+    std::string maxObjectsGroupString = std::to_string(RenderCapabilities::GetMaxUBOSize()/64);
     code.SetVersion(RenderCapabilities::GetGLSLVersion());
     // Enable shader stages to pipeline
     code.SetStageToPipeline(ShaderStage::Vertex, true);
