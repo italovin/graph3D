@@ -3,8 +3,6 @@
 #include <vector>
 #include <string>
 #include <variant>
-#include <algorithm>
-#include "Resource.hpp"
 
 enum class MeshTopology{
     Triangles,

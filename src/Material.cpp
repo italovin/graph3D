@@ -1,6 +1,5 @@
 #include "Material.hpp"
-#include "MaterialTypes.hpp"
-
+#include <algorithm>
 Material::Material(Ref<Shader> shader)
 {
     this->shader = shader;

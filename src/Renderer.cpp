@@ -1,9 +1,8 @@
 #include "Renderer.hpp"
-#include "Mesh.hpp"
 #include "RenderCapabilities.hpp"
-#include "ShaderCode.hpp"
 #include "ShaderStandard.hpp"
-#include <thread>
+#include <cstring>
+#include <chrono>
 // Implementation for StructArray
 size_t StructArray::alignOffset(size_t offset, size_t alignment) {
     return (offset + alignment - 1) & ~(alignment - 1);

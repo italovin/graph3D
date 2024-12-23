@@ -1,4 +1,7 @@
 #include "GLObjects.hpp"
+#include <glm/gtc/type_ptr.hpp>
+#include <fstream>
+#include "Resource.hpp"
 
 void GL::ObjectGL::Release(){
     // GL call to delete resource

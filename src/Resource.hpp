@@ -1,7 +1,5 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
-#include <random>
-#include <uuid_v4/uuid_v4.h>
 #include "RandomHelper.hpp"
 #include "Base.hpp"
 

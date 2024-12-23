@@ -1,6 +1,5 @@
 #include "RenderCapabilities.hpp"
-#include "GLApiVersions.hpp"
-#include <GL/glext.h>
+#include <GL/glew.h>
 
 bool RenderCapabilities::initialized = false;
 std::string RenderCapabilities::versionString = std::string();

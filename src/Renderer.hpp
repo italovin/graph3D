@@ -1,8 +1,5 @@
 #ifndef RENDERER_H
 #define RENDERER_H
-#include <glm/gtc/matrix_transform.hpp>
-#include <unordered_map>
-#include "BasicComponents.hpp"
 #include "GLApiVersions.hpp"
 #include "Components.hpp"
 #include "Entity.hpp"

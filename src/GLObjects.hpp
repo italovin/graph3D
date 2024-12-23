@@ -2,11 +2,6 @@
 #define GLOBJECTS_H
 #include <GL/glew.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <utility>
-#include <fstream>
-#include <sstream>
-#include <iostream>
 #include <string>
 #include <vector>
 #include <unordered_map>

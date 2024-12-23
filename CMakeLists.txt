@@ -76,6 +76,20 @@ if(MINGW)
     INTERFACE_INCLUDE_DIRECTORIES ${tbb_SOURCE_DIR}/ucrt64/include
     )
     target_include_directories(${PROJECT_NAME} PRIVATE ${tbb_SOURCE_DIR}/ucrt64/include)
+
+    # Assimp dependency
+    FetchContent_Declare(
+    assimp
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-assimp-5.4.3-3-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(assimp)
+    add_library(assimp::assimp SHARED IMPORTED)
+    set_target_properties(assimp::assimp PROPERTIES
+    IMPORTED_IMPLIB ${assimp_SOURCE_DIR}/ucrt64/lib/libassimp.dll.a
+    IMPORTED_LOCATION ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${assimp_SOURCE_DIR}/ucrt64/include
+    )
+
     find_library(STDCXX_LIB stdc++)
     get_filename_component(STDCXX_LIB_DIR ${STDCXX_LIB} PATH)
     cmake_path(GET STDCXX_LIB PARENT_PATH SYS_LIB_PATH)
@@ -98,8 +112,11 @@ if(MINGW)
         COMMAND ${CMAKE_COMMAND} -E copy 
             ${tbb_SOURCE_DIR}/ucrt64/bin/libtbbmalloc.dll 
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy 
+            ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll 
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
-    target_link_libraries(${PROJECT_NAME} PRIVATE glew::glew glfw3::glfw3 opengl32 tbb::tbb)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glew::glew glfw3::glfw3 opengl32 tbb::tbb assimp::assimp)
     
     # Install portable build
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/portable)

@@ -3,11 +3,9 @@
 #include <unordered_map>
 #include <string>
 #include <optional>
-#include <algorithm>
 #include "ShaderTypes.hpp"
 #include "MaterialTypes.hpp"
 #include "GLObjects.hpp"
-#include <chrono>
 enum class ShaderStage{
     Vertex,
     TesselationControl,
@@ -20,14 +18,6 @@ struct ShaderCodeParameter{
     std::optional<int> location = std::nullopt;
     ShaderDataType dataType;
     int arraySize = 0;
-};
-
-struct UniformBlock{
-    std::unordered_map<std::string, ShaderCodeParameter> parameters;
-};
-
-struct MaterialBlock{
-    std::pair<std::string, std::vector<std::pair<std::string, MaterialParameter>>> parametersStruct;
 };
 
 struct ShaderStageCode{

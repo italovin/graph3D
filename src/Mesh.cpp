@@ -1,6 +1,6 @@
 #include "Mesh.hpp"
 #include <numeric>
-
+#include <algorithm>
 Mesh::~Mesh(){ 
 }
 

@@ -1,9 +1,5 @@
 #include "ShaderCode.hpp"
-#include "GLObjects.hpp"
-#include "MaterialTypes.hpp"
-#include "glm/fwd.hpp"
-#include <cstddef>
-
+#include <algorithm>
 const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){ 
     switch (type)
     {

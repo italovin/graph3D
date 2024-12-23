@@ -4,20 +4,13 @@
 #define _USE_MATH_DEFINES
 #endif
 #include <cmath>
+#include <fstream>
 #include "Base.hpp"
-#include "Components.hpp"
-#include "GLApiVersions.hpp"
-#include "Material.hpp"
+#include "Renderer.hpp"
 #include "RenderCapabilities.hpp"
+#include "ShaderStandard.hpp"
 #include "ShaderCode.hpp"
 #include "Input.hpp"
-#include "Renderer.hpp"
-#include "ShaderStandard.hpp"
-#include "ShaderTypes.hpp"
-#include "Texture.hpp"
-#include <algorithm>
-#include <cstdlib>
-#include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #define STB_IMAGE_IMPLEMENTATION

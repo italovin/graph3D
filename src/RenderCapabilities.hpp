@@ -1,7 +1,5 @@
 #ifndef RENDER_CAPABILITIES_H
 #define RENDER_CAPABILITIES_H
-
-#include <GL/glew.h>
 #include <string>
 #include "GLApiVersions.hpp"
 
