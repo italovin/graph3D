@@ -250,7 +250,7 @@ std::string &outsideString, std::string &outsideStringIns){
     }
 
     if(!shaderStageCode.materialParametersUniformBlock.first.empty()){
-        outsideString += "layout (std140) uniform " + shaderStageCode.materialParametersUniformBlock.first + "{\n" + shaderStageCode.materialParametersUniformBlock.second + "};\n";
+        outsideString += "layout (std140) uniform " + shaderStageCode.materialParametersUniformBlock.first + "{\n" + shaderStageCode.materialParametersUniformBlock.second + "\n};\n";
     }
 
     for(auto &&parameter : shaderStageCode.uniforms){

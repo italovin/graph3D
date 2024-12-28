@@ -161,7 +161,7 @@ private:
     const std::vector<T> &data, bool interpretAsInt, MeshAttributeAlias alias);
     
 public:
-    ~Mesh();
+    //~Mesh();
     
     void SetIndices(const std::vector<unsigned short> &indices, MeshTopology topology);
     void SetIndices(std::vector<unsigned short> &&indices, MeshTopology toplogy);

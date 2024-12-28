@@ -9,6 +9,9 @@ struct TransformComponent{
     glm::vec3 scale = glm::vec3(1, 1, 1);
     TransformComponent() = default;
     TransformComponent(const glm::vec3 &position) : position(position){}
+    TransformComponent(const glm::vec3 &position, const glm::vec3 &scale) : position(position), scale(scale){}
+    TransformComponent(const glm::vec3 &position, const glm::quat &rotation) : position(position), rotation(rotation){}
+    TransformComponent(const glm::vec3 &position, const glm::quat &rotation, const glm::vec3 &scale) : position(position), rotation(rotation), scale(scale){}
 
     void eulerAngles(const glm::vec3 &eulerAngles) {
         glm::quat quatX = glm::angleAxis(glm::radians(eulerAngles).x, glm::vec3(1, 0, 0));

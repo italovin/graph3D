@@ -116,17 +116,19 @@ private:
         int textureParametersCount = 0;
         // Each texture in vector is a texture array with objectsCountToGroup layers count
         std::vector<GL::TextureGLResource> texturesArrays;
-        // Scaling factors buffer to adjust different sizes of textures in texture array
-        Buffer texCoord0ScalesUniformBuffer;
         // Buffers vector that stores indices array for acessing texture array layers
         // This is used to access duplied textures in use
-        std::vector<Buffer> texLayersIndexBuffers;
+        std::vector<Buffer> texLayersIndexBuffers; // UBO in Fragment Shader
         ////
         int objectsCount = 0;
         Buffer mvpsUniformBuffer;
         std::vector<std::reference_wrapper<TransformComponent>> transforms;
         std::vector<glm::mat4> mvps; // Derived from transforms. This prevents a reallocation of MVPs memory space
-        Buffer materialUniformBuffer;
+        Buffer modelsUniformBuffer; // UBO in Vertex Shader
+        std::vector<glm::mat4> models;
+        Buffer normalMatricesUniformBuffer; // UBO in Vertex Shader
+        std::vector<glm::mat4> normalMatrices; // Transposed inverse of model matrices
+        Buffer materialUniformBuffer; // UBO in Fragment Shader
         std::vector<std::reference_wrapper<Material>> materials;
         StructArray materialsStructArray; // Contains material uniform block layout and data
         GLenum mode; // Equivalent to Topology
@@ -147,6 +149,8 @@ private:
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
+    void BufferSubDataModels(RenderGroup &renderGroup);
+    void BufferSubDataNormalMatrices(RenderGroup &renderGroup);
     void SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLayout &layout);
     void BindRenderGroupAttributesBuffers(RenderGroup &renderGroup, const std::vector<GLintptr> &offsets, const std::vector<GLsizei> &strides);
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);

@@ -1,8 +1,8 @@
 #include "Mesh.hpp"
 #include <numeric>
 #include <algorithm>
-Mesh::~Mesh(){ 
-}
+// Mesh::~Mesh(){ 
+// }
 
 template <typename T>
 bool Mesh::PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 

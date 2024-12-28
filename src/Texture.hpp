@@ -4,12 +4,12 @@
 #include <vector>
 #include <variant>
 
-enum class TextureInternalFormat{
-    RGB, RGBA
+enum class TextureFormat{
+    RGB, RGBA, RED
 };
 
 enum class TextureSizedInternalFormat{
-    RGB8, RGBA8, RGB32F, RGBA32F
+    RGB8, RGBA8, R8, RGB32F, RGBA32F, R32F
 };
 
 enum class TexturePixelDataType{
@@ -18,7 +18,7 @@ enum class TexturePixelDataType{
 
 struct TexturePixels{
     TexturePixelDataType dataType;
-    TextureInternalFormat format;
+    TextureFormat format;
     TextureSizedInternalFormat sizedFormat;
     std::variant<std::vector<GLubyte>, std::vector<GLfloat>> data;
 };
@@ -32,10 +32,10 @@ public:
     Texture() = delete;
     Texture(size_t width, size_t height);
     // Pixels data vector size must be multiple of format size (RGB = 3, RGBA = 4)
-    bool SetPixelsData(const std::vector<GLubyte> &pixelsData, TextureInternalFormat internalFormat);
+    bool SetPixelsData(const std::vector<GLubyte> &pixelsData, TextureFormat format);
     bool SetPixelsData(const std::vector<GLubyte> &pixelsData, int channels);
     // Pixels data vector size must be multiple of format size (RGB = 3, RGBA = 4)
-    bool SetPixelsData(const std::vector<GLfloat> &pixelsData, TextureInternalFormat internalFormat);
+    bool SetPixelsData(const std::vector<GLfloat> &pixelsData, TextureFormat format);
     bool SetPixelsData(const std::vector<GLfloat> &pixelsData, int channels);
     const TexturePixels &GetPixels();
     size_t GetWidth() const;
@@ -43,6 +43,7 @@ public:
     int GetChannelsCount() const;
     GLenum GetPixelDataTypeGLenum() const;
     GLenum GetFormatGLenum() const;
+    GLenum GetSizedFormatGLenum() const;
 public:
 };
 #endif

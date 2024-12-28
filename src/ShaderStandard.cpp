@@ -2,7 +2,7 @@
 #include "RenderCapabilities.hpp"
 #include "ShaderCode.hpp"
 #include "ShaderTypes.hpp"
-
+#include "Constants.hpp"
 ShaderStandard::ShaderStandard(){
     // Declare attributes used in shader
     attributes.emplace(std::make_pair("position", std::make_pair(false, 0)));
@@ -138,7 +138,10 @@ ShaderCode ShaderStandard::ProcessCode(){
     // Light color - fragment shader
     // Light position - vertex shader (when used with tangent space version) or fragment shader
     // View position - vertex shader (when used with tangent space version) or fragment shader
-    std::string maxObjectsGroupString = std::to_string(RenderCapabilities::GetMaxUBOSize()/64);
+    size_t maxSize = 65536;
+    std::string maxObjectsGroupString = std::to_string(
+        glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::maxObjectsToGroup)
+    );
     code.SetVersion(RenderCapabilities::GetGLSLVersion());
     // Enable shader stages to pipeline
     code.SetStageToPipeline(ShaderStage::Vertex, true);
@@ -168,9 +171,7 @@ ShaderCode ShaderStandard::ProcessCode(){
     if(texCoord0Enabled){
         code.AddVertexAttribute("aTexCoord0", ShaderDataType::Float2, texCoord0Location);
         code.AddOutput(ShaderStage::Vertex, "aTexCoord0Out", ShaderDataType::Float2);
-        texCoord0OutSetting += "aTexCoord0Out = aTexCoord0 * texCoord0Scales[objID].xy;\n";
-        code.CreateUniformBlock(ShaderStage::Vertex, "texCoord0ScalesUBO", "vec4 texCoord0Scales[" + maxObjectsGroupString + "];"); // UBO Scalings for tex coords 0
-        code.SetBindingPurpose(ShaderStage::Vertex, "texCoord0ScalesUBO", "texCoord0Scales");
+        texCoord0OutSetting += "aTexCoord0Out = aTexCoord0;\n";
     }
     if(normalEnabled){
         code.AddVertexAttribute("aNormal", ShaderDataType::Float3, normalLocation);
@@ -249,7 +250,9 @@ ShaderCode ShaderStandard::ProcessCode(){
                     if(!texCoord0Enabled)
                         return ShaderCode();
                     code.AddMaterialMapArray(ShaderStage::Fragment, "normalMap");
-                    normalString = "vec3 normal = texture(normalMap, vec3(aTexCoord0Out, objID)).rgb;\n";
+                    code.CreateUniformBlock(ShaderStage::Fragment, "normalMapIndicesUBO", "ivec4 normalMapIndices[" + maxObjectsGroupString + "];"); // UBO normal map indices
+                    code.SetBindingPurpose(ShaderStage::Fragment, "normalMapIndicesUBO", "normalMapIndices");
+                    normalString = "vec3 normal = texture(normalMap, vec3(aTexCoord0Out, normalMapIndices[objID].x)).rgb;\n";
                     normalString += "normal = normalize(normal * 2.0 - 1.0);\n"; // Tangent space normal
                 }
             } else { // Use world space to do lighting calculations
@@ -271,7 +274,9 @@ ShaderCode ShaderStandard::ProcessCode(){
             specularString += "float spec = pow(max(dot(normal, halfwayDir), 0.0), 16.0);\n";
             if(specularMapActivated){
                 code.AddMaterialMapArray(ShaderStage::Fragment, "specularMap");
-                specularString += "vec3 specular = spec * texture(specularMap, vec3(aTexCoord0Out, objID)).rgb * lightColor;\n";
+                code.CreateUniformBlock(ShaderStage::Fragment, "specularMapIndicesUBO", "ivec4 specularMapIndices[" + maxObjectsGroupString + "];"); // UBO specular map indices
+                code.SetBindingPurpose(ShaderStage::Fragment, "specularMapIndicesUBO", "specularMapIndices");
+                specularString += "vec3 specular = spec * texture(specularMap, vec3(aTexCoord0Out, specularMapIndices[objID].x)).rgb * lightColor;\n";
             } else {
                 specularString += "vec3 specular = vec3(0.2) * spec;\n";
             }
@@ -287,9 +292,10 @@ ShaderCode ShaderStandard::ProcessCode(){
     }
     std::string vertexMainString;
     vertexMainString += objIDOutSetString;
-    vertexMainString += texCoord0OutSetting;
+    vertexMainString += fragPosSetting;
     vertexMainString += normalMatrixString;
     vertexMainString += normalOutSetString;
+    vertexMainString += texCoord0OutSetting;
     vertexMainString += tbnCalcString;
     vertexMainString += lightOutSetString;
     vertexMainString += glPositionString;

@@ -45,6 +45,7 @@ public:
     std::optional<glm::vec4> GetParameterVector4(const std::string &name);
     std::vector<std::pair<std::string, MaterialParameter>> GetParameters() const;
     std::vector<std::pair<std::string, MaterialParameter>> GetMapParameters() const;
+    std::vector<std::pair<std::string, MaterialParameter>> GetActivatedMapParameters() const;
     const std::vector<std::pair<std::string, bool>> &GetFlags();
     std::vector<std::pair<std::string, MaterialParameter>> GetFloatParameters() const;
     std::vector<std::pair<std::string, MaterialParameter>> GetBooleanParameters() const;

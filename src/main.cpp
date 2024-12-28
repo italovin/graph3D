@@ -11,9 +11,9 @@
 #include "ShaderStandard.hpp"
 #include "ShaderCode.hpp"
 #include "Input.hpp"
+#include "Model.hpp"
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
@@ -42,10 +42,10 @@ int main(int argc, const char *argv[])
 
     /* Make the window's context current */
     window.MakeContextCurrent();
+
     Input::RegisterWindow(window);
     // Initialize the renderer API info
     RenderCapabilities::Initialize();
-
     std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << RenderCapabilities::GetMaxUBOSize() << " bytes." << std::endl;
     std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << RenderCapabilities::GetMaxTextureArrayLayers() << std::endl;
     std::cout << "GL_MAX_TEXTURE_UNITS is " << RenderCapabilities::GetMaxTextureImageUnits() << std::endl;
@@ -474,28 +474,53 @@ int main(int argc, const char *argv[])
     quad2.AddComponent<MeshRendererComponent>(mesh, materialTestRed);
     quad2.GetComponent<TransformComponent>().position = glm::vec3(0, -1, 0);
 
-    for(int i = 0; i < 100000; i++){
-        Entity newEnt = mainScene.CreateEntity();
-        newEnt.AddComponent<MeshRendererComponent>(mesh, materialTest);
-        newEnt.GetComponent<TransformComponent>().position = glm::vec3(0, 0, -i/25.0f);
-    }
     graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
     graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
-    model1.AddComponent<MeshRendererComponent>(model1Mesh, model1Material);
-    model1.GetComponent<TransformComponent>().position = glm::vec3(-2, 0, 0);
-    model2.AddComponent<MeshRendererComponent>(model2Mesh, model2Material);
-    model2.GetComponent<TransformComponent>().position = glm::vec3(2, 0, 0);
-    model3.AddComponent<MeshRendererComponent>(model3Mesh, model3Material);
-    model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
-    model3.transform.scale = glm::vec3(0.2f, 0.2f, 0.2f);
+    // model1.AddComponent<MeshRendererComponent>(model1Mesh, model1Material);
+    // model1.GetComponent<TransformComponent>().position = glm::vec3(-2, 0, 0);
+    // model2.AddComponent<MeshRendererComponent>(model2Mesh, model2Material);
+    // model2.GetComponent<TransformComponent>().position = glm::vec3(2, 0, 0);
+    // model3.AddComponent<MeshRendererComponent>(model3Mesh, model3Material);
+    // model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
+    // model3.transform.scale = glm::vec3(0.2f, 0.2f, 0.2f);
+
+
+    Model sponzaModel = Model();
+    {
+        auto begin = std::chrono::high_resolution_clock::now();
+        if(sponzaModel.Load(std::filesystem::path("../resources/modelos/sponza/Sponza.gltf").generic_string(), shaderStandard)){
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Time to load 'Sponza' model: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() << " (ms)\n";
+        }
+    }
+    
+    for(auto &component : sponzaModel.GetComponents()){
+        Entity ent = mainScene.CreateEntity();
+        ent.AddComponent<MeshRendererComponent>(component.first.mesh.object, component.first.material.object);
+        ent.transform = component.second;
+    }
+
+    Model porscheModel = Model();
+    {
+        auto begin = std::chrono::high_resolution_clock::now();
+        if(porscheModel.Load(std::filesystem::path("../resources/modelos/porsche/scene.gltf").generic_string(), shaderStandard)){
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Time to load 'Porsche' model: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() << " (ms)\n";
+        }
+    }
+
+    for(auto &component : porscheModel.GetComponents()){
+        Entity ent = mainScene.CreateEntity();
+        ent.AddComponent<MeshRendererComponent>(component.first.mesh.object, component.first.material.object);
+        ent.transform = component.second;
+    }
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
     mainLight.AddComponent<LightComponent>().color = glm::vec3(1, 1, 1);
-    mainLight.transform.position = glm::vec3(0, 0, 1);
+    mainLight.transform.position = glm::vec3(3, 3, 0);
     Renderer mainRenderer = Renderer();
-
     mainRenderer.SetMainWindow(std::addressof(window));
     double initialRendererTime = glfwGetTime();
     mainRenderer.Start(mainScene.registry);
@@ -581,15 +606,15 @@ int main(int argc, const char *argv[])
         if (Input::GetKeyDown(GLFW_KEY_T)){
             isFreeCamera = !isFreeCamera;
         }
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        /* Render here */
-
+        mainLight.transform.position = glm::vec3(3*glm::cos(time), 3, 3*glm::sin(time));
         //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
 
         graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
         graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
         model2.transform.eulerAngles(glm::vec3(30*time, -30*time, 0));
         model3.transform.eulerAngles(glm::vec3(-30*time, 30*time, 0));
+        /* Render here */
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mainRenderer.Update(mainScene.registry, deltaTime);
         /* Swap front and back buffers */

@@ -20,7 +20,7 @@ Material::Material(Ref<Shader> shader)
         AddParameter(materialMap.first, matParameter);
     }
     auto materialFlags = this->shader->GetFlags();
-    for(auto &materialFlag : materialFlags){
+    for(const auto &materialFlag : materialFlags){
         flags.push_back(materialFlag);
     }
     // for(auto &&parameter : materialParameters){
@@ -189,6 +189,18 @@ std::vector<std::pair<std::string, MaterialParameter>> Material::GetMapParameter
         }
     }
     return mapParameters;
+}
+
+std::vector<std::pair<std::string, MaterialParameter>> Material::GetActivatedMapParameters() const{
+    std::vector<std::pair<std::string, MaterialParameter>> activatedMapParameters;
+    for(auto &&parameter : this->parameters){
+        if(parameter.second.type == MaterialParameterType::Map){
+            Ref<Texture> tex = std::get<Ref<Texture>>(parameter.second.data);
+            if(tex) // If exists (activated)
+                activatedMapParameters.emplace_back(parameter.first, parameter.second);
+        }
+    }
+    return activatedMapParameters;
 }
 
 const std::vector<std::pair<std::string, bool>> &Material::GetFlags(){

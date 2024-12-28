@@ -40,24 +40,11 @@ GLuint GL::ObjectGL::GetHandle() const{
 
 // TextureGL
 
-GL::TextureGL::TextureGL(GLenum textureType, GLenum format, GLenum dataType){
+GL::TextureGL::TextureGL(GLenum textureType){
     this->textureType = textureType;
-    this->format = format;
-    this->dataType = dataType;
-    this->internalFormat = GL_RGB8;
-    if(format == GL_RGB){
-        if(dataType == GL_UNSIGNED_BYTE){
-            internalFormat = GL_RGB8;
-        } else if(dataType == GL_FLOAT){
-            internalFormat = GL_RGB32F;
-        }
-    } else if(format == GL_RGBA){
-        if(dataType == GL_UNSIGNED_BYTE){
-            internalFormat = GL_RGBA8;
-        } else if(dataType == GL_FLOAT){
-            internalFormat = GL_RGBA32F;
-        }
-    }
+    // Internal format support for 16 bit and 32 bit float is not done yet
+    this->internalFormat = GL_RGBA8;
+
     glCreateTextures(textureType, 1, &this->handle);
 }
 
@@ -68,50 +55,58 @@ void GL::TextureGL::Bind(int texUnit){
 void GL::TextureGL::SetupParameters(){
     glTextureParameteri(this->handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
     glTextureParameteri(this->handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-    glTextureParameteri(this->handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(this->handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
     glTextureParameteri(this->handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
-void GL::TextureGL::SetupStorage2D(size_t width, size_t height){
-    glTextureStorage2D(this->handle, 1, internalFormat, width, height);
+void GL::TextureGL::SetupStorage2D(GLsizei width, GLsizei height){
+    this->width = width;
+    this->height = height;
+    glTextureStorage2D(this->handle, 1, this->internalFormat, width, height);
 }
 
-void GL::TextureGL::SetupStorage3D(size_t width, size_t height, int layers){
-    glTextureStorage3D(this->handle, 1, internalFormat, width, height, layers);
+void GL::TextureGL::SetupStorage3D(GLsizei width, GLsizei height, int layers){
+    this->width = width;
+    this->height = height;
+    // Test mipmaps levels later
+    //GLsizei levels = static_cast<int>(std::floor(std::log2(glm::max(width, height)))) + 1;
+    //this->levels = levels;
+    glTextureStorage3D(this->handle, levels, this->internalFormat, width, height, layers);
 }
 
-void GL::TextureGL::PushData2D(size_t width, size_t height, const std::vector<GLubyte> &pixels){
-    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, dataType, pixels.data());
+void GL::TextureGL::PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLubyte> &pixels){
+    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, pixels.data());
 }
 
-void GL::TextureGL::PushData2D(size_t width, size_t height, const std::vector<GLfloat> &pixels){
-    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, dataType, pixels.data());
+void GL::TextureGL::PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLfloat> &pixels){
+    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, GL_FLOAT, pixels.data());
 }
 
-void GL::TextureGL::PushData3D(size_t width, size_t height, const std::vector<std::vector<GLubyte>> &pixels){
+void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLubyte>> &pixels){
     int layers = pixels.size();
     for(int i = 0; i < layers; i++){
-        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, dataType, pixels[i].data());
+        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_UNSIGNED_BYTE, pixels[i].data());
     }
 }
 
-void GL::TextureGL::PushData3D(size_t width, size_t height, const std::vector<std::vector<GLfloat>> &pixels){
+void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLfloat>> &pixels){
     int layers = pixels.size();
     for(int i = 0; i < layers; i++){
-        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, dataType, pixels[i].data());
+        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_FLOAT, pixels[i].data());
     }
 }
 
-void GL::TextureGL::PushData3DLayer(size_t width, size_t height, int layer, const std::vector<GLubyte> &pixels){
-    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, dataType, pixels.data());
+void GL::TextureGL::PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLubyte> &pixels){
+    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, GL_UNSIGNED_BYTE, pixels.data());
 }
 
-void GL::TextureGL::PushData3DLayer(size_t width, size_t height, int layer, const std::vector<GLfloat> &pixels){
-    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, dataType, pixels.data());
+void GL::TextureGL::PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLfloat> &pixels){
+    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, GL_FLOAT, pixels.data());
 }
 
-void GL::TextureGL::GenerateMipmap(){
-    glGenerateTextureMipmap(this->handle);
+void GL::TextureGL::GenerateMipmaps(){
+    if(levels > 1) // Levels needs to be greater than 1 to generate mipmaps
+        glGenerateTextureMipmap(this->handle);
 }
 
 void GL::TextureGL::Release(){

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 17)
 project(graph3D)
 if(MINGW OR LINUX)
-	add_compile_options(-mavx -mtune=native -O2 -g -Wall -Wpedantic)
+	add_compile_options(-mavx -mtune=native -O2 -g -Wall -Wextra -Wpedantic)
 endif()
 if(MSVC)
 	add_compile_options(-O2)
@@ -14,17 +14,19 @@ src/GLObjects.cpp
 src/Input.cpp
 src/Material.cpp
 src/Mesh.cpp
+src/Model.cpp
 src/RenderCapabilities.cpp
 src/Renderer.cpp
 src/Scene.cpp
 src/Shader.cpp
 src/ShaderCode.cpp
 src/ShaderStandard.cpp
+src/stb_image_impl.cpp
 src/Texture.cpp
 src/Window.cpp
 )
 if(LINUX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE GLEW glfw GL)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GLEW glfw GL assimp)
 endif()
 
 if(MINGW)
@@ -89,6 +91,7 @@ if(MINGW)
     IMPORTED_LOCATION ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll
     INTERFACE_INCLUDE_DIRECTORIES ${assimp_SOURCE_DIR}/ucrt64/include
     )
+    target_include_directories(${PROJECT_NAME} PRIVATE ${assimp_SOURCE_DIR}/ucrt64/include)
 
     find_library(STDCXX_LIB stdc++)
     get_filename_component(STDCXX_LIB_DIR ${STDCXX_LIB} PATH)
@@ -116,7 +119,7 @@ if(MINGW)
             ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll 
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
-    target_link_libraries(${PROJECT_NAME} PRIVATE glew::glew glfw3::glfw3 opengl32 tbb::tbb assimp::assimp)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glfw3::glfw3 glew::glew opengl32 tbb::tbb assimp::assimp z minizip)
     
     # Install portable build
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/portable)

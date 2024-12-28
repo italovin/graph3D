@@ -18,28 +18,29 @@ namespace GL{
         ObjectGL &operator=(const ObjectGL &) = delete;
         ObjectGL(ObjectGL &&other);
         ObjectGL &operator=(ObjectGL &&other);
-        ~ObjectGL();
+        virtual ~ObjectGL();
         GLuint GetHandle() const;
     };
     class TextureGL: public ObjectGL {
     private:
         GLenum textureType;
-        GLenum format;
-        GLenum dataType;
         GLenum internalFormat;
+        GLsizei width = 0;
+        GLsizei height = 0;
+        GLsizei levels = 1;
     public:
-        TextureGL(GLenum textureType, GLenum format, GLenum dataType);
+        TextureGL(GLenum textureType);
         void Bind(int texUnit);
         void SetupParameters();
-        void SetupStorage2D(size_t width, size_t height);
-        void SetupStorage3D(size_t width, size_t height, int layers);
-        void PushData2D(size_t width, size_t height, const std::vector<GLubyte> &pixels);
-        void PushData2D(size_t width, size_t height, const std::vector<GLfloat> &pixels);
-        void PushData3D(size_t width, size_t height, const std::vector<std::vector<GLubyte>> &pixels);
-        void PushData3D(size_t width, size_t height, const std::vector<std::vector<GLfloat>> &pixels);
-        void PushData3DLayer(size_t width, size_t height, int layer, const std::vector<GLubyte> &pixels);
-        void PushData3DLayer(size_t width, size_t height, int layer, const std::vector<GLfloat> &pixels);
-        void GenerateMipmap();
+        void SetupStorage2D(GLsizei width, GLsizei height);
+        void SetupStorage3D(GLsizei width, GLsizei height, int layers);
+        void PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLubyte> &pixels);
+        void PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLfloat> &pixels);
+        void PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLubyte>> &pixels);
+        void PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLfloat>> &pixels);
+        void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLubyte> &pixels);
+        void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLfloat> &pixels);
+        void GenerateMipmaps();
         void Release() override;
     };
 
