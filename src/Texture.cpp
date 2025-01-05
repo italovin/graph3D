@@ -88,13 +88,20 @@ size_t Texture::GetHeight() const{
 }
 
 int Texture::GetChannelsCount() const{
-    auto format = this->pixels.sizedFormat;
-    if(format == TextureSizedInternalFormat::RGB8 || format == TextureSizedInternalFormat::RGB32F){
-        return 3;
-    } else if(format == TextureSizedInternalFormat::RGBA8 || format == TextureSizedInternalFormat::RGBA32F){
-        return 4;
-    } else {
-        return 3;
+    switch(pixels.format){
+        case TextureFormat::RGB: return 3;
+        case TextureFormat::RGBA: return 4;
+        case TextureFormat::RED: return 1;
+        default: return 3;
+    }
+}
+
+GLenum Texture::GetFormatGLenum(TextureFormat format){
+    switch(format){
+        case TextureFormat::RGB: return GL_RGB;
+        case TextureFormat::RGBA: return GL_RGBA;
+        case TextureFormat::RED: return GL_RED;
+        default: return GL_RGB;
     }
 }
 
@@ -107,12 +114,7 @@ GLenum Texture::GetPixelDataTypeGLenum() const{
 }
 
 GLenum Texture::GetFormatGLenum() const{
-    switch(pixels.format){
-        case TextureFormat::RGB: return GL_RGB;
-        case TextureFormat::RGBA: return GL_RGBA;
-        case TextureFormat::RED: return GL_RED;
-        default: return GL_RGB;
-    }
+    return GetFormatGLenum(pixels.format);
 }
 
 GLenum Texture::GetSizedFormatGLenum() const

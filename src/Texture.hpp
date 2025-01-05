@@ -5,11 +5,11 @@
 #include <variant>
 
 enum class TextureFormat{
-    RGB, RGBA, RED
+    RGB, RGBA, RED, None
 };
 
 enum class TextureSizedInternalFormat{
-    RGB8, RGBA8, R8, RGB32F, RGBA32F, R32F
+    RGB8, RGBA8, R8, RGB32F, RGBA32F, R32F, None
 };
 
 enum class TexturePixelDataType{
@@ -41,6 +41,7 @@ public:
     size_t GetWidth() const;
     size_t GetHeight() const;
     int GetChannelsCount() const;
+    static GLenum GetFormatGLenum(TextureFormat format);
     GLenum GetPixelDataTypeGLenum() const;
     GLenum GetFormatGLenum() const;
     GLenum GetSizedFormatGLenum() const;

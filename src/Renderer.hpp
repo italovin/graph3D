@@ -43,7 +43,7 @@ public:
     template<typename T>
     void setMember(size_t structIndex, const std::string& memberName, const T& value);
 
-    std::vector<char> &GetData();
+    const std::vector<char> &GetData() const;
 };
 class Renderer : public System{
 private:
@@ -105,6 +105,23 @@ private:
             return instancesGroups;
         }
     };
+    // Temporary storage for render groups
+    struct RenderGroupBuffers{
+        std::vector<MeshAttributeData> attributesData;
+        MeshLayout meshLayout;
+        MeshIndexData indicesData;
+        StructArray materialStructArray;
+        GLenum mode; // Equivalent to Topology
+        GLenum indicesType; // Equivalent to mesh indices data type
+        MeshIndexType indicesTypeEnum;
+        int indicesTypeSize = 0;
+        int objectsCount = 0;
+        // For indirect drawing
+        std::vector<DrawElementsIndirectCommand> commands;
+        // For non indirect drawing
+        BatchGroup batchGroup;
+        std::vector<InstanceGroup> instancesGroups;
+    };
     struct RenderGroup{
         GL::VertexArrayGL vao;
         Ref<GL::ShaderGL> shader; // Needs to use a shared reference because somes render groups may
@@ -156,7 +173,8 @@ private:
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
     void SetDrawFunction();
-    void BuildRenderGroup(RenderGroup &renderGroup, const ShaderGroup &shaderGroup);
+    void BuildRenderGroupBuffers(RenderGroupBuffers &renderGroupBuffers, const ShaderGroup &shaderGroup);
+    void BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffers &renderGroupBuffers, const ShaderGroup &shaderGroup);
     //Defaulft drawing is direct type
     bool isIndirect = false;
     void (Renderer::*DrawFunction)(RenderGroup&) = &Renderer::DrawFunctionNonIndirect;

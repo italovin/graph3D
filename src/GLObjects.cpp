@@ -1,7 +1,6 @@
 #include "GLObjects.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include <fstream>
-#include "Resource.hpp"
 
 void GL::ObjectGL::Release(){
     // GL call to delete resource
@@ -94,6 +93,9 @@ void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, GLenum format, con
     for(int i = 0; i < layers; i++){
         glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_FLOAT, pixels[i].data());
     }
+}
+void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, int layers, GLenum format, const std::vector<GLubyte> &pixels){
+    glTextureSubImage3D(this->handle, 0, 0, 0, 0, width, height, layers, format, GL_UNSIGNED_BYTE, pixels.data());
 }
 
 void GL::TextureGL::PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLubyte> &pixels){

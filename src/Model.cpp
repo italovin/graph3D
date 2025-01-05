@@ -23,7 +23,7 @@ void Model::processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4 &p
         glm::quat rotation = glm::quat(aiRotation.w, aiRotation.x, aiRotation.y, aiRotation.z);
         glm::vec3 scale = glm::vec3(aiScaling.x, aiScaling.y, aiScaling.z);
         TransformComponent transform(position, rotation, scale);
-        
+
         components.emplace_back(MeshRendererComponent(myMesh, myMaterial), transform);
     }
 
@@ -47,7 +47,7 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     size_t verticesVec2Size = 2 * mesh->mNumVertices;
     size_t verticesVec3Size = 3 * mesh->mNumVertices;
     size_t verticesVec4Size = 4 * mesh->mNumVertices;
-    
+
     bool hasNormals = mesh->HasNormals();
     bool hasTexCoords0 = mesh->HasTextureCoords(0);
     bool hasTangentsAndBitangents = mesh->HasTangentsAndBitangents();
@@ -57,7 +57,7 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     vertices.resize(verticesVec3Size);
     if(hasNormals)
         normals.resize(verticesVec3Size);
-    
+
     texCoords0.resize(verticesVec2Size);
 
     if(hasTangentsAndBitangents){
@@ -86,7 +86,7 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
             normals[normalIndex + 1] = mesh->mNormals[i].y;
             normals[normalIndex + 2] = mesh->mNormals[i].z;
         }
-            
+
         if (hasTexCoords0){
             texCoords0[texCoordIndex] = mesh->mTextureCoords[0][i].x;
             texCoords0[texCoordIndex + 1] = mesh->mTextureCoords[0][i].y;
@@ -157,7 +157,7 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
      if (material->GetTextureCount(type) > 0) {
         aiString str;
         material->GetTexture(type, 0, &str);
-        textureFileName = std::string(str.C_Str());       
+        textureFileName = std::string(str.C_Str());
     }
     if(textureFileName.empty()){
         return Ref<Texture>(nullptr);
@@ -165,54 +165,49 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
     if(loadedTextures.find(textureFileName) != loadedTextures.end()){
         return loadedTextures[textureFileName]; // Texture already loaded
     } else { // Texture not loaded
-        if(textureFileName[0] == '*'){ // Embedded texture
-            int textureIndex = std::stoi(textureFileName.substr(1));
-            const aiTexture* texture = scene->mTextures[textureIndex];
+        {
+            const aiTexture* texture = scene->GetEmbeddedTexture(textureFileName.c_str());
+            if(texture){ // Embedded texture
+                // A textura é embutida, use os dados da textura
+                int width = texture->mWidth;   // largura
+                int height = texture->mHeight;  // altura
+                int nrComponents = 0; // você pode precisar de mais lógica para obter os canais
 
-            if(!texture){
-                std::cerr << "Erro ao carregar textura embutida.\n";
-                return Ref<Texture>(nullptr);
-            }
-             
-            // A textura é embutida, use os dados da textura
-            int width = texture->mWidth;   // largura
-            int height = texture->mHeight;  // altura
-            int nrComponents = 0; // você pode precisar de mais lógica para obter os canais
+                // Verifica se os dados da textura estão disponíveis
+                if (texture->mHeight == 0) { // Indica que a textura é compactada
+                    const void* data = texture->pcData;
+                    int dataSize = texture->mWidth; // Verifique se essa é a forma correta de obter o tamanho
 
-            // Verifica se os dados da textura estão disponíveis
-            if (texture->mHeight == 0) { // Indica que a textura é compactada
-                const void* data = texture->pcData;
-                int dataSize = texture->mWidth; // Verifique se essa é a forma correta de obter o tamanho
+                    unsigned char* imageData = stbi_load_from_memory(
+                        reinterpret_cast<const unsigned char*>(data),
+                        dataSize, // Isso deve ser o tamanho real dos dados binários
+                        &width, &height, &nrComponents, 0 // channels será preenchido por stb_image
+                    );
 
-                unsigned char* imageData = stbi_load_from_memory(
-                    reinterpret_cast<const unsigned char*>(data),
-                    dataSize, // Isso deve ser o tamanho real dos dados binários
-                    &width, &height, &nrComponents, 0 // channels será preenchido por stb_image
-                );
+                    if (imageData) {
+                        Ref<Texture> textureRef = SetupTexture(imageData, width, height, nrComponents);
+                        loadedTextures[textureFileName] = textureRef;
+                        stbi_image_free(imageData);
+                        return textureRef;
+                    } else {
+                        std::cerr << "Erro ao carregar textura embutida.\n";
+                        return Ref<Texture>(nullptr);
+                    }
+                } else { // A textura não é compactada
+                    nrComponents = 4; // pcData has 4 channels
+                    const unsigned char* data = reinterpret_cast<const unsigned char*>(texture->pcData);
+                    std::vector<unsigned char> rgbaData(width * height * 4);
 
-                if (imageData) {
-                    Ref<Texture> textureRef = SetupTexture(imageData, width, height, nrComponents);
+                    for (int i = 0; i < width * height; ++i) {
+                        rgbaData[i * 4 + 0] = data[i * 4 + 1]; // Red
+                        rgbaData[i * 4 + 1] = data[i * 4 + 2]; // Green
+                        rgbaData[i * 4 + 2] = data[i * 4 + 3]; // Blue
+                        rgbaData[i * 4 + 3] = data[i * 4 + 0]; // Alpha
+                    }
+                    Ref<Texture> textureRef = SetupTexture(rgbaData.data(), width, height, nrComponents);
                     loadedTextures[textureFileName] = textureRef;
-                    stbi_image_free(imageData);
                     return textureRef;
-                } else {
-                    std::cerr << "Erro ao carregar textura embutida.\n";
-                    return Ref<Texture>(nullptr);
                 }
-            } else { // A textura não é compactada
-                nrComponents = 4; // pcData has 4 channels
-                const unsigned char* data = reinterpret_cast<const unsigned char*>(texture->pcData);
-                std::vector<unsigned char> rgbaData(width * height * 4);
-
-                for (int i = 0; i < width * height; ++i) {
-                    rgbaData[i * 4 + 0] = data[i * 4 + 1]; // Red
-                    rgbaData[i * 4 + 1] = data[i * 4 + 2]; // Green
-                    rgbaData[i * 4 + 2] = data[i * 4 + 3]; // Blue
-                    rgbaData[i * 4 + 3] = data[i * 4 + 0]; // Alpha
-                }
-                Ref<Texture> textureRef = SetupTexture(rgbaData.data(), width, height, nrComponents);
-                loadedTextures[textureFileName] = textureRef;
-                return textureRef;
             }
         }
         // Not embedded texture
@@ -251,20 +246,23 @@ Ref<Texture> Model::SetupTexture(unsigned char *data, int width, int height, int
     return texture;
 }
 
-bool Model::Load(const std::string &path, Ref<ShaderStandard> defaultShader, bool useLighting)
+bool Model::Load(const std::string &path, Ref<ShaderStandard> defaultShader, bool useLighting, bool flipUVs)
 {
     this->defaultShader = defaultShader;
     this->useLighting = useLighting;
     Assimp::Importer importer;
-
+    
+    unsigned int flags = aiProcess_Triangulate |
+        aiProcess_MakeLeftHanded |
+        aiProcess_GenSmoothNormals |
+        aiProcess_CalcTangentSpace |
+        aiProcess_JoinIdenticalVertices;
+    if(flipUVs)
+        flags |= aiProcess_FlipUVs;
     // Carrega o modelo com pós-processamento
     const aiScene* scene = importer.ReadFile(
         path,
-        aiProcess_Triangulate |         // Garante que todas as faces são triângulos
-        aiProcess_GenSmoothNormals |    // Gera normais suaves
-        aiProcess_FlipUVs |            // Inverte coordenadas UV
-        aiProcess_CalcTangentSpace |   // Calcula tangentes e bitangentes
-        aiProcess_JoinIdenticalVertices // Une vértices duplicados
+        flags
     );
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {

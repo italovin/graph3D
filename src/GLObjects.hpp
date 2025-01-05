@@ -38,6 +38,8 @@ namespace GL{
         void PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLfloat> &pixels);
         void PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLubyte>> &pixels);
         void PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLfloat>> &pixels);
+        // Single upload all layers for a 3D texture or texture array
+        void PushData3D(GLsizei width, GLsizei height, int layers, GLenum format, const std::vector<GLubyte> &pixels);
         void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLubyte> &pixels);
         void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLfloat> &pixels);
         void GenerateMipmaps();

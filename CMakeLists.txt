@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 project(graph3D)
 if(MINGW OR LINUX)
@@ -26,7 +27,7 @@ src/Texture.cpp
 src/Window.cpp
 )
 if(LINUX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE GLEW glfw GL assimp)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GLEW glfw GL tbb assimp)
 endif()
 
 if(MINGW)
@@ -98,29 +99,29 @@ if(MINGW)
     cmake_path(GET STDCXX_LIB PARENT_PATH SYS_LIB_PATH)
     set(SYS_BIN_PATH ${SYS_LIB_PATH}/../bin)
 
-    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS ${SYS_BIN_PATH}/libstdc++-6.dll 
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS ${SYS_BIN_PATH}/libstdc++-6.dll
     ${SYS_BIN_PATH}/libgcc_s_seh-1.dll ${SYS_BIN_PATH}/libwinpthread-1.dll)
 
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy 
-            ${glfw3_SOURCE_DIR}/lib-mingw-w64/glfw3.dll 
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${glfw3_SOURCE_DIR}/lib-mingw-w64/glfw3.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        COMMAND ${CMAKE_COMMAND} -E copy 
-            ${glew_SOURCE_DIR}/mingw64/bin/glew32.dll 
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${glew_SOURCE_DIR}/mingw64/bin/glew32.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        COMMAND ${CMAKE_COMMAND} -E copy 
-            ${tbb_SOURCE_DIR}/ucrt64/bin/libtbb12.dll 
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${tbb_SOURCE_DIR}/ucrt64/bin/libtbb12.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        COMMAND ${CMAKE_COMMAND} -E copy 
-            ${tbb_SOURCE_DIR}/ucrt64/bin/libtbbmalloc.dll 
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${tbb_SOURCE_DIR}/ucrt64/bin/libtbbmalloc.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        COMMAND ${CMAKE_COMMAND} -E copy 
-            ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll 
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
     target_link_libraries(${PROJECT_NAME} PRIVATE glfw3::glfw3 glew::glew opengl32 tbb::tbb assimp::assimp z minizip)
-    
+
     # Install portable build
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/portable)
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
@@ -158,17 +159,17 @@ include(FetchContent)
     IMPORTED_LOCATION ${glew_SOURCE_DIR}/bin/Release/x64/glew32.dll
     INTERFACE_INCLUDE_DIRECTORIES ${glew_SOURCE_DIR}/include
     )
-    
+
     find_library(STDCXX_LIB stdc++)
     get_filename_component(STDCXX_LIB_DIR ${STDCXX_LIB} PATH)
     cmake_path(GET STDCXX_LIB PARENT_PATH SYS_LIB_PATH)
     set(SYS_BIN_PATH ${SYS_LIB_PATH}/../bin)
 
-    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS ${SYS_BIN_PATH}/libstdc++-6.dll 
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS ${SYS_BIN_PATH}/libstdc++-6.dll
     ${SYS_BIN_PATH}/libgcc_s_seh-1.dll ${SYS_BIN_PATH}/libwinpthread-1.dll)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE glew::glew glfw3::glfw3 opengl32)
-    
+
     # Install portable build
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/portable)
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)

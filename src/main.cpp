@@ -15,7 +15,7 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #include <stb/stb_image.h>
-
+#include <tbb/parallel_for.h>
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
 int main(int argc, const char *argv[])
@@ -66,6 +66,8 @@ int main(int argc, const char *argv[])
 
 
     const int glslVersion = RenderCapabilities::GetGLSLVersion();
+
+    stbi_set_flip_vertically_on_load(true);
 
     std::string var1 = "s";
     std::string var2 = "t";
@@ -322,7 +324,6 @@ int main(int argc, const char *argv[])
     shaderCodeTest->AddMaterialVec4ToStruct("Material", ShaderStage::Fragment, "albedo");
     shaderCodeTest->AddMaterialFloatToStruct("Material", ShaderStage::Fragment, "intensity", 1.0f);
 
-    stbi_set_flip_vertically_on_load(true);
     Ref<Texture> defaultTexture;
     {
         int width = 256;
@@ -486,39 +487,37 @@ int main(int argc, const char *argv[])
     // model3.transform.scale = glm::vec3(0.2f, 0.2f, 0.2f);
 
 
-    Model sponzaModel = Model();
-    {
-        auto begin = std::chrono::high_resolution_clock::now();
-        if(sponzaModel.Load(std::filesystem::path("../resources/modelos/sponza/Sponza.gltf").generic_string(), shaderStandard)){
-            auto end = std::chrono::high_resolution_clock::now();
-            std::cout << "Time to load 'Sponza' model: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() << " (ms)\n";
-        }
-    }
-    
-    for(auto &component : sponzaModel.GetComponents()){
-        Entity ent = mainScene.CreateEntity();
-        ent.AddComponent<MeshRendererComponent>(component.first.mesh.object, component.first.material.object);
-        ent.transform = component.second;
-    }
+    // Descriptor of models
+    // FlipUVs is false for default - This is correct if y-axis convention is equal OpenGL
+    // If y-axis convention is opposite of OpenGL, set FlipUVs to true
+    struct ModelDescriptor{
+        std::string path;
+        bool flipUVs = false;
+        ModelDescriptor(const std::string &path):path(path){}
+        ModelDescriptor(const std::string &path, bool flipUVs):path(path), flipUVs(flipUVs){}
+    };
+    std::vector<ModelDescriptor> models;
+    models.emplace_back("../resources/modelos/sponza/Sponza.gltf");
+    models.emplace_back("../resources/modelos/porsche/scene.gltf");
+    models.emplace_back("../resources/modelos/backpack/backpack.obj", true);
 
-    Model porscheModel = Model();
-    {
-        auto begin = std::chrono::high_resolution_clock::now();
-        if(porscheModel.Load(std::filesystem::path("../resources/modelos/porsche/scene.gltf").generic_string(), shaderStandard)){
-            auto end = std::chrono::high_resolution_clock::now();
-            std::cout << "Time to load 'Porsche' model: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() << " (ms)\n";
+    auto loadBegin = std::chrono::high_resolution_clock::now();
+    tbb::parallel_for(0, static_cast<int>(models.size()), [&](int i){
+        Model model = Model();
+        if(!model.Load(models[i].path, shaderStandard, true, models[i].flipUVs))
+            return;
+        for(auto &component : model.GetComponents()){
+            Entity ent = mainScene.CreateEntity();
+            ent.AddComponent<MeshRendererComponent>(component.first.mesh.object, component.first.material.object);
+            ent.transform = component.second;
         }
-    }
-
-    for(auto &component : porscheModel.GetComponents()){
-        Entity ent = mainScene.CreateEntity();
-        ent.AddComponent<MeshRendererComponent>(component.first.mesh.object, component.first.material.object);
-        ent.transform = component.second;
-    }
+    });
+    auto loadEnd = std::chrono::high_resolution_clock::now();
+    std::cout << "Time to load models " << std::chrono::duration_cast<std::chrono::milliseconds>(loadEnd-loadBegin).count() << " (ms)\n";
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
-    mainLight.AddComponent<LightComponent>().color = glm::vec3(1, 1, 1);
+    mainLight.AddComponent<LightComponent>().color = glm::vec3(0.6f, 0.6f, 0.6f);
     mainLight.transform.position = glm::vec3(3, 3, 0);
     Renderer mainRenderer = Renderer();
     mainRenderer.SetMainWindow(std::addressof(window));

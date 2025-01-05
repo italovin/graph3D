@@ -138,7 +138,6 @@ ShaderCode ShaderStandard::ProcessCode(){
     // Light color - fragment shader
     // Light position - vertex shader (when used with tangent space version) or fragment shader
     // View position - vertex shader (when used with tangent space version) or fragment shader
-    size_t maxSize = 65536;
     std::string maxObjectsGroupString = std::to_string(
         glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::maxObjectsToGroup)
     );
