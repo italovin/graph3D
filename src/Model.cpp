@@ -1,6 +1,7 @@
 #include "Model.hpp"
 #include "ShaderStandard.hpp"
 #include <stb/stb_image.h>
+#include <variant>
 
 void Model::processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4 &parentTransform)
 {
@@ -37,12 +38,20 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
 {
     Ref<Mesh> meshData = CreateRef<Mesh>();
     std::vector<float> vertices;
-    std::vector<float> normals;
-    std::vector<float> texCoords0;
-    std::vector<float> tangents;
-    std::vector<float> bitangents;
+    std::vector<short> normals;
+    enum class TexCoordsType{
+        Float, UnsignedShort
+    };
+    TexCoordsType texCoordsType = TexCoordsType::UnsignedShort;
+    std::variant<std::vector<float>, std::vector<unsigned short>> texCoords0;
+    std::vector<short> tangents;
+    std::vector<short> bitangents;
     std::vector<unsigned char> colors;
-    std::vector<unsigned int> indices;
+    enum class IndicesType{
+        UnsignedInt, UnsignedShort
+    };
+    IndicesType indicesType = IndicesType::UnsignedShort;
+    std::variant<std::vector<unsigned int>, std::vector<unsigned short>> indices;
 
     size_t verticesVec2Size = 2 * mesh->mNumVertices;
     size_t verticesVec3Size = 3 * mesh->mNumVertices;
@@ -58,8 +67,6 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     if(hasNormals)
         normals.resize(verticesVec3Size);
 
-    texCoords0.resize(verticesVec2Size);
-
     if(hasTangentsAndBitangents){
         tangents.resize(verticesVec3Size);
         bitangents.resize(verticesVec3Size);
@@ -68,6 +75,45 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     if(hasColors){
         colors.resize(verticesVec4Size);
     }
+    // This is loop check if mesh uses tex coords outside [0, 1] boundary
+    // If this is true, store tex coords as float for correct interpolating on fragment shader
+    for(unsigned int i = 0; i < mesh->mNumVertices; i++){
+        if(std::abs(mesh->mTextureCoords[0][i].x) > 1.0f || std::abs(mesh->mTextureCoords[0][i].y) > 1.0f){
+            texCoordsType = TexCoordsType::Float;
+            break;
+        }
+    }
+    if(texCoordsType == TexCoordsType::UnsignedShort){
+        texCoords0 = std::vector<unsigned short>();
+        std::get<std::vector<unsigned short>>(texCoords0).resize(verticesVec2Size);
+    } else if(texCoordsType == TexCoordsType::Float){
+        texCoords0 = std::vector<float>();
+        std::get<std::vector<float>>(texCoords0).resize(verticesVec2Size);
+    }
+    //////
+
+    // This check if maxIndex <= 65535, allowing to unsigned short for indices
+    unsigned int maxIndex = 0;
+    unsigned int totalNumIndices = 0;
+    // Iterar por todas as faces da malha
+    for (unsigned int i = 0; i < mesh->mNumFaces; ++i) {
+        const aiFace& face = mesh->mFaces[i];
+        totalNumIndices += face.mNumIndices;
+        // Iterar pelos índices da face atual
+        for (unsigned int j = 0; j < face.mNumIndices; ++j) {
+            maxIndex = std::max(maxIndex, face.mIndices[j]);
+        }
+    }
+    if(maxIndex <= 65535){
+        indicesType = IndicesType::UnsignedShort;
+        indices = std::vector<unsigned short>();
+        std::get<std::vector<unsigned short>>(indices).reserve(totalNumIndices);
+    } else {
+        indicesType = IndicesType::UnsignedInt;
+        indices = std::vector<unsigned int>();
+        std::get<std::vector<unsigned int>>(indices).reserve(totalNumIndices);
+    }
+    //////
 
     // Processa os vértices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -82,26 +128,50 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
         vertices[vertexIndex + 2] = mesh->mVertices[i].z;
 
         if(hasNormals){
-            normals[normalIndex] = mesh->mNormals[i].x;
-            normals[normalIndex + 1] = mesh->mNormals[i].y;
-            normals[normalIndex + 2] = mesh->mNormals[i].z;
+            int normalIntX = std::round(mesh->mNormals[i].x * 32768.0f);
+            int normalIntY = std::round(mesh->mNormals[i].y * 32768.0f);
+            int normalIntZ = std::round(mesh->mNormals[i].z * 32768.0f);
+            normals[normalIndex] = static_cast<short>(std::clamp(normalIntX, -32768, 32767));
+            normals[normalIndex + 1] = static_cast<short>(std::clamp(normalIntY, -32768, 32767));
+            normals[normalIndex + 2] = static_cast<short>(std::clamp(normalIntZ, -32768, 32767));
         }
 
         if (hasTexCoords0){
-            texCoords0[texCoordIndex] = mesh->mTextureCoords[0][i].x;
-            texCoords0[texCoordIndex + 1] = mesh->mTextureCoords[0][i].y;
+            float texCoordX = mesh->mTextureCoords[0][i].x;
+            float texCoordY = mesh->mTextureCoords[0][i].y;
+            if(texCoordsType == TexCoordsType::Float){
+                std::get<std::vector<float>>(texCoords0)[texCoordIndex] = texCoordX;
+                std::get<std::vector<float>>(texCoords0)[texCoordIndex + 1] = texCoordY;
+            } else if(texCoordsType == TexCoordsType::UnsignedShort){
+                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex] = 
+                static_cast<unsigned short>(std::round(texCoordX * 65535.0f));
+                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex + 1] = 
+                static_cast<unsigned short>(std::round(texCoordY * 65535.0f));
+            } 
+
         } else {
-            texCoords0[texCoordIndex] = 0.0f;
-            texCoords0[texCoordIndex + 1] = 0.0f;
+            if(texCoordsType == TexCoordsType::Float){
+                std::get<std::vector<float>>(texCoords0)[texCoordIndex] = 0.0f;
+                std::get<std::vector<float>>(texCoords0)[texCoordIndex + 1] = 0.0f;
+            } else if(texCoordsType == TexCoordsType::UnsignedShort){
+                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex] = 0;
+                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex + 1] = 0;
+            }
         }
         if(hasTangentsAndBitangents){
-            tangents[tangentBitangentIndex] = mesh->mTangents[i].x;
-            tangents[tangentBitangentIndex + 1] = mesh->mTangents[i].y;
-            tangents[tangentBitangentIndex + 2] = mesh->mTangents[i].z;
+            int tangentIntX = std::round(mesh->mTangents[i].x * 32768.0f);
+            int tangentIntY = std::round(mesh->mTangents[i].y * 32768.0f);
+            int tangentIntZ = std::round(mesh->mTangents[i].z * 32768.0f);
+            tangents[tangentBitangentIndex] = static_cast<short>(std::clamp(tangentIntX, -32768, 32767));
+            tangents[tangentBitangentIndex + 1] = static_cast<short>(std::clamp(tangentIntY, -32768, 32767));
+            tangents[tangentBitangentIndex + 2] = static_cast<short>(std::clamp(tangentIntZ, -32768, 32767));
 
-            bitangents[tangentBitangentIndex] = mesh->mBitangents[i].x;
-            bitangents[tangentBitangentIndex + 1] = mesh->mBitangents[i].y;
-            bitangents[tangentBitangentIndex + 2] = mesh->mBitangents[i].z;
+            int bitangentIntX = std::round(mesh->mBitangents[i].x * 32768.0f);
+            int bitangentIntY = std::round(mesh->mBitangents[i].y * 32768.0f);
+            int bitangentIntZ = std::round(mesh->mBitangents[i].z * 32768.0f);
+            bitangents[tangentBitangentIndex] = static_cast<short>(std::clamp(bitangentIntX, -32768, 32767));
+            bitangents[tangentBitangentIndex + 1] = static_cast<short>(std::clamp(bitangentIntY, -32768, 32767));
+            bitangents[tangentBitangentIndex + 2] = static_cast<short>(std::clamp(bitangentIntZ, -32768, 32767));
         }
         if(hasColors){
             colors[colorIndex] = mesh->mColors[0][i].r;
@@ -113,14 +183,20 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
 
     // Processa os índices
     for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        aiFace face = mesh->mFaces[i];
+        const aiFace& face = mesh->mFaces[i];
         for (unsigned int j = 0; j < face.mNumIndices; j++) {
-            indices.push_back(face.mIndices[j]);
+            if(indicesType == IndicesType::UnsignedInt)
+                std::get<std::vector<unsigned int>>(indices).push_back(face.mIndices[j]);
+            else if(indicesType == IndicesType::UnsignedShort)
+                std::get<std::vector<unsigned short>>(indices).push_back(face.mIndices[j]);
         }
     }
 
     meshData->PushAttributePosition(vertices);
-    meshData->PushAttributeTexCoord0(texCoords0);
+    if(texCoordsType == TexCoordsType::Float)
+        meshData->PushAttributeTexCoord0(std::get<std::vector<float>>(texCoords0));
+    else if(texCoordsType == TexCoordsType::UnsignedShort)
+        meshData->PushAttributeTexCoord0(std::get<std::vector<unsigned short>>(texCoords0));
     if(hasNormals)
         meshData->PushAttributeNormal(normals);
     if(hasTangentsAndBitangents){
@@ -129,7 +205,10 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     }
     if(hasColors)
         meshData->PushAttributeColor(colors);
-    meshData->SetIndices(indices, MeshTopology::Triangles);
+    if(indicesType == IndicesType::UnsignedInt)
+        meshData->SetIndices(std::get<std::vector<unsigned int>>(indices), MeshTopology::Triangles);
+    else if(indicesType == IndicesType::UnsignedShort)
+        meshData->SetIndices(std::get<std::vector<unsigned short>>(indices), MeshTopology::Triangles);
     return meshData;
 }
 

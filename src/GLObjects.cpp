@@ -52,10 +52,10 @@ void GL::TextureGL::Bind(int texUnit){
 }
 
 void GL::TextureGL::SetupParameters(){
-    glTextureParameteri(this->handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-    glTextureParameteri(this->handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-    glTextureParameteri(this->handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-    glTextureParameteri(this->handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTextureParameteri(this->handle, GL_TEXTURE_WRAP_S, GL_REPEAT );
+    glTextureParameteri(this->handle, GL_TEXTURE_WRAP_T, GL_REPEAT );
+    glTextureParameteri(this->handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTextureParameteri(this->handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
 void GL::TextureGL::SetupStorage2D(GLsizei width, GLsizei height){

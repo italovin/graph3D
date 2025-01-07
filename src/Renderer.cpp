@@ -165,19 +165,19 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             MeshAttributeAlias alias = attribute.alias;
             switch(alias){
                 case MeshAttributeAlias::None: break;
-                case MeshAttributeAlias::Position: shader.EnableAttribPosition(attribute.location); break;
-                case MeshAttributeAlias::TexCoord0:shader.EnableAttribTexCoord_0(attribute.location); break;
-                case MeshAttributeAlias::TexCoord1:shader.EnableAttribTexCoord_1(attribute.location); break;
-                case MeshAttributeAlias::TexCoord2:shader.EnableAttribTexCoord_2(attribute.location); break;
-                case MeshAttributeAlias::TexCoord3:shader.EnableAttribTexCoord_3(attribute.location); break;
-                case MeshAttributeAlias::TexCoord4:shader.EnableAttribTexCoord_4(attribute.location); break;
-                case MeshAttributeAlias::TexCoord5:shader.EnableAttribTexCoord_5(attribute.location); break;
-                case MeshAttributeAlias::TexCoord6:shader.EnableAttribTexCoord_6(attribute.location); break;
-                case MeshAttributeAlias::TexCoord7:shader.EnableAttribTexCoord_7(attribute.location); break;
-                case MeshAttributeAlias::Normal: shader.EnableAttribNormal(attribute.location); break;
-                case MeshAttributeAlias::Tangent:shader.EnableAttribTangent(attribute.location); break;
-                case MeshAttributeAlias::Bitangent:shader.EnableAttribBiTangent(attribute.location); break;
-                case MeshAttributeAlias::Color:shader.EnableAttribColor(attribute.location); break;
+                case MeshAttributeAlias::Position: shader.EnableAttribPosition(attribute); break;
+                case MeshAttributeAlias::TexCoord0:shader.EnableAttribTexCoord_0(attribute); break;
+                case MeshAttributeAlias::TexCoord1:shader.EnableAttribTexCoord_1(attribute); break;
+                case MeshAttributeAlias::TexCoord2:shader.EnableAttribTexCoord_2(attribute); break;
+                case MeshAttributeAlias::TexCoord3:shader.EnableAttribTexCoord_3(attribute); break;
+                case MeshAttributeAlias::TexCoord4:shader.EnableAttribTexCoord_4(attribute); break;
+                case MeshAttributeAlias::TexCoord5:shader.EnableAttribTexCoord_5(attribute); break;
+                case MeshAttributeAlias::TexCoord6:shader.EnableAttribTexCoord_6(attribute); break;
+                case MeshAttributeAlias::TexCoord7:shader.EnableAttribTexCoord_7(attribute); break;
+                case MeshAttributeAlias::Normal: shader.EnableAttribNormal(attribute); break;
+                case MeshAttributeAlias::Tangent:shader.EnableAttribTangent(attribute); break;
+                case MeshAttributeAlias::Bitangent:shader.EnableAttribBiTangent(attribute); break;
+                case MeshAttributeAlias::Color:shader.EnableAttribColor(attribute); break;
             }
         }
         auto materialMaps = material->GetMapParameters();
@@ -198,6 +198,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             if(flag.first == "lighting" && flag.second)
                 shader.ActivateLighting();
         }
+        shader.SetIndexType(mesh->GetIndicesType());
 
         if(shaderModelMap.count(shader) == 0){
             ShaderCode shaderCode = shader.ProcessCode();

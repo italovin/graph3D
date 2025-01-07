@@ -159,7 +159,8 @@ private:
     template <typename T>
     bool PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
     const std::vector<T> &data, bool interpretAsInt, MeshAttributeAlias alias);
-    
+    // Layout can only contains one alias or one attribute purpose
+    bool CheckIfAliasExists(MeshAttributeAlias alias);
 public:
     //~Mesh();
     
@@ -183,17 +184,36 @@ public:
     bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
     // Standard specific attributes push functions
     bool PushAttributePosition(const std::vector<float> &positions);
+    // You can pass a vector of floats or unsigned shorts for tex coordinates
+    // It is assumed that using unsigned shorts the attribute is also normalized
     bool PushAttributeTexCoord0(const std::vector<float> &texCoords0);
+    bool PushAttributeTexCoord0(const std::vector<unsigned short> &texCoords0);
     bool PushAttributeTexCoord1(const std::vector<float> &texCoords1);
+    bool PushAttributeTexCoord1(const std::vector<unsigned short> &texCoords1);
     bool PushAttributeTexCoord2(const std::vector<float> &texCoords2);
+    bool PushAttributeTexCoord2(const std::vector<unsigned short> &texCoords2);
     bool PushAttributeTexCoord3(const std::vector<float> &texCoords3);
+    bool PushAttributeTexCoord3(const std::vector<unsigned short> &texCoords3);
     bool PushAttributeTexCoord4(const std::vector<float> &texCoords4);
+    bool PushAttributeTexCoord4(const std::vector<unsigned short> &texCoords4);
     bool PushAttributeTexCoord5(const std::vector<float> &texCoords5);
+    bool PushAttributeTexCoord5(const std::vector<unsigned short> &texCoords5);
     bool PushAttributeTexCoord6(const std::vector<float> &texCoords6);
+    bool PushAttributeTexCoord6(const std::vector<unsigned short> &texCoords6);
     bool PushAttributeTexCoord7(const std::vector<float> &texCoords7);
+    bool PushAttributeTexCoord7(const std::vector<unsigned short> &texCoords7);
+    // You can pass a vector of floats or shorts for normals
+    // It is assumed that using shorts the attribute is also normalized
     bool PushAttributeNormal(const std::vector<float> &normals);
+    bool PushAttributeNormal(const std::vector<short> &normals);
+    // You can pass a vector of floats or shorts for tangents
+    // It is assumed that using shorts the attribute is also normalized
     bool PushAttributeTangent(const std::vector<float> &tangents);
+    bool PushAttributeTangent(const std::vector<short> &tangents);
+    // You can pass a vector of floats or shorts for bitangents
+    // It is assumed that using shorts the attribute is also normalized
     bool PushAttributeBitangent(const std::vector<float> &bitangents);
+    bool PushAttributeBitangent(const std::vector<short> &bitangents);
     bool PushAttributeColor(const std::vector<unsigned char> &colors);
     int GetAttributesCount() const;
     std::vector<int> GetAttributesSizes() const;

@@ -8,19 +8,19 @@ class ShaderStandard : public Shader {
 public:
     ShaderStandard();
     ~ShaderStandard() override;
-    void EnableAttribPosition(int location);
-    void EnableAttribNormal(int location);
-    void EnableAttribTexCoord_0(int location);
-    void EnableAttribTexCoord_1(int location);
-    void EnableAttribTexCoord_2(int location);
-    void EnableAttribTexCoord_3(int location);
-    void EnableAttribTexCoord_4(int location);
-    void EnableAttribTexCoord_5(int location);
-    void EnableAttribTexCoord_6(int location);
-    void EnableAttribTexCoord_7(int location);
-    void EnableAttribTangent(int location);
-    void EnableAttribBiTangent(int location);
-    void EnableAttribColor(int location);
+    void EnableAttribPosition(const MeshAttribute &attributeInfo);
+    void EnableAttribNormal(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_0(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_1(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_2(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_3(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_4(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_5(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_6(const MeshAttribute &attributeInfo);
+    void EnableAttribTexCoord_7(const MeshAttribute &attributeInfo);
+    void EnableAttribTangent(const MeshAttribute &attributeInfo);
+    void EnableAttribBiTangent(const MeshAttribute &attributeInfo);
+    void EnableAttribColor(const MeshAttribute &attributeInfo);
     // Activate diffuse texturing module
     void ActivateDiffuseMap();
     // Activate specual mapping module
@@ -29,6 +29,8 @@ public:
     void ActivateNormalMap();
     // Activate default lighting module. Needs at least Normals enabled. Enables Tangent for tangent space calculation
     void ActivateLighting();
+    // This defines if indices are unsigned int or unsigned short
+    void SetIndexType(MeshIndexType type);
     ShaderCode ProcessCode() override;
 };
 

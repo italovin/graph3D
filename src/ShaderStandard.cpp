@@ -5,19 +5,19 @@
 #include "Constants.hpp"
 ShaderStandard::ShaderStandard(){
     // Declare attributes used in shader
-    attributes.emplace(std::make_pair("position", std::make_pair(false, 0)));
-    attributes.emplace(std::make_pair("normal", std::make_pair(false, 1)));
-    attributes.emplace(std::make_pair("texCoord0", std::make_pair(false, 2)));
-    attributes.emplace(std::make_pair("texCoord1", std::make_pair(false, 3)));
-    attributes.emplace(std::make_pair("texCoord2", std::make_pair(false, 4)));
-    attributes.emplace(std::make_pair("texCoord3", std::make_pair(false, 5)));
-    attributes.emplace(std::make_pair("texCoord4", std::make_pair(false, 6)));
-    attributes.emplace(std::make_pair("texCoord5", std::make_pair(false, 7)));
-    attributes.emplace(std::make_pair("texCoord6", std::make_pair(false, 8)));
-    attributes.emplace(std::make_pair("texCoord7", std::make_pair(false, 9)));
-    attributes.emplace(std::make_pair("tangent", std::make_pair(false, 10)));
-    attributes.emplace(std::make_pair("bitangent", std::make_pair(false, 11)));
-    attributes.emplace(std::make_pair("color", std::make_pair(false, 12)));
+    attributes.emplace(std::make_pair("position", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("normal", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord0", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord1", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord2", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord3", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord4", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord5", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord6", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("texCoord7", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("tangent", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("bitangent", std::make_pair(false, MeshAttribute())));
+    attributes.emplace(std::make_pair("color", std::make_pair(false, MeshAttribute())));
     // Declare parameters and maps used in shader
     maps.emplace(std::make_pair("diffuseMap", false));
     maps.emplace(std::make_pair("specularMap", false));
@@ -29,45 +29,45 @@ ShaderStandard::ShaderStandard(){
 ShaderStandard::~ShaderStandard(){
 }
 
-void ShaderStandard::EnableAttribPosition(int location){
-    attributes["position"] = std::make_pair(true, location);;
+void ShaderStandard::EnableAttribPosition(const MeshAttribute &attributeInfo){
+    attributes["position"] = std::make_pair(true, attributeInfo);;
 }
 
-void ShaderStandard::EnableAttribNormal(int location){
-    attributes["normal"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribNormal(const MeshAttribute &attributeInfo){
+    attributes["normal"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_0(int location){
-    attributes["texCoord0"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_0(const MeshAttribute &attributeInfo){
+    attributes["texCoord0"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_1(int location){
-    attributes["texCoord1"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_1(const MeshAttribute &attributeInfo){
+    attributes["texCoord1"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_2(int location){
-    attributes["texCoord2"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_2(const MeshAttribute &attributeInfo){
+    attributes["texCoord2"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_3(int location){
-    attributes["texCoord3"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_3(const MeshAttribute &attributeInfo){
+    attributes["texCoord3"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_4(int location){
-    attributes["texCoord4"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_4(const MeshAttribute &attributeInfo){
+    attributes["texCoord4"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_5(int location){
-    attributes["texCoord5"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_5(const MeshAttribute &attributeInfo){
+    attributes["texCoord5"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_6(int location){
-    attributes["texCoord6"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_6(const MeshAttribute &attributeInfo){
+    attributes["texCoord6"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTexCoord_7(int location){
-    attributes["texCoord7"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTexCoord_7(const MeshAttribute &attributeInfo){
+    attributes["texCoord7"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribTangent(int location){
-    attributes["tangent"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribTangent(const MeshAttribute &attributeInfo){
+    attributes["tangent"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribBiTangent(int location){
-    attributes["bitangent"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribBiTangent(const MeshAttribute &attributeInfo){
+    attributes["bitangent"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::EnableAttribColor(int location){
-    attributes["color"] = std::make_pair(true, location);
+void ShaderStandard::EnableAttribColor(const MeshAttribute &attributeInfo){
+    attributes["color"] = std::make_pair(true, attributeInfo);
 }
 void ShaderStandard::ActivateDiffuseMap(){
     maps["diffuseMap"] = true;
@@ -82,22 +82,28 @@ void ShaderStandard::ActivateLighting(){
     flags["lighting"] = true;
 }
 
-ShaderCode ShaderStandard::ProcessCode(){
+void ShaderStandard::SetIndexType(MeshIndexType type)
+{
+    indexType = type;
+}
+
+ShaderCode ShaderStandard::ProcessCode()
+{
     ShaderCode code; // Shader code to build
     // Attributes
-    int positionLocation = attributes["position"].second;
-    int normalLocation = attributes["normal"].second;
-    int texCoord0Location = attributes["texCoord0"].second;
-    int texCoord1Location = attributes["texCoord1"].second;
-    int texCoord2Location = attributes["texCoord2"].second;
-    int texCoord3Location = attributes["texCoord3"].second;
-    int texCoord4Location = attributes["texCoord4"].second;
-    int texCoord5Location = attributes["texCoord5"].second;
-    int texCoord6Location = attributes["texCoord6"].second;
-    int texCoord7Location = attributes["texCoord7"].second;
-    int tangentLocation = attributes["tangent"].second;
-    int bitangentLocation = attributes["bitangent"].second;
-    int colorLocation = attributes["color"].second;
+    int positionLocation = attributes["position"].second.location;
+    int normalLocation = attributes["normal"].second.location;
+    int texCoord0Location = attributes["texCoord0"].second.location;
+    int texCoord1Location = attributes["texCoord1"].second.location;
+    int texCoord2Location = attributes["texCoord2"].second.location;
+    int texCoord3Location = attributes["texCoord3"].second.location;
+    int texCoord4Location = attributes["texCoord4"].second.location;
+    int texCoord5Location = attributes["texCoord5"].second.location;
+    int texCoord6Location = attributes["texCoord6"].second.location;
+    int texCoord7Location = attributes["texCoord7"].second.location;
+    int tangentLocation = attributes["tangent"].second.location;
+    int bitangentLocation = attributes["bitangent"].second.location;
+    int colorLocation = attributes["color"].second.location;
     bool positionEnabled = attributes["position"].first;
     bool normalEnabled = attributes["normal"].first;
     bool texCoord0Enabled = attributes["texCoord0"].first;
