@@ -138,6 +138,7 @@ ShaderCode ShaderStandard::ProcessCode()
     std::string ambientString; // Ambient light
     std::string diffuseString; // Diffuse light calculation
     std::string specularString; // Specular light calculation
+    std::string attenuationString; // Attenuation of light source for the distance
     std::string fragColorString; // Final color result
 
     // Used Uniforms:
@@ -250,7 +251,7 @@ ShaderCode ShaderStandard::ProcessCode()
                 // Fragment
                 lightSetupString += "vec3 lightDir = normalize(TangentLightPos - TangentFragPos);\n";
                 lightSetupString += "vec3 viewDir = normalize(TangentViewPos - TangentFragPos);\n";
-
+                attenuationString += "float lightDistance = length(TangentLightPos - TangentFragPos);\n";
                 if(normalMapActivated){ // Using a normal map to retrieve normals
                     if(!texCoord0Enabled)
                         return ShaderCode();
@@ -265,10 +266,11 @@ ShaderCode ShaderStandard::ProcessCode()
                 code.AddUniform(ShaderStage::Fragment, "viewPos", ShaderDataType::Float3);
                 lightSetupString += "vec3 lightDir = normalize(lightPos - fragPos);\n";
                 lightSetupString += "vec3 viewDir = normalize(viewPos - fragPos);\n";
+                attenuationString += "float lightDistance = length(lightPos - lightPos);\n";
             }
 
             // Ambient
-            ambientString += "vec3 ambient = 0.1 * albedo.rgb;\n";
+            ambientString += "vec3 ambient = 0.005 * albedo.rgb;\n";
 
             // Diffuse
             diffuseString += "float diff = max(dot(normal, lightDir), 0.0);\n";
@@ -283,10 +285,16 @@ ShaderCode ShaderStandard::ProcessCode()
                 code.SetBindingPurpose(ShaderStage::Fragment, "specularMapIndicesUBO", "specularMapIndices");
                 specularString += "vec3 specular = spec * texture(specularMap, vec3(aTexCoord0Out, specularMapIndices[objID].x)).rgb * lightColor;\n";
             } else {
-                specularString += "vec3 specular = vec3(0.2) * spec;\n";
+                specularString += "vec3 specular = vec3(0.04) * spec * lightColor;\n";
             }
+            attenuationString += "float att_kc = 1.0;\n";
+            attenuationString += "float att_kl = 0.2;\n";
+            attenuationString += "float att_kq = 0.5;\n";
+            attenuationString += "float attenuation = 1.0 / (att_kc + att_kl*lightDistance + att_kq*lightDistance*lightDistance);\n";
+            attenuationString += "diffuse *= attenuation;\n";
+            attenuationString += "specular *= attenuation;\n";
             fragColorString += "vec3 finalColor = ambient + diffuse + specular;\n";
-            fragColorString += "FragColor = vec4(finalColor, albedo.a);\n";
+            fragColorString += "FragColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);\n";
 
         } else { // Cannot do lighting without normal attribute
             return ShaderCode();
@@ -312,6 +320,7 @@ ShaderCode ShaderStandard::ProcessCode()
     fragmentMainString += ambientString;
     fragmentMainString += diffuseString;
     fragmentMainString += specularString;
+    fragmentMainString += attenuationString;
     fragmentMainString += fragColorString;
 
     code.SetMain(ShaderStage::Vertex, vertexMainString);

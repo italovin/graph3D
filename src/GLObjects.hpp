@@ -30,6 +30,7 @@ namespace GL{
         GLsizei levels = 1;
     public:
         TextureGL(GLenum textureType);
+        TextureGL(GLenum textureType, GLenum internalFormat);
         void Bind(int texUnit);
         void SetupParameters();
         void SetupStorage2D(GLsizei width, GLsizei height);

@@ -42,7 +42,15 @@ GLuint GL::ObjectGL::GetHandle() const{
 GL::TextureGL::TextureGL(GLenum textureType){
     this->textureType = textureType;
     // Internal format support for 16 bit and 32 bit float is not done yet
-    this->internalFormat = GL_RGBA8;
+    this->internalFormat = GL_SRGB8_ALPHA8;
+
+    glCreateTextures(textureType, 1, &this->handle);
+}
+
+GL::TextureGL::TextureGL(GLenum textureType, GLenum internalFormat){
+    this->textureType = textureType;
+    // Internal format support for 16 bit and 32 bit float is not done yet
+    this->internalFormat = internalFormat;
 
     glCreateTextures(textureType, 1, &this->handle);
 }

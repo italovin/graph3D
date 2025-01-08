@@ -884,7 +884,8 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
 
                 // Initialize textures arrays
                 if(!texturesArraysInitialized){
-                    Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY);
+                    GLenum internalFormat = texParameter.first == "diffuseMap" ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+                    Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, internalFormat);
                     //textureGL->SetupStorage3D(maxTexDimensions[texParameterIndexer].maxWidth, maxTexDimensions[texParameterIndexer].maxHeight, texturesArraysImagesIndexMap[texParameterIndexer].size());
                     textureGL->SetupStorage3D(tex->GetWidth(), tex->GetHeight(), texturesArraysImagesIndexMap[texParameterIndexer].size());
                     textureGL->SetupParameters();
@@ -905,7 +906,8 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
 
                     // Initialize textures arrays
                     if(!texturesArraysInitialized){
-                        Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY);
+                        GLenum internalFormat = texParameter.first == "diffuseMap" ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+                        Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, internalFormat);
                         //textureGL->SetupStorage3D(maxTexDimensions[texParameterIndexer].maxWidth, maxTexDimensions[texParameterIndexer].maxHeight, texturesArraysImagesIndexMap[texParameterIndexer].size());
                         textureGL->SetupStorage3D(tex->GetWidth(), tex->GetHeight(), texturesArraysImagesIndexMap[texParameterIndexer].size());
                         textureGL->SetupParameters();

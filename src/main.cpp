@@ -517,7 +517,7 @@ int main(int argc, const char *argv[])
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
-    mainLight.AddComponent<LightComponent>().color = glm::vec3(0.6f, 0.6f, 0.6f);
+    mainLight.AddComponent<LightComponent>().color = glm::vec3(1, 1, 1);
     mainLight.transform.position = glm::vec3(3, 3, 0);
     Renderer mainRenderer = Renderer();
     mainRenderer.SetMainWindow(std::addressof(window));
@@ -605,7 +605,7 @@ int main(int argc, const char *argv[])
         if (Input::GetKeyDown(GLFW_KEY_T)){
             isFreeCamera = !isFreeCamera;
         }
-        mainLight.transform.position = glm::vec3(3*glm::cos(time), 3, 3*glm::sin(time));
+        mainLight.transform.position = glm::vec3(1.5f*glm::cos(time), 3, 1.5f*glm::sin(time));
         //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
 
         graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
