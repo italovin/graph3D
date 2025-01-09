@@ -460,8 +460,8 @@ int main(int argc, const char *argv[])
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
     TransformComponent freeCameraTransform;
-    freeCameraTransform.position = glm::vec3(0, 0, 3);
-    freeCameraTransform.eulerAngles(glm::vec3(0, 180, 0));
+    freeCameraTransform.position = glm::vec3(0, 1, 3);
+    //freeCameraTransform.rotation = glm::quat(glm::vec3(0, 180, 0));
     TransformComponent topDownCameraTransform;
     topDownCameraTransform.position = glm::vec3(0, 5, 0);
     topDownCameraTransform.eulerAngles(glm::vec3(90, 0, 0));
@@ -539,8 +539,13 @@ int main(int argc, const char *argv[])
     unsigned long ticks = 0;
 
     mainCamera.transform = freeCameraTransform;
+    // Camera parameters
     bool isFreeCamera = true;
-
+    float factor = 15.0f;
+    float interpolationFactor = 25.0f;
+    float xRotation = 0.0f;
+    float yRotation = 180.0f;
+    freeCameraTransform.rotation = glm::quat(glm::vec3(glm::radians(xRotation), glm::radians(yRotation), 0.0f));
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window.GetHandle()))
     {
@@ -579,7 +584,7 @@ int main(int argc, const char *argv[])
             glm::vec3 up = freeCameraTransform.Up();
             glm::vec3 right = freeCameraTransform.Right();
             glm::vec3 forward = freeCameraTransform.Forward();
-            float cameraSpeed = static_cast<float>(1.5 * deltaTime);
+            float cameraSpeed = static_cast<float>(2.0 * deltaTime);
 
             float horizontalKeyboard = Input::GetAxis(KeyboardAxis::Horizontal);
             float verticalKeyboard = Input::GetAxis(KeyboardAxis::Vertical);
@@ -593,11 +598,26 @@ int main(int argc, const char *argv[])
             float vertical = glm::abs(verticalKeyboard) > glm::abs(verticalJoystick) ? verticalKeyboard:verticalJoystick;
             freeCameraTransform.position += cameraSpeed * right * horizontal;
             freeCameraTransform.position += cameraSpeed * forward * vertical;
-            float factor = 0.01f;
-            glm::quat qPitch = glm::angleAxis(-factor*Input::GetMouseDeltaY(), glm::vec3(1, 0, 0));
-            glm::quat qYaw = glm::angleAxis(factor*Input::GetMouseDeltaX(), glm::vec3(0, 1, 0));
-            freeCameraTransform.rotation =  qYaw * freeCameraTransform.rotation;
-            freeCameraTransform.rotation = freeCameraTransform.rotation * qPitch;
+
+            
+            float mouseX = factor*Input::GetMouseDeltaX()*deltaTime;
+            float mouseY = factor*Input::GetMouseDeltaY()*deltaTime;
+            xRotation -= mouseY;
+            yRotation += mouseX;
+            xRotation = glm::clamp(xRotation, -85.0f, 85.0f);
+            // Construir os quatérnions separadamente
+            // glm::quat qPitch = glm::angleAxis(glm::radians(xRotation), glm::vec3(1, 0, 0)); // Pitch (X)
+            // glm::quat qYaw = glm::angleAxis(glm::radians(yRotation), glm::vec3(0, 1, 0));  // Yaw (Y)
+            //freeCameraTransform.rotation = qYaw * qPitch;
+            // Calcula o novo alvo de rotação com base nos ângulos
+            glm::quat targetRotation = glm::quat(glm::vec3(glm::radians(xRotation), glm::radians(yRotation), 0.0f));
+
+            // Taxa de interpolação (controla suavidade)
+            float interpolationSpeed = interpolationFactor * deltaTime;
+
+            // Interpola suavemente da rotação atual para a nova rotação alvo
+            freeCameraTransform.rotation = glm::slerp(freeCameraTransform.rotation, targetRotation, interpolationSpeed);
+            
             mainCamera.transform = freeCameraTransform;
         } else {
             mainCamera.transform = topDownCameraTransform;

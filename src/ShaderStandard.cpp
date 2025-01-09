@@ -270,7 +270,7 @@ ShaderCode ShaderStandard::ProcessCode()
             }
 
             // Ambient
-            ambientString += "vec3 ambient = 0.005 * albedo.rgb;\n";
+            ambientString += "vec3 ambient = 0.001 * albedo.rgb;\n";
 
             // Diffuse
             diffuseString += "float diff = max(dot(normal, lightDir), 0.0);\n";
