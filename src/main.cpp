@@ -496,22 +496,27 @@ int main(int argc, const char *argv[])
         ModelDescriptor(const std::string &path):path(path){}
         ModelDescriptor(const std::string &path, bool flipUVs):path(path), flipUVs(flipUVs){}
     };
-    std::vector<ModelDescriptor> models;
-    models.emplace_back("../resources/modelos/sponza/Sponza.gltf");
-    models.emplace_back("../resources/modelos/porsche/scene.gltf");
-    models.emplace_back("../resources/modelos/backpack/backpack.obj", true);
-
+    std::vector<ModelDescriptor> modelsDescriptors;
+    modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
+    modelsDescriptors.emplace_back("../resources/modelos/porsche/scene.gltf");
+    modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", true);
+    std::vector<Model> models(modelsDescriptors.size());
+    std::vector<Entity> sceneObjects;
     auto loadBegin = std::chrono::high_resolution_clock::now();
-    tbb::parallel_for(0, static_cast<int>(models.size()), [&](int i){
+    tbb::parallel_for(0, static_cast<int>(modelsDescriptors.size()), [&](int i){
         Model model = Model();
-        if(!model.Load(models[i].path, shaderStandard, true, models[i].flipUVs))
+        if(!model.Load(modelsDescriptors[i].path, shaderStandard, true, modelsDescriptors[i].flipUVs))
             return;
+        models[i] = model;
+    });
+    for(auto& model : models){
         for(auto &component : model.GetComponents()){
             Entity ent = mainScene.CreateEntity();
             ent.AddComponent<MeshRendererComponent>(component.first.mesh.object, component.first.material.object);
             ent.transform = component.second;
+            sceneObjects.push_back(ent);
         }
-    });
+    }
     auto loadEnd = std::chrono::high_resolution_clock::now();
     std::cout << "Time to load models " << std::chrono::duration_cast<std::chrono::milliseconds>(loadEnd-loadBegin).count() << " (ms)\n";
 

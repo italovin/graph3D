@@ -2,6 +2,7 @@
 #include "ShaderStandard.hpp"
 #include <stb/stb_image.h>
 #include <variant>
+#include <tbb/task_group.h>
 
 void Model::processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4 &parentTransform)
 {
@@ -39,18 +40,10 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     Ref<Mesh> meshData = CreateRef<Mesh>();
     std::vector<float> vertices;
     std::vector<short> normals;
-    enum class TexCoordsType{
-        Float, UnsignedShort
-    };
-    TexCoordsType texCoordsType = TexCoordsType::UnsignedShort;
-    std::variant<std::vector<float>, std::vector<unsigned short>> texCoords0;
+    std::variant<std::vector<float>, std::vector<unsigned short>> texCoords0 = std::vector<unsigned short>();
     std::vector<short> tangents;
     std::vector<short> bitangents;
     std::vector<unsigned char> colors;
-    enum class IndicesType{
-        UnsignedInt, UnsignedShort
-    };
-    IndicesType indicesType = IndicesType::UnsignedShort;
     std::variant<std::vector<unsigned int>, std::vector<unsigned short>> indices;
 
     size_t verticesVec2Size = 2 * mesh->mNumVertices;
@@ -79,17 +72,13 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     // If this is true, store tex coords as float for correct interpolating on fragment shader
     for(unsigned int i = 0; i < mesh->mNumVertices; i++){
         if(std::abs(mesh->mTextureCoords[0][i].x) > 1.0f || std::abs(mesh->mTextureCoords[0][i].y) > 1.0f){
-            texCoordsType = TexCoordsType::Float;
+            texCoords0 = std::vector<float>();
             break;
         }
     }
-    if(texCoordsType == TexCoordsType::UnsignedShort){
-        texCoords0 = std::vector<unsigned short>();
-        std::get<std::vector<unsigned short>>(texCoords0).resize(verticesVec2Size);
-    } else if(texCoordsType == TexCoordsType::Float){
-        texCoords0 = std::vector<float>();
-        std::get<std::vector<float>>(texCoords0).resize(verticesVec2Size);
-    }
+    std::visit([verticesVec2Size](auto&& value){
+        value.resize(verticesVec2Size);
+    }, texCoords0);
     //////
 
     // This check if maxIndex <= 65535, allowing to unsigned short for indices
@@ -105,14 +94,13 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
         }
     }
     if(maxIndex <= 65535){
-        indicesType = IndicesType::UnsignedShort;
         indices = std::vector<unsigned short>();
-        std::get<std::vector<unsigned short>>(indices).reserve(totalNumIndices);
     } else {
-        indicesType = IndicesType::UnsignedInt;
         indices = std::vector<unsigned int>();
-        std::get<std::vector<unsigned int>>(indices).reserve(totalNumIndices);
     }
+    std::visit([totalNumIndices](auto&& value){
+        value.reserve(totalNumIndices);
+    }, indices);
     //////
 
     // Processa os vértices
@@ -139,24 +127,30 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
         if (hasTexCoords0){
             float texCoordX = mesh->mTextureCoords[0][i].x;
             float texCoordY = mesh->mTextureCoords[0][i].y;
-            if(texCoordsType == TexCoordsType::Float){
-                std::get<std::vector<float>>(texCoords0)[texCoordIndex] = texCoordX;
-                std::get<std::vector<float>>(texCoords0)[texCoordIndex + 1] = texCoordY;
-            } else if(texCoordsType == TexCoordsType::UnsignedShort){
-                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex] = 
-                static_cast<unsigned short>(std::round(texCoordX * 65535.0f));
-                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex + 1] = 
-                static_cast<unsigned short>(std::round(texCoordY * 65535.0f));
-            } 
+            auto updateTexCoords = [texCoordX, texCoordY, texCoordIndex](auto& texCoords) {
+                using T = typename std::decay<decltype(texCoords)>::type::value_type;
+                if constexpr (std::is_same_v<T, float>) {
+                    texCoords[texCoordIndex] = texCoordX;
+                    texCoords[texCoordIndex + 1] = texCoordY;
+                } else if constexpr (std::is_same_v<T, unsigned short>) {
+                    texCoords[texCoordIndex] = static_cast<unsigned short>(std::round(texCoordX * 65535.0f));
+                    texCoords[texCoordIndex + 1] = static_cast<unsigned short>(std::round(texCoordY * 65535.0f));
+                }
+            };
+            std::visit(updateTexCoords, texCoords0);
 
         } else {
-            if(texCoordsType == TexCoordsType::Float){
-                std::get<std::vector<float>>(texCoords0)[texCoordIndex] = 0.0f;
-                std::get<std::vector<float>>(texCoords0)[texCoordIndex + 1] = 0.0f;
-            } else if(texCoordsType == TexCoordsType::UnsignedShort){
-                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex] = 0;
-                std::get<std::vector<unsigned short>>(texCoords0)[texCoordIndex + 1] = 0;
-            }
+            auto updateTexCoords = [texCoordIndex](auto& texCoords) {
+                using T = typename std::decay<decltype(texCoords)>::type::value_type;
+                if constexpr (std::is_same_v<T, float>) {
+                    texCoords[texCoordIndex] = 0.0f;
+                    texCoords[texCoordIndex + 1] = 0.0f;
+                } else if constexpr (std::is_same_v<T, unsigned short>) {
+                    texCoords[texCoordIndex] = 0x00;
+                    texCoords[texCoordIndex + 1] = 0x00;
+                }
+            };
+            std::visit(updateTexCoords, texCoords0);
         }
         if(hasTangentsAndBitangents){
             int tangentIntX = std::round(mesh->mTangents[i].x * 32768.0f);
@@ -185,18 +179,16 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
         const aiFace& face = mesh->mFaces[i];
         for (unsigned int j = 0; j < face.mNumIndices; j++) {
-            if(indicesType == IndicesType::UnsignedInt)
-                std::get<std::vector<unsigned int>>(indices).push_back(face.mIndices[j]);
-            else if(indicesType == IndicesType::UnsignedShort)
-                std::get<std::vector<unsigned short>>(indices).push_back(face.mIndices[j]);
+            std::visit([face, j](auto&& value){
+                value.push_back((face.mIndices[j]));
+            }, indices);
         }
     }
 
     meshData->PushAttributePosition(vertices);
-    if(texCoordsType == TexCoordsType::Float)
-        meshData->PushAttributeTexCoord0(std::get<std::vector<float>>(texCoords0));
-    else if(texCoordsType == TexCoordsType::UnsignedShort)
-        meshData->PushAttributeTexCoord0(std::get<std::vector<unsigned short>>(texCoords0));
+    std::visit([&meshData](auto&& value){
+        meshData->PushAttributeTexCoord0(value);
+    }, texCoords0);
     if(hasNormals)
         meshData->PushAttributeNormal(normals);
     if(hasTangentsAndBitangents){
@@ -205,10 +197,10 @@ Ref<Mesh> Model::processMesh(aiMesh *mesh)
     }
     if(hasColors)
         meshData->PushAttributeColor(colors);
-    if(indicesType == IndicesType::UnsignedInt)
-        meshData->SetIndices(std::get<std::vector<unsigned int>>(indices), MeshTopology::Triangles);
-    else if(indicesType == IndicesType::UnsignedShort)
-        meshData->SetIndices(std::get<std::vector<unsigned short>>(indices), MeshTopology::Triangles);
+    std::visit([&meshData](auto&& value){
+        meshData->SetIndices(value, MeshTopology::Triangles);
+    }, indices);
+    
     return meshData;
 }
 
@@ -244,18 +236,37 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
     if(loadedTextures.find(textureFileName) != loadedTextures.end()){
         return loadedTextures[textureFileName]; // Texture already loaded
     } else { // Texture not loaded
+        auto pixelsDataToFourChannels = [](const unsigned char *data, int width, int height,
+        int nrComponents){
+            std::vector<GLubyte> newData;
+            if(nrComponents == 4){
+                newData = std::vector<GLubyte>(data, data + width * height * nrComponents);
+            } else {
+                newData = std::vector<GLubyte>(4 * width * height);
+            }
+            for(int i = 0; i < width * height; i++){
+                int j = 0;
+                for(j = 0; j < nrComponents; j++){
+                    newData[4*i + j] = data[nrComponents * i + j];
+                }
+                for(; j < 4; j++){
+                    newData[4 * i + j] = 0xFF;
+                }
+            }
+            return newData;
+        };
         {
-            const aiTexture* texture = scene->GetEmbeddedTexture(textureFileName.c_str());
-            if(texture){ // Embedded texture
+            const aiTexture* textureEmbedded = scene->GetEmbeddedTexture(textureFileName.c_str());
+            if(textureEmbedded){ // Embedded texture
                 // A textura é embutida, use os dados da textura
-                int width = texture->mWidth;   // largura
-                int height = texture->mHeight;  // altura
+                int width = textureEmbedded->mWidth;   // largura
+                int height = textureEmbedded->mHeight;  // altura
                 int nrComponents = 0; // você pode precisar de mais lógica para obter os canais
 
                 // Verifica se os dados da textura estão disponíveis
-                if (texture->mHeight == 0) { // Indica que a textura é compactada
-                    const void* data = texture->pcData;
-                    int dataSize = texture->mWidth; // Verifique se essa é a forma correta de obter o tamanho
+                if (textureEmbedded->mHeight == 0) { // Indica que a textura é compactada
+                    const void* data = textureEmbedded->pcData;
+                    int dataSize = textureEmbedded->mWidth; // Verifique se essa é a forma correta de obter o tamanho
 
                     unsigned char* imageData = stbi_load_from_memory(
                         reinterpret_cast<const unsigned char*>(data),
@@ -264,28 +275,24 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
                     );
 
                     if (imageData) {
-                        Ref<Texture> textureRef = SetupTexture(imageData, width, height, nrComponents);
-                        loadedTextures[textureFileName] = textureRef;
+                        Ref<Texture> texture = CreateRef<Texture>(width, height);
+                        auto newData = pixelsDataToFourChannels(imageData, width, height, nrComponents);
+                        texture->SetPixelsData(newData, 4);
                         stbi_image_free(imageData);
-                        return textureRef;
+                        return texture;
                     } else {
                         std::cerr << "Erro ao carregar textura embutida.\n";
                         return Ref<Texture>(nullptr);
                     }
                 } else { // A textura não é compactada
                     nrComponents = 4; // pcData has 4 channels
-                    const unsigned char* data = reinterpret_cast<const unsigned char*>(texture->pcData);
-                    std::vector<unsigned char> rgbaData(width * height * 4);
+                    const unsigned char* data = reinterpret_cast<const unsigned char*>(textureEmbedded->pcData);
 
-                    for (int i = 0; i < width * height; ++i) {
-                        rgbaData[i * 4 + 0] = data[i * 4 + 1]; // Red
-                        rgbaData[i * 4 + 1] = data[i * 4 + 2]; // Green
-                        rgbaData[i * 4 + 2] = data[i * 4 + 3]; // Blue
-                        rgbaData[i * 4 + 3] = data[i * 4 + 0]; // Alpha
-                    }
-                    Ref<Texture> textureRef = SetupTexture(rgbaData.data(), width, height, nrComponents);
-                    loadedTextures[textureFileName] = textureRef;
-                    return textureRef;
+                    Ref<Texture> texture = CreateRef<Texture>(width, height);
+                    auto newData = pixelsDataToFourChannels(data, width, height, nrComponents);
+                    texture->SetPixelsData(newData, 4);
+                    loadedTextures[textureFileName] = texture;
+                    return texture;
                 }
             }
         }
@@ -302,27 +309,13 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
             std::cerr << "Erro ao carregar textura: " << mainTexturePath << "\n";
             return Ref<Texture>(nullptr);
         }
-
-        Ref<Texture> texture = SetupTexture(data, width, height, nrComponents);
+        Ref<Texture> texture = CreateRef<Texture>(width, height);
+        auto newData = pixelsDataToFourChannels(data, width, height, nrComponents);
+        texture->SetPixelsData(newData, 4);
         loadedTextures[textureFileName] = texture;
         stbi_image_free(data);
         return texture;
     }
-}
-
-Ref<Texture> Model::SetupTexture(unsigned char *data, int width, int height, int nrComponents)
-{
-    TextureFormat format = TextureFormat::RGB;
-    if (nrComponents == 3)
-        format = TextureFormat::RGB;
-    else if (nrComponents == 4)
-        format = TextureFormat::RGBA;
-    else if (nrComponents == 1)
-        format = TextureFormat::RED;
-
-    Ref<Texture> texture = CreateRef<Texture>(width, height);
-    texture->SetPixelsData(std::vector<GLubyte>(data, data + width * height * nrComponents), format);
-    return texture;
 }
 
 bool Model::Load(const std::string &path, Ref<ShaderStandard> defaultShader, bool useLighting, bool flipUVs)

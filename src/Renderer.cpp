@@ -1015,6 +1015,10 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     for(auto &texArray : renderGroup.texturesArrays){
         texArray->GenerateMipmaps();
     }
+    auto setupEnd = std::chrono::high_resolution_clock::now();
+    std::cout << "Time to setup textures data: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << " (μs)\n";
+    
+    auto bufferBegin = std::chrono::high_resolution_clock::now();
     renderGroup.objectsCount = objectsCount;
     //renderGroup.materialsStructArray = matParamStructArray;
     // Size of all meshes (attributes + indices)
@@ -1029,9 +1033,6 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         attributesStrides[i] = renderGroupBuffers.attributesData[i].attribute.AttributeDataSize();
         attributesBufferTotalSize += renderGroupBuffers.attributesData[i].dataSize;
     }
-    auto setupEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to setup textures data: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << " (μs)\n";
-    auto bufferBegin = std::chrono::high_resolution_clock::now();
     // VBO
     {
         GLuint attributesBuffersName = 0;

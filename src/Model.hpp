@@ -19,7 +19,6 @@ private:
     Ref<Mesh> processMesh(aiMesh *mesh);
     Ref<Material> processMaterial(aiMaterial *material);
     Ref<Texture> loadMaterialTexture(aiMaterial *material, aiTextureType type);
-    Ref<Texture> SetupTexture(unsigned char *data, int width, int height, int nrComponents);
 public:
     bool Load(const std::string &path, Ref<ShaderStandard> defaultShader, bool useLighting = true,
     bool flipUVs = false);

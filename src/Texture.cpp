@@ -35,6 +35,7 @@ bool Texture::SetPixelsData(const std::vector<GLubyte> &pixelsData, int channels
     switch(channels){
         case 3: format = TextureFormat::RGB; break;
         case 4: format = TextureFormat::RGBA; break;
+        case 1: format = TextureFormat::RED; break;
         default: return false;
     }
     return SetPixelsData(pixelsData, format);
@@ -70,6 +71,7 @@ bool Texture::SetPixelsData(const std::vector<GLfloat> &pixelsData, int channels
     switch(channels){
         case 3: format = TextureFormat::RGB; break;
         case 4: format = TextureFormat::RGBA; break;
+        case 1: format = TextureFormat::RED; break;
         default: return false;
     }
     return SetPixelsData(pixelsData, format);
