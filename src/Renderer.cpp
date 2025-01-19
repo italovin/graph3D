@@ -6,6 +6,7 @@
 #include <cstring>
 #include <chrono>
 #include <tbb/parallel_for.h>
+#include <fmt/core.h>
 // Implementation for StructArray
 size_t StructArray::alignOffset(size_t offset, size_t alignment) {
     return (offset + alignment - 1) & ~(alignment - 1);
@@ -146,13 +147,16 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         auto &transform = renderableView.get<TransformComponent>(entity);
         componentsPairs.emplace_back(meshRenderer, transform);
     }
-
+    // Grouping steps
+    // - Group by shader model (resultant of mesh layout and material activated properties)
+    // - Split each group at maximum usage of one of these conditions: unique textures count equal max texture layers;
+    // or objects equal max number of mat4 matrices in a uniform block; or objects equal constant defined
+    // max objects to group in Constants.hpp
+    // - Group by all maps textures dimensions and compressed format
     std::vector<ShaderGroup> shaderGroups;
 
-    std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderProgramMap;
-    std::unordered_map<Shader, std::vector<Renderable>, ShaderHash> shaderModelMap;
-    std::unordered_map<Shader, ShaderCode, ShaderHash> shaderCodeMap;
-    std::unordered_map<ResourceHandle, GL::ShaderGLResource> shaderProgramCache;
+    std::unordered_map<Shader, std::vector<Renderable>, ShaderHash> shaderModelMap; // Maps to shader models groups
+    std::unordered_map<Shader, ShaderCode, ShaderHash> shaderCodeCache; // Caches shader models to a already built shader code
     for(auto &&x: componentsPairs){
         auto &material = x.first.get().material;
         auto &mesh = x.first.get().mesh;
@@ -202,17 +206,24 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
         if(shaderModelMap.count(shader) == 0){
             ShaderCode shaderCode = shader.ProcessCode();
-            shaderCodeMap[shader] = shaderCode;
+            shaderCodeCache[shader] = shaderCode;
         }
         shaderModelMap[shader].push_back(std::move(x));
     }
+    // Maps to shader resource, a container for a reference of Shader Program Object with a UUID also
+    // This makes possible a reusing of the program along the objects groups
+    std::unordered_map<ResourceHandle, std::vector<Renderable>> shaderResourceMap;
+    // Alias for shader resource mapping
+    using ShaderResourceMap =  std::unordered_map<ResourceHandle, std::vector<Renderable>>;
+    // Caches the shader resource based on the UUID handle
+    std::unordered_map<ResourceHandle, GL::ShaderGLResource> shaderResourceCache;
     int64_t generateTimeTotal = 0;
     for(auto &&x : shaderModelMap){ // Group by while texture layers and mvps limits are not reached and then group by shader
         if(x.second.empty())
             continue;
         auto generateBegin = std::chrono::high_resolution_clock::now();
         // Generate shader program and resource
-        GL::ShaderGLResource shaderGeneratedGlobal(shaderCodeMap[x.first].Generate());
+        GL::ShaderGLResource shaderGeneratedGlobal(shaderCodeCache[x.first].Generate());
         if(!shaderGeneratedGlobal.object)
             continue;
         auto generateEnd = std::chrono::high_resolution_clock::now();
@@ -268,7 +279,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         for(auto &&group : shaderGeneratedGroups){
             GL::ShaderGLResource shaderGenerated(shaderGeneratedGlobal.object);
             // Setting shaders binding points
-            for(auto &&bindingPurpose : shaderCodeMap[x.first].GetBindingsPurposes(ShaderStage::Vertex)){
+            for(auto &&bindingPurpose : shaderCodeCache[x.first].GetBindingsPurposes(ShaderStage::Vertex)){
                 std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
                 if(!binding.has_value()){
                     // No binding point available
@@ -276,7 +287,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 }
                 shaderGenerated->SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
             }
-            for(auto &&bindingPurpose : shaderCodeMap[x.first].GetBindingsPurposes(ShaderStage::Fragment)){
+            for(auto &&bindingPurpose : shaderCodeCache[x.first].GetBindingsPurposes(ShaderStage::Fragment)){
                 std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
                 if(!binding.has_value()){
                     // No binding point available
@@ -284,9 +295,9 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
                 }
                 shaderGenerated->SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
             }
-            auto &programGroup = shaderProgramMap[shaderGenerated.resourceHandle];
+            auto &programGroup = shaderResourceMap[shaderGenerated.resourceHandle];
             programGroup.insert(programGroup.end(), std::make_move_iterator(group.begin()), std::make_move_iterator(group.end()));
-            shaderProgramCache[shaderGenerated.resourceHandle] = shaderGenerated;
+            shaderResourceCache[shaderGenerated.resourceHandle] = shaderGenerated;
         }
     }
     // glm::ivec2 already have equal operator
@@ -312,34 +323,60 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             return a == b;
         }
     };
+    struct TextureKey{
+        std::vector<glm::ivec2> dimensions;
+        std::vector<gli::format> formats;
+        bool operator==(const TextureKey &other) const {
+            return dimensions == other.dimensions && formats == other.formats;
+        }
+    };
+    struct TextureKeyHash {
+        std::size_t operator()(const TextureKey &key) const {
+            std::size_t hash = 0;
+            for (const auto &dim : key.dimensions) {
+                hash ^= std::hash<int>()(dim.x) ^ std::hash<int>()(dim.y);
+            }
+            for (const auto &format : key.formats) {
+                hash ^= std::hash<gli::format>()(format);
+            }
+            return hash;
+        }
+    };
     using MapsDimensionKey = std::vector<glm::ivec2>; // Used to compare texture maps dimensions
-    std::unordered_map<MapsDimensionKey, std::unordered_map<ResourceHandle, std::vector<Renderer::Renderable>>,
-    VectorIVec2Hash, VectorIVec2Equal> sameTextureDimensionMap;
+    // Maps based on same textures dimensions of each map and based on texture compression format
+    std::unordered_map<TextureKey, ShaderResourceMap, TextureKeyHash> textureConformationMap;
 
-    for(auto &&group : shaderProgramMap){
+    for(auto &&group : shaderResourceMap){
         for(auto &&x: group.second){
             auto texParameters = x.first.get().material->GetActivatedMapParameters();
-            std::vector<glm::ivec2> texDimensions;
-            texDimensions.reserve(texParameters.size());
+
+            TextureKey textureKey;
+            textureKey.dimensions.reserve(texParameters.size());
+            textureKey.formats.reserve(texParameters.size());
             for(auto &&map : texParameters){
                 const auto& tex = std::get<Ref<Texture>>(map.second.data);
-                texDimensions.push_back(glm::ivec2(tex->GetWidth(), tex->GetHeight()));
+                
+                auto dimensions = tex->GetDimensions();
+                auto format = tex->GetFormat();
+                textureKey.dimensions.push_back(glm::ivec2(dimensions.x, dimensions.y));
+                textureKey.formats.push_back(format);
             }
-            sameTextureDimensionMap[texDimensions][group.first].push_back(std::move(x));
+            textureConformationMap[textureKey][group.first].push_back(std::move(x));
         }
     }
     {
         size_t totalGroups = 0; // Total groups to be reserved in shaderGroups
-        for (const auto& map : sameTextureDimensionMap) {
+        for (const auto& map : textureConformationMap) {
             totalGroups += map.second.size(); // Conta o número de grupos para cada dimensão de textura
         }
         shaderGroups.reserve(totalGroups);
     }
 
-    for(auto &&map : sameTextureDimensionMap){
+
+    for(auto &&map : textureConformationMap){
         for(auto &&group : map.second){
             ShaderGroup shaderGroup;
-            shaderGroup.shader = shaderProgramCache[group.first].object;
+            shaderGroup.shader = shaderResourceCache[group.first].object;
             std::unordered_map<Mesh*, std::vector<Renderable>> groupMap;
             groupMap.reserve(group.second.size());
             int batchSize = 0; // Number of elements in batch group
@@ -371,12 +408,12 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     }
     // In the end, shaderGroups are groups which objects uses the same shader program (resultant of the
     // same mesh layout, same maps layout and same flags activated layout) and the
-    // same texture dimensions for each map type
+    // same texture conformation for each map type
     auto mapEnd = std::chrono::high_resolution_clock::now();
     int64_t mapTimeTotal = std::chrono::duration_cast<std::chrono::microseconds>(mapEnd-mapBegin).count();
     // Print shader mapping time: time to batch the rendergroups with the shaders
-    std::cout << "\nTime to shaders mapping: " << mapTimeTotal << " (μs)\n";
-    std::cout << "Time to generate shaders only: " << generateTimeTotal << " (μs)\n";
+    fmt::print("\nTime to shaders mapping: {0} (μs)\n", mapTimeTotal);
+    fmt::print("Time to generate shaders only: {0} (μs)\n", generateTimeTotal);
     // Create needed render groups with VAO initialization
     renderGroups.resize(shaderGroups.size());
     std::vector<RenderGroupBuffers> renderGroupsBuffers(shaderGroups.size());
@@ -386,11 +423,11 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
     });
     auto bufferingEnd = std::chrono::high_resolution_clock::now();
     int64_t bufferingTotal = std::chrono::duration_cast<std::chrono::microseconds>(bufferingEnd-bufferingBegin).count();
-    std::cout << "\nTime to attributes and indices merging: " << bufferingTotal << " (μs)\n";
+    fmt::print("\nTime to attributes and indices merging: {0} (μs)\n", bufferingTotal);
 
     for(size_t i = 0; i < renderGroups.size(); i++){
         renderGroups[i].shader = shaderGroups[i].shader;
-        std::cout << "\n-- Building render group " << i + 1 << "\n";
+        fmt::print("\n-- Building render group {0}\n",  i + 1);
         BuildRenderGroup(renderGroups[i], renderGroupsBuffers[i], shaderGroups[i]);
     }
 }
@@ -873,6 +910,9 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
             }
         }
     }
+    // Textures use a compressed format
+    std::vector<bool> texCompressed(textureParametersCount, false);
+    std::vector<bool> forceSRGBs(textureParametersCount, false);
     { // Setup textures arrays
         bool texturesArraysInitialized = false; // Check if texture arrays are setup
         bool atLeastOneTexParameter = false; // At least one tex array map is setup
@@ -884,13 +924,17 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
 
                 // Initialize textures arrays
                 if(!texturesArraysInitialized){
-                    GLenum internalFormat = texParameter.first == "diffuseMap" ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+                    // Forcing use of srgb. This helps mainly for incorrect compressed format loading
+                    bool forceSRGB = tex->IsCompressed() && texParameter.first == "diffuseMap";
+                    GLenum internalFormat = Texture::GliInternalFormatToGLenum(tex->GetFormat(), forceSRGB);
                     Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, internalFormat);
                     //textureGL->SetupStorage3D(maxTexDimensions[texParameterIndexer].maxWidth, maxTexDimensions[texParameterIndexer].maxHeight, texturesArraysImagesIndexMap[texParameterIndexer].size());
-                    textureGL->SetupStorage3D(tex->GetWidth(), tex->GetHeight(), texturesArraysImagesIndexMap[texParameterIndexer].size());
+                    textureGL->SetupStorage3D(tex->GetDimensions().x, tex->GetDimensions().y, texturesArraysImagesIndexMap[texParameterIndexer].size());
                     textureGL->SetupParameters();
                     renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
                     renderGroup.shader->SetInt(texParameter.first, texParameterIndexer);
+                    texCompressed[texParameterIndexer] = tex->IsCompressed();
+                    forceSRGBs[texParameterIndexer] = forceSRGB;
                     atLeastOneTexParameter = true;
                 }
                 texParameterIndexer++;
@@ -906,13 +950,16 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
 
                     // Initialize textures arrays
                     if(!texturesArraysInitialized){
-                        GLenum internalFormat = texParameter.first == "diffuseMap" ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+                        bool forceSRGB = tex->IsCompressed() && texParameter.first == "diffuseMap";
+                        GLenum internalFormat = Texture::GliInternalFormatToGLenum(tex->GetFormat(), forceSRGB);
                         Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, internalFormat);
                         //textureGL->SetupStorage3D(maxTexDimensions[texParameterIndexer].maxWidth, maxTexDimensions[texParameterIndexer].maxHeight, texturesArraysImagesIndexMap[texParameterIndexer].size());
-                        textureGL->SetupStorage3D(tex->GetWidth(), tex->GetHeight(), texturesArraysImagesIndexMap[texParameterIndexer].size());
+                        textureGL->SetupStorage3D(tex->GetDimensions().x, tex->GetDimensions().y, texturesArraysImagesIndexMap[texParameterIndexer].size());
                         textureGL->SetupParameters();
                         renderGroup.texturesArrays.push_back(GL::TextureGLResource(textureGL));
                         renderGroup.shader->SetInt(texParameter.first, texParameterIndexer);
+                        texCompressed[texParameterIndexer] = tex->IsCompressed();
+                        forceSRGBs[texParameterIndexer] = forceSRGB;
                         atLeastOneTexParameter = true;
                     }
                     texParameterIndexer++;
@@ -952,12 +999,18 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
                 texturesImagesStored[texture.get()] = false;
             int textureLayerIndex = texturesArraysImagesIndexMap[texParameterIndexer][texture.get()];
             if(!texturesImagesStored[texture.get()]){
-                if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
-                    renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLubyte>>(texture->GetPixels().data));
-                } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
-                    renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLfloat>>(texture->GetPixels().data));
-                }
-                texturesTotalSize += sizeof(GLubyte) * texture->GetWidth() * texture->GetHeight() * texture->GetChannelsCount();
+                // if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                //     renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                // } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                //     renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                // }
+                if(!texCompressed[texParameterIndexer])
+                    renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetDimensions().x, texture->GetDimensions().y,
+                    textureLayerIndex, Texture::GliClientFormatToGLenum(texture->GetFormat()), Texture::GliTypeToGLenum(texture->GetFormat()), texture->GetData());
+                else // Compressed texture
+                    renderGroup.texturesArrays[texParameterIndexer]->PushCompressedData3DLayer(texture->GetDimensions().x, texture->GetDimensions().y,
+                    textureLayerIndex, Texture::GliInternalFormatToGLenum(texture->GetFormat(), forceSRGBs[texParameterIndexer]), texture->GetSize(), texture->GetData());
+                texturesTotalSize += texture->GetSize();
                 texturesImagesStored[texture.get()] = true;
             }
             texturesArraysIndices[texParameterIndexer][objectIndex] = glm::ivec4(textureLayerIndex,0,0,0);
@@ -996,12 +1049,18 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
                     texturesImagesStored[texture.get()] = false;
                 int textureLayerIndex = texturesArraysImagesIndexMap[texParameterIndexer][texture.get()];
                 if(!texturesImagesStored[texture.get()]){
-                    if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
-                        renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLubyte>>(texture->GetPixels().data));
-                    } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
-                        renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLfloat>>(texture->GetPixels().data));
-                    }
-                    texturesTotalSize += sizeof(GLubyte) * texture->GetWidth() * texture->GetHeight() * texture->GetChannelsCount();
+                    // if(texture->GetPixels().dataType == TexturePixelDataType::UnsignedByte){
+                    //     renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLubyte>>(texture->GetPixels().data));
+                    // } else if(texture->GetPixels().dataType == TexturePixelDataType::Float){
+                    //     renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetWidth(), texture->GetHeight(), textureLayerIndex, texture->GetFormatGLenum(), std::get<std::vector<GLfloat>>(texture->GetPixels().data));
+                    // }
+                    if(!texCompressed[texParameterIndexer])
+                        renderGroup.texturesArrays[texParameterIndexer]->PushData3DLayer(texture->GetDimensions().x, texture->GetDimensions().y,
+                        textureLayerIndex, Texture::GliClientFormatToGLenum(texture->GetFormat()), Texture::GliTypeToGLenum(texture->GetFormat()), texture->GetData());
+                    else // Compressed texture
+                        renderGroup.texturesArrays[texParameterIndexer]->PushCompressedData3DLayer(texture->GetDimensions().x, texture->GetDimensions().y,
+                        textureLayerIndex, Texture::GliInternalFormatToGLenum(texture->GetFormat(), forceSRGBs[texParameterIndexer]), texture->GetSize(), texture->GetData());
+                    texturesTotalSize += texture->GetSize();
                     texturesImagesStored[texture.get()] = true;
                 }
                 texturesArraysIndices[texParameterIndexer][objectIndex] = glm::ivec4(textureLayerIndex,0,0,0);
@@ -1016,7 +1075,8 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         texArray->GenerateMipmaps();
     }
     auto setupEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to setup textures data: " << std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count() << " (μs)\n";
+    fmt::print("Time to setup textures data: {0} (μs)\n", 
+    std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count());
     
     auto bufferBegin = std::chrono::high_resolution_clock::now();
     renderGroup.objectsCount = objectsCount;
@@ -1155,15 +1215,16 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     }
 
     auto bufferEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to buffer data: " << std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count() << " (μs)\n";
+    fmt::print("Time to buffer data: {0} (μs)\n", 
+    std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count());
     float meshesTotalSizeInKB = (float)meshesTotalSize / 1024;
     float meshesTotalSizeInMB = (float)meshesTotalSize / (1024*1024);
-    std::cout << "Total size of meshes (attributes + indices): " << meshesTotalSizeInKB << " KB / " <<
-    meshesTotalSizeInMB << " MB\n";
+    fmt::print("Total size of meshes (attributes + indices): {0} KB / {1} MB\n", meshesTotalSizeInKB,
+    meshesTotalSizeInMB);
     float texturesTotalSizeInKB = (float)texturesTotalSize / 1024;
     float texturesTotalSizeInMB = (float)texturesTotalSize / (1024*1024);
-    std::cout << "Total size of unique textures: " << texturesTotalSizeInKB << " KB / " <<
-    texturesTotalSizeInMB << " MB\n";
+    fmt::print("Total size of unique textures: {0} KB / {1} MB\n", texturesTotalSizeInKB,
+    texturesTotalSizeInMB);
 }
 
 void Renderer::DrawFunctionIndirect(RenderGroup &renderGroup){

@@ -43,6 +43,8 @@ namespace GL{
         void PushData3D(GLsizei width, GLsizei height, int layers, GLenum format, const std::vector<GLubyte> &pixels);
         void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLubyte> &pixels);
         void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLfloat> &pixels);
+        void PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, GLenum type, const void *pixels);
+        void PushCompressedData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, int imageSize, const void *pixels);
         void GenerateMipmaps();
         void Release() override;
     };

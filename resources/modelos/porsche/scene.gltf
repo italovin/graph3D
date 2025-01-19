@@ -990,7 +990,7 @@
   ],
   "images": [
     {
-      "uri": "textures/.003_baseColor.png"
+      "uri": "textures/003_baseColor.ktx"
     }
   ],
   "materials": [

@@ -1,50 +1,27 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 #include <GL/glew.h>
+#include <gli/gli.hpp>
 #include <vector>
 #include <variant>
 
-enum class TextureFormat{
-    RGB, RGBA, RED, None
-};
-
-enum class TextureSizedInternalFormat{
-    RGB8, RGBA8, R8, RGB32F, RGBA32F, R32F, None
-};
-
-enum class TexturePixelDataType{
-    UnsignedByte, Float
-};
-
-struct TexturePixels{
-    TexturePixelDataType dataType;
-    TextureFormat format;
-    TextureSizedInternalFormat sizedFormat;
-    std::variant<std::vector<GLubyte>, std::vector<GLfloat>> data;
-};
-
 class Texture{
 private:
-    size_t width = 0;
-    size_t height = 0;
-    TexturePixels pixels;
+    gli::texture handle;
 public:
-    Texture() = delete;
-    Texture(size_t width, size_t height);
-    // Pixels data vector size must be multiple of format size (RGB = 3, RGBA = 4)
-    bool SetPixelsData(const std::vector<GLubyte> &pixelsData, TextureFormat format);
-    bool SetPixelsData(const std::vector<GLubyte> &pixelsData, int channels);
-    // Pixels data vector size must be multiple of format size (RGB = 3, RGBA = 4)
-    bool SetPixelsData(const std::vector<GLfloat> &pixelsData, TextureFormat format);
-    bool SetPixelsData(const std::vector<GLfloat> &pixelsData, int channels);
-    const TexturePixels &GetPixels();
-    size_t GetWidth() const;
-    size_t GetHeight() const;
-    int GetChannelsCount() const;
-    static GLenum GetFormatGLenum(TextureFormat format);
-    GLenum GetPixelDataTypeGLenum() const;
-    GLenum GetFormatGLenum() const;
-    GLenum GetSizedFormatGLenum() const;
+    Texture() = default;
+    // Generic load function for common image formats or compressed textures
+    bool Load(const std::string &filePath, bool isSRGB = true);
+    bool LoadFromMemory(const std::vector<unsigned char> &pixels, gli::format format, int width, int height);
+    gli::format GetFormat() const;
+    // Get GLenum equivalent to texture internal format. You also can force srgb return value
+    static GLenum GliInternalFormatToGLenum(gli::format format, bool forceSRGB = false);
+    static GLenum GliClientFormatToGLenum(gli::format format);
+    static GLenum GliTypeToGLenum(gli::format format);
+    bool IsCompressed() const;;
+    gli::texture::extent_type GetDimensions() const;
+    int GetSize() const;
+    const void* GetData() const;
 public:
 };
 #endif

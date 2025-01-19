@@ -16,6 +16,8 @@
 #include <nlohmann/json.hpp>
 #include <stb/stb_image.h>
 #include <tbb/parallel_for.h>
+#include <fmt/core.h>
+#include <sail-common/log.h>
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
 int main(int argc, const char *argv[])
@@ -46,12 +48,12 @@ int main(int argc, const char *argv[])
     Input::RegisterWindow(window);
     // Initialize the renderer API info
     RenderCapabilities::Initialize();
-    std::cout << "GL_MAX_UNIFORM_BLOCK_SIZE is " << RenderCapabilities::GetMaxUBOSize() << " bytes." << std::endl;
-    std::cout << "GL_MAX_ARRAY_TEXTURE_LAYERS is " << RenderCapabilities::GetMaxTextureArrayLayers() << std::endl;
-    std::cout << "GL_MAX_TEXTURE_UNITS is " << RenderCapabilities::GetMaxTextureImageUnits() << std::endl;
-    std::cout << "GL_MAX_VERTEX_ATTRIBS is " << RenderCapabilities::GetMaxVertexAttributes() << std::endl;
-    std::cout << RenderCapabilities::GetVersionString() << std::endl;
-    std::cout << RenderCapabilities::GetVendorString() << std::endl;
+    fmt::print("GL_MAX_UNIFORM_BLOCK_SIZE is {0} bytes\n", RenderCapabilities::GetMaxUBOSize());
+    fmt::print("GL_MAX_ARRAY_TEXTURE_LAYERS is {0}\n", RenderCapabilities::GetMaxTextureArrayLayers());
+    fmt::print("GL_MAX_TEXTURE_UNITS is {0}\n", RenderCapabilities::GetMaxTextureImageUnits());
+    fmt::print("GL_MAX_VERTEX_ATTRIBS is {0}\n", RenderCapabilities::GetMaxVertexAttributes());
+    fmt::println(RenderCapabilities::GetVersionString());
+    fmt::println(RenderCapabilities::GetVendorString());
 
     window.SetContextVersion(RenderCapabilities::GetMajorVersion(), RenderCapabilities::GetMinorVersion(), 0);
 
@@ -206,9 +208,9 @@ int main(int argc, const char *argv[])
     float s_stepSize = (max_s - min_s)/s_steps;
     float t_stepSize = (max_t - min_t)/t_steps;
     float graphTotalSize = sizeof(GLfloat)*(2*(s_steps+1)*(t_steps+1)) + sizeof(GLuint)*(2*s_steps*(t_steps+1) + 2*t_steps*(s_steps+1));
-    std::cout << "Graph parameter S resolution: " << s_stepSize << std::endl;
-    std::cout << "Graph parameter T resolution: " << t_stepSize << std::endl;
-    std::cout << "Graph total size (vertices + indices): " << graphTotalSize/1024 << " KB / " << graphTotalSize/(1024*1024) << " MB\n";
+    fmt::print("Graph parameter S resolution: {0}\n", s_stepSize);
+    fmt::print("Graph parameter T resolution: {0}\n", t_stepSize);
+    fmt::print("Graph total size (vertices + indices): {0} KB / {1} MB\n", graphTotalSize/1024, graphTotalSize/(1024*1024));
 
     std::vector<GLfloat> parameters;
     parameters.reserve(2*(s_steps+1)*(t_steps+1));
@@ -337,8 +339,8 @@ int main(int argc, const char *argv[])
             pixels.push_back(0xFF);
             pixels.push_back(0xFF);
         }
-        defaultTexture = CreateRef<Texture>(width, height);
-        defaultTexture->SetPixelsData(pixels, channels);
+        defaultTexture = CreateRef<Texture>();
+        defaultTexture->LoadFromMemory(pixels, gli::format::FORMAT_RGB8_SRGB_PACK8, width, height);
     }
     Ref<Texture> tex0;
     {
@@ -349,8 +351,8 @@ int main(int argc, const char *argv[])
         if(data){
             pixels = std::vector<GLubyte>(data, data + width*height*channels);
             stbi_image_free(data);
-            tex0 = CreateRef<Texture>(width, height);
-            tex0->SetPixelsData(pixels, channels);
+            tex0 = CreateRef<Texture>();
+            tex0->LoadFromMemory(pixels, gli::format::FORMAT_RGB8_SRGB_PACK8, width, height);
         } else {
             tex0 = defaultTexture;
         }
@@ -486,25 +488,29 @@ int main(int argc, const char *argv[])
     // model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
     // model3.transform.scale = glm::vec3(0.2f, 0.2f, 0.2f);
 
+    sail_set_log_barrier(SAIL_LOG_LEVEL_SILENCE);
 
     // Descriptor of models
-    // FlipUVs is false for default - This is correct if y-axis convention is equal OpenGL
-    // If y-axis convention is opposite of OpenGL, set FlipUVs to true
+    // FlipUVs is true for default - This is correct if y-axis convention is equal OpenGL
+    // If y-axis convention is opposite of OpenGL, set FlipUVs to false
+    // This is because image loading orientation is opposite of OpenGL (origin in top)
     struct ModelDescriptor{
         std::string path;
-        bool flipUVs = false;
+        bool flipUVs = true;
         ModelDescriptor(const std::string &path):path(path){}
         ModelDescriptor(const std::string &path, bool flipUVs):path(path), flipUVs(flipUVs){}
     };
     std::vector<ModelDescriptor> modelsDescriptors;
     modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
     modelsDescriptors.emplace_back("../resources/modelos/porsche/scene.gltf");
-    modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", true);
+    modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", false);
     std::vector<Model> models(modelsDescriptors.size());
     std::vector<Entity> sceneObjects;
     auto loadBegin = std::chrono::high_resolution_clock::now();
     tbb::parallel_for(0, static_cast<int>(modelsDescriptors.size()), [&](int i){
         Model model = Model();
+        if(modelsDescriptors[i].path == "../resources/modelos/backpack/backpack.obj")
+            model.SetScale(1.0f);
         if(!model.Load(modelsDescriptors[i].path, shaderStandard, true, modelsDescriptors[i].flipUVs))
             return;
         models[i] = model;
@@ -518,19 +524,19 @@ int main(int argc, const char *argv[])
         }
     }
     auto loadEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to load models " << std::chrono::duration_cast<std::chrono::milliseconds>(loadEnd-loadBegin).count() << " (ms)\n";
+    fmt::print("Time to load models {0} (ms)\n", std::chrono::duration_cast<std::chrono::milliseconds>(loadEnd-loadBegin).count());
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
-    mainLight.AddComponent<LightComponent>().color = glm::vec3(1, 1, 1);
+    mainLight.AddComponent<LightComponent>().color = glm::vec3(0.7f, 0.7f, 0.7f);
     mainLight.transform.position = glm::vec3(3, 3, 0);
     Renderer mainRenderer = Renderer();
     mainRenderer.SetMainWindow(std::addressof(window));
     double initialRendererTime = glfwGetTime();
     mainRenderer.Start(mainScene.registry);
     double prepareTime = glfwGetTime() - initialRendererTime;
-    std::cout << "\nTime to prepare meshes for grouping: " << 1000*prepareTime << " (ms)\n";
-    std::cout << "Computed draw groups: " << mainRenderer.GetDrawGroupsCount() << "\n\n";
+    fmt::print("\nTime to prepare meshes for grouping: {0:.2f} (ms)\n", 1000*prepareTime);
+    fmt::print("Computed draw groups: {0}\n\n", mainRenderer.GetDrawGroupsCount());
 
     glClearColor(0, 0, 0, 1);
     // Enabling some opengl fragment tests
@@ -578,9 +584,9 @@ int main(int argc, const char *argv[])
 
         if (Input::GetKeyDown(GLFW_KEY_ESCAPE)){
             if(perfomanceCounter){
-                std::cout << "Min Delta Time: " << minDeltaTime << "(s) / " << 1000*minDeltaTime << "(ms)\n";
-                std::cout << "Max Delta Time: " << maxDeltaTime << "(s) / " << 1000*maxDeltaTime << "(ms)\n";
-                std::cout << "Ticks: " << ticks << "; Ticks/Sec: " << ticks/time << "\n";
+                fmt::print("Min Delta Time: {0:.2f} ms\n", 1000*minDeltaTime);
+                fmt::print("Max Delta Time: {0:.2f} ms\n", 1000*maxDeltaTime);
+                fmt::print("Ticks/Sec: {0:.2f}\n", ticks/time);
             }
             glfwSetWindowShouldClose(window.GetHandle(), true);
         }

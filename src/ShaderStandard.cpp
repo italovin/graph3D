@@ -301,7 +301,7 @@ ShaderCode ShaderStandard::ProcessCode()
         }
     } else {
         // The albedo vector4 is set of combination of using color attribute and diffuse map
-        fragColorString += "FragColor = albedo;\n";
+        fragColorString += "FragColor = vec4(pow(albedo.rgb, vec3(1.0/2.2)), albedo.a);\n";
     }
     std::string vertexMainString;
     vertexMainString += objIDOutSetString;

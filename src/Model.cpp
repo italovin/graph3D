@@ -1,8 +1,10 @@
 #include "Model.hpp"
 #include "ShaderStandard.hpp"
 #include <stb/stb_image.h>
+#include <gli/gli.hpp>
 #include <variant>
 #include <tbb/task_group.h>
+#include <fmt/core.h>
 
 void Model::processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4 &parentTransform)
 {
@@ -24,6 +26,7 @@ void Model::processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4 &p
         glm::vec3 position = glm::vec3(aiPosition.x, aiPosition.y, aiPosition.z);
         glm::quat rotation = glm::quat(aiRotation.w, aiRotation.x, aiRotation.y, aiRotation.z);
         glm::vec3 scale = glm::vec3(aiScaling.x, aiScaling.y, aiScaling.z);
+        scale *= this->scale;
         TransformComponent transform(position, rotation, scale);
 
         components.emplace_back(MeshRendererComponent(myMesh, myMaterial), transform);
@@ -225,6 +228,7 @@ Ref<Material> Model::processMaterial(aiMaterial *material)
 Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type)
 {
     std::string textureFileName;
+    bool isSRGB = (type == aiTextureType_DIFFUSE) || (type == aiTextureType_EMISSIVE);
      if (material->GetTextureCount(type) > 0) {
         aiString str;
         material->GetTexture(type, 0, &str);
@@ -275,11 +279,16 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
                     );
 
                     if (imageData) {
-                        Ref<Texture> texture = CreateRef<Texture>(width, height);
+                        Ref<Texture> texture = CreateRef<Texture>();
                         auto newData = pixelsDataToFourChannels(imageData, width, height, nrComponents);
-                        texture->SetPixelsData(newData, 4);
+                        gli::format format = isSRGB ? gli::format::FORMAT_RGBA8_SRGB_PACK8 : gli::format::FORMAT_RGBA8_UNORM_PACK8;
                         stbi_image_free(imageData);
-                        return texture;
+                        if(texture->LoadFromMemory(newData, format, width, height)){
+                            loadedTextures[textureFileName] = texture;
+                            return texture;
+                        }
+                        return Ref<Texture>(nullptr);
+                        
                     } else {
                         std::cerr << "Erro ao carregar textura embutida.\n";
                         return Ref<Texture>(nullptr);
@@ -288,33 +297,32 @@ Ref<Texture> Model::loadMaterialTexture(aiMaterial *material, aiTextureType type
                     nrComponents = 4; // pcData has 4 channels
                     const unsigned char* data = reinterpret_cast<const unsigned char*>(textureEmbedded->pcData);
 
-                    Ref<Texture> texture = CreateRef<Texture>(width, height);
-                    auto newData = pixelsDataToFourChannels(data, width, height, nrComponents);
-                    texture->SetPixelsData(newData, 4);
-                    loadedTextures[textureFileName] = texture;
-                    return texture;
+                    Ref<Texture> texture = CreateRef<Texture>();
+                    gli::format format = isSRGB ? gli::format::FORMAT_RGBA8_SRGB_PACK8 : gli::format::FORMAT_RGBA8_UNORM_PACK8;
+                    if(texture->LoadFromMemory(std::vector<GLubyte>(data, data + width * height * nrComponents),
+                    format, width, height)){
+                        loadedTextures[textureFileName] = texture;
+                        return texture;
+                    }
+                    return Ref<Texture>(nullptr);
                 }
             }
         }
         // Not embedded texture
-        std::string mainTexturePath = directory + '/' + textureFileName;
-        std::string secondaryTexturePath = directory + "/textures/" + textureFileName;
-
-        int width, height, nrComponents;
-        unsigned char *data = stbi_load(mainTexturePath.c_str(), &width, &height, &nrComponents, 0);
-        if(!data){
-            data = stbi_load(secondaryTexturePath.c_str(), &width, &height, &nrComponents, 0);
+        std::vector<std::string> possibleTexturePaths = 
+        {
+            directory + '/' + textureFileName,
+            directory + "/textures/" + textureFileName
+        };
+        Ref<Texture> texture = CreateRef<Texture>();
+        for(auto &&path : possibleTexturePaths){
+            if(texture->Load(path, isSRGB)){
+                loadedTextures[textureFileName] = texture;
+                return texture;
+            }
         }
-        if(!data){
-            std::cerr << "Erro ao carregar textura: " << mainTexturePath << "\n";
-            return Ref<Texture>(nullptr);
-        }
-        Ref<Texture> texture = CreateRef<Texture>(width, height);
-        auto newData = pixelsDataToFourChannels(data, width, height, nrComponents);
-        texture->SetPixelsData(newData, 4);
-        loadedTextures[textureFileName] = texture;
-        stbi_image_free(data);
-        return texture;
+        // If loading failed to all possible paths, return null texture
+        return Ref<Texture>(nullptr);
     }
 }
 
@@ -353,4 +361,9 @@ bool Model::Load(const std::string &path, Ref<ShaderStandard> defaultShader, boo
 const std::vector<std::pair<MeshRendererComponent, TransformComponent>> &Model::GetComponents() const
 {
     return components;
+}
+
+void Model::SetScale(float scale)
+{
+    this->scale = scale;
 }
