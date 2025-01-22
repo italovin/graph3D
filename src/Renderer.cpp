@@ -189,17 +189,23 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             if(std::get<Ref<Texture>>(materialMap.second.data) == Ref<Texture>(nullptr))
                 continue; // Parameter contain no map
 
-            if(materialMap.first == "diffuseMap"){
+            if(materialMap.first == Constants::ShaderStandard::diffuseMapName){
                 shader.ActivateDiffuseMap();
-            } else if(materialMap.first == "specularMap"){
+            } else if(materialMap.first == Constants::ShaderStandard::specularMapName){
                 shader.ActivateSpecularMap();
-            } else if(materialMap.first == "normalMap"){
+            } else if(materialMap.first == Constants::ShaderStandard::normalMapName){
                 shader.ActivateNormalMap();
             }
         }
+
+        shader.UseDiffuseUniform();
+        shader.UseSpecularUniform();
+
         auto materialFlags = material->GetFlags();
         for(auto &&flag : materialFlags){
-            if(flag.first == "lighting" && flag.second)
+            if(!flag.second)
+                continue; // Not activate module related to flag
+            if(flag.first == Constants::ShaderStandard::lightingName)
                 shader.ActivateLighting();
         }
         shader.SetIndexType(mesh->GetIndicesType());
@@ -232,7 +238,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
         const size_t maxTextureArrayLayers = RenderCapabilities::GetMaxTextureArrayLayers();  // Máximo de texturas
         const size_t maxUBOMatrices = glm::min(
-            RenderCapabilities::GetMaxUBOSize() / sizeof(glm::mat4), Constants::maxObjectsToGroup
+            RenderCapabilities::GetMaxUBOSize() / sizeof(glm::mat4), Constants::ShaderStandard::maxObjectsToGroup
         );
         size_t mapTypeCount = x.second[0].first.get().material->GetActivatedMapParameters().size();
         std::vector<std::vector<Renderable>> shaderGeneratedGroups;
@@ -342,7 +348,6 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             return hash;
         }
     };
-    using MapsDimensionKey = std::vector<glm::ivec2>; // Used to compare texture maps dimensions
     // Maps based on same textures dimensions of each map and based on texture compression format
     std::unordered_map<TextureKey, ShaderResourceMap, TextureKeyHash> textureConformationMap;
 
@@ -925,7 +930,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
                 // Initialize textures arrays
                 if(!texturesArraysInitialized){
                     // Forcing use of srgb. This helps mainly for incorrect compressed format loading
-                    bool forceSRGB = tex->IsCompressed() && texParameter.first == "diffuseMap";
+                    bool forceSRGB = tex->IsCompressed() && texParameter.first == Constants::ShaderStandard::diffuseMapName;
                     GLenum internalFormat = Texture::GliInternalFormatToGLenum(tex->GetFormat(), forceSRGB);
                     Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, internalFormat);
                     //textureGL->SetupStorage3D(maxTexDimensions[texParameterIndexer].maxWidth, maxTexDimensions[texParameterIndexer].maxHeight, texturesArraysImagesIndexMap[texParameterIndexer].size());
@@ -950,7 +955,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
 
                     // Initialize textures arrays
                     if(!texturesArraysInitialized){
-                        bool forceSRGB = tex->IsCompressed() && texParameter.first == "diffuseMap";
+                        bool forceSRGB = tex->IsCompressed() && texParameter.first == Constants::ShaderStandard::diffuseMapName;
                         GLenum internalFormat = Texture::GliInternalFormatToGLenum(tex->GetFormat(), forceSRGB);
                         Ref<GL::TextureGL> textureGL = CreateRef<GL::TextureGL>(GL_TEXTURE_2D_ARRAY, internalFormat);
                         //textureGL->SetupStorage3D(maxTexDimensions[texParameterIndexer].maxWidth, maxTexDimensions[texParameterIndexer].maxHeight, texturesArraysImagesIndexMap[texParameterIndexer].size());
@@ -1146,7 +1151,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         renderGroup.mvpsUniformBuffer.name = mpvsUniformBufferName;
         renderGroup.mvpsUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.mvps.size();
         renderGroup.mvpsUniformBuffer.stride = sizeof(glm::mat4);
-        renderGroup.mvpsUniformBuffer.bindingPoint = uboBindingsPurposes["mvps"];
+        renderGroup.mvpsUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::mvpsBinding];
         glNamedBufferStorage(renderGroup.mvpsUniformBuffer.name, renderGroup.mvpsUniformBuffer.bufferSize, renderGroup.mvps.data(), GL_DYNAMIC_STORAGE_BIT);
     }
     // Models UBO
@@ -1156,7 +1161,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         renderGroup.modelsUniformBuffer.name = modelsUniformBufferName;
         renderGroup.modelsUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.models.size();
         renderGroup.modelsUniformBuffer.stride = sizeof(glm::mat4);
-        renderGroup.modelsUniformBuffer.bindingPoint = uboBindingsPurposes["models"];
+        renderGroup.modelsUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::modelsBinding];
         glNamedBufferStorage(renderGroup.modelsUniformBuffer.name, renderGroup.modelsUniformBuffer.bufferSize, renderGroup.models.data(), GL_DYNAMIC_STORAGE_BIT);
     }
     // Normal Matrices UBO
@@ -1166,7 +1171,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         renderGroup.normalMatricesUniformBuffer.name = normalMatricesUniformBufferName;
         renderGroup.normalMatricesUniformBuffer.bufferSize = sizeof(glm::mat4)*renderGroup.normalMatrices.size();
         renderGroup.normalMatricesUniformBuffer.stride = sizeof(glm::mat4);
-        renderGroup.normalMatricesUniformBuffer.bindingPoint = uboBindingsPurposes["normalMatrices"];
+        renderGroup.normalMatricesUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::normalMatricesBinding];
         glNamedBufferStorage(renderGroup.normalMatricesUniformBuffer.name, renderGroup.normalMatricesUniformBuffer.bufferSize, renderGroup.normalMatrices.data(), GL_DYNAMIC_STORAGE_BIT);
     }
     // Material UBO
@@ -1176,7 +1181,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         renderGroup.materialUniformBuffer.name = materialUniformBufferName;
         renderGroup.materialUniformBuffer.bufferSize = renderGroupBuffers.materialStructArray.structSize * renderGroupBuffers.materialStructArray.numStructs;
         renderGroup.materialUniformBuffer.stride = renderGroupBuffers.materialStructArray.structSize;
-        renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes["materials"];
+        renderGroup.materialUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::materialsBinding];
         if(renderGroup.materialUniformBuffer.bufferSize > 0)
             glNamedBufferStorage(renderGroup.materialUniformBuffer.name, renderGroup.materialUniformBuffer.bufferSize,
             renderGroupBuffers.materialStructArray.GetData().data(), GL_DYNAMIC_STORAGE_BIT);
@@ -1187,12 +1192,12 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         glCreateBuffers(texturesArraysIndices.size(), texLayersIndexBuffersNames.data());
         for(int i = 0; i < textureParametersCount; i++){
             std::string bindingName;
-            if(texturesArraysNamesMap[i] == "diffuseMap")
-                bindingName = "diffuseMapIndices";
-            else if(texturesArraysNamesMap[i] == "normalMap")
-                bindingName = "normalMapIndices";
-            else if(texturesArraysNamesMap[i] == "specularMap")
-                bindingName = "specularMapIndices";
+            if(texturesArraysNamesMap[i] == Constants::ShaderStandard::diffuseMapName)
+                bindingName = Constants::ShaderStandard::diffuseMapIndicesBinding;
+            else if(texturesArraysNamesMap[i] == Constants::ShaderStandard::normalMapName)
+                bindingName = Constants::ShaderStandard::normalMapIndicesBinding;
+            else if(texturesArraysNamesMap[i] == Constants::ShaderStandard::specularMapName)
+                bindingName = Constants::ShaderStandard::specularMapIndicesBinding;
             else
                 continue;
             renderGroup.texLayersIndexBuffers.emplace_back(texLayersIndexBuffersNames[i], sizeof(glm::ivec4)*objectsCount,
@@ -1225,6 +1230,21 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     float texturesTotalSizeInMB = (float)texturesTotalSize / (1024*1024);
     fmt::print("Total size of unique textures: {0} KB / {1} MB\n", texturesTotalSizeInKB,
     texturesTotalSizeInMB);
+    int indicesCount = 0;
+    if(isIndirect){
+        for(auto& command : renderGroup.commands){
+            indicesCount += command.count;
+        }
+    } else {
+        for(auto& count : renderGroup.batchGroup.count){
+            indicesCount += count;
+        }
+        
+        for(auto& instanceGroup : renderGroup.instancesGroups){
+            indicesCount += instanceGroup.count;
+        }
+    }
+    fmt::print("Number of indices processed in render group: {0}\n", indicesCount);
 }
 
 void Renderer::DrawFunctionIndirect(RenderGroup &renderGroup){

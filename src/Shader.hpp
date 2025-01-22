@@ -7,6 +7,8 @@ class Shader{
 protected:
     // Use material maps (Related to textures)
     std::unordered_map<std::string, bool> maps;
+    // Use material uniform values. These are stored in uniform blocks
+    std::vector<std::pair<std::string, bool>> uniforms;
     // Use material flags
     std::unordered_map<std::string, bool> flags;
     // Used mesh layout attributes and their locations
@@ -18,6 +20,7 @@ public:
     // Calculates hashes for identify uniquely the shaders
     std::size_t Hash() const;
     const std::unordered_map<std::string, bool>& GetMaps();
+    const std::vector<std::pair<std::string, bool>>& GetUniforms();
     const std::unordered_map<std::string, bool>& GetFlags();
     const std::unordered_map<std::string, std::pair<bool, MeshAttribute>>& GetAttributes();
     // Used to build the code

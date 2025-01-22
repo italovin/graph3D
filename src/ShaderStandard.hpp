@@ -4,7 +4,8 @@
 
 // Standard shader that uses batching and that may implement lighthing, normal mapping, ambient occlusion and so on
 class ShaderStandard : public Shader {
-
+private:
+    std::vector<std::pair<std::string, bool>>::iterator GetUniform(const std::string &name);
 public:
     ShaderStandard();
     ~ShaderStandard() override;
@@ -21,6 +22,11 @@ public:
     void EnableAttribTangent(const MeshAttribute &attributeInfo);
     void EnableAttribBiTangent(const MeshAttribute &attributeInfo);
     void EnableAttribColor(const MeshAttribute &attributeInfo);
+    // Use diffuse or albedo uniform value. This is and other uniforms are vec4 for better general
+    // handling of parameters
+    void UseDiffuseUniform();
+    // A uniform specular value
+    void UseSpecularUniform();
     // Activate diffuse texturing module
     void ActivateDiffuseMap();
     // Activate specual mapping module

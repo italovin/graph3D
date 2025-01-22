@@ -5,28 +5,38 @@
 #include "Constants.hpp"
 ShaderStandard::ShaderStandard(){
     // Declare attributes used in shader
-    attributes.emplace(std::make_pair("position", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("normal", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord0", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord1", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord2", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord3", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord4", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord5", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord6", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("texCoord7", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("tangent", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("bitangent", std::make_pair(false, MeshAttribute())));
-    attributes.emplace(std::make_pair("color", std::make_pair(false, MeshAttribute())));
+    attributes.emplace("position", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("normal", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord0", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord1", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord2", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord3", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord4", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord5", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord6", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("texCoord7", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("tangent", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("bitangent", std::make_pair(false, MeshAttribute()));
+    attributes.emplace("color", std::make_pair(false, MeshAttribute()));
     // Declare parameters and maps used in shader
-    maps.emplace(std::make_pair("diffuseMap", false));
-    maps.emplace(std::make_pair("specularMap", false));
-    maps.emplace(std::make_pair("normalMap", false));
+    maps.emplace(Constants::ShaderStandard::diffuseMapName, false);
+    maps.emplace(Constants::ShaderStandard::specularMapName, false);
+    maps.emplace(Constants::ShaderStandard::normalMapName, false);
+    // Declare uniforms used in shader
+    uniforms.emplace_back(Constants::ShaderStandard::diffuseUniformName, false);
+    uniforms.emplace_back(Constants::ShaderStandard::specularUniformName, false);
     // Flags only to enable certain shader effects or processings
-    flags.emplace(std::make_pair("lighting", false));
+    flags.emplace(Constants::ShaderStandard::lightingName, false);
 }
 
 ShaderStandard::~ShaderStandard(){
+}
+
+std::vector<std::pair<std::string, bool>>::iterator ShaderStandard::GetUniform(const std::string &name){
+    auto it = std::find_if(uniforms.begin(), uniforms.end(), [&name](const std::pair<std::string, bool> &uniform){
+        return uniform.first == name;
+    });
+    return it;
 }
 
 void ShaderStandard::EnableAttribPosition(const MeshAttribute &attributeInfo){
@@ -69,17 +79,31 @@ void ShaderStandard::EnableAttribBiTangent(const MeshAttribute &attributeInfo){
 void ShaderStandard::EnableAttribColor(const MeshAttribute &attributeInfo){
     attributes["color"] = std::make_pair(true, attributeInfo);
 }
-void ShaderStandard::ActivateDiffuseMap(){
-    maps["diffuseMap"] = true;
+void ShaderStandard::UseDiffuseUniform(){
+    auto it = GetUniform(Constants::ShaderStandard::diffuseUniformName);
+    if(it == uniforms.end())
+        return;
+    (*it).second = true;
+}
+void ShaderStandard::UseSpecularUniform()
+{
+    auto it = GetUniform(Constants::ShaderStandard::specularUniformName);
+    if(it == uniforms.end())
+        return;
+    (*it).second = true;
+}
+void ShaderStandard::ActivateDiffuseMap()
+{
+    maps[Constants::ShaderStandard::diffuseMapName] = true;
 }
 void ShaderStandard::ActivateSpecularMap(){
-    maps["specularMap"] = true;
+    maps[Constants::ShaderStandard::specularMapName] = true;
 }
 void ShaderStandard::ActivateNormalMap(){
-    maps["normalMap"] = true;
+    maps[Constants::ShaderStandard::normalMapName] = true;
 }
 void ShaderStandard::ActivateLighting(){
-    flags["lighting"] = true;
+    flags[Constants::ShaderStandard::lightingName] = true;
 }
 
 void ShaderStandard::SetIndexType(MeshIndexType type)
@@ -118,10 +142,20 @@ ShaderCode ShaderStandard::ProcessCode()
     bool bitangentEnabled = attributes["bitangent"].first;
     bool colorEnabled = attributes["color"].first;
     // Modules
-    bool diffuseMapActivated = maps["diffuseMap"];
-    bool specularMapActivated = maps["specularMap"];
-    bool normalMapActivated = maps["normalMap"];
-    bool lightingActivated = flags["lighting"];
+    bool diffuseMapActivated = maps[Constants::ShaderStandard::diffuseMapName];
+    bool specularMapActivated = maps[Constants::ShaderStandard::specularMapName];
+    bool normalMapActivated = maps[Constants::ShaderStandard::normalMapName];
+    bool diffuseUniformUsed = (*GetUniform(Constants::ShaderStandard::diffuseUniformName)).second;
+    bool specularUniformUsed = (*GetUniform(Constants::ShaderStandard::specularUniformName)).second;
+    bool lightingActivated = flags[Constants::ShaderStandard::lightingName];
+    bool materialsUniformBlockToUse = 
+    diffuseUniformUsed | 
+    specularUniformUsed;
+    // Defined constant names
+    std::string diffuseMapString = Constants::ShaderStandard::diffuseMapName; // Diffuse map variable name (sampler array in this case)
+    std::string specularMapString = Constants::ShaderStandard::specularMapName; // Specular map variable name
+    std::string normalMapString = Constants::ShaderStandard::normalMapName; // Normal map variable name
+
     // Vertex strings
     std::string objIDOutSetString;
     std::string texCoord0OutSetting; // Setting output texCoord0Out
@@ -146,7 +180,7 @@ ShaderCode ShaderStandard::ProcessCode()
     // Light position - vertex shader (when used with tangent space version) or fragment shader
     // View position - vertex shader (when used with tangent space version) or fragment shader
     std::string maxObjectsGroupString = std::to_string(
-        glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::maxObjectsToGroup)
+        glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::ShaderStandard::maxObjectsToGroup)
     );
     code.SetVersion(RenderCapabilities::GetGLSLVersion());
     // Enable shader stages to pipeline
@@ -168,7 +202,7 @@ ShaderCode ShaderStandard::ProcessCode()
         code.AddVertexAttribute("aPosition", ShaderDataType::Float3, positionLocation);
         glPositionString = "gl_Position = mvps[objID]*vec4(aPosition, 1.0);\n";
         code.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[" + maxObjectsGroupString + "];"); // MVPs uniform block
-        code.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", "mvps");
+        code.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", Constants::ShaderStandard::mvpsBinding);
     } else {
         glPositionString = "gl_Position = vec4(1.0)\n";
     }
@@ -191,36 +225,63 @@ ShaderCode ShaderStandard::ProcessCode()
     if(colorEnabled){
         code.AddVertexAttribute("aColor", ShaderDataType::Float4, colorLocation);
         code.AddOutput(ShaderStage::Vertex, "aColorOut", ShaderDataType::Float4);
-        if(diffuseMapActivated){ // Color Attrib + Diffuse Map
-            // Added diffuse map sampler array down below
-            albedoString = "vec4 albedo = texture(diffuseMap, vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut;\n";
-        } else { // Only color attrib
-            albedoString = "vec4 albedo = aColorOut;\n";
+        if(diffuseMapActivated){
+            if(diffuseUniformUsed){ // Color Attrib + Diffuse Map + Base Color
+                // Added diffuse map sampler array down below
+                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut*materials[objID].diffuseUniform;\n";
+            } else { // Color Attrib + Diffuse Map
+                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut;\n";
+            }
+            
+        } else {
+            if(diffuseUniformUsed){ // Color Attrib + Base Color
+                albedoString = "vec4 albedo = aColorOut*materials[objID].diffuseUniform;\n";
+            } else { // Only Color Attrib
+                albedoString = "vec4 albedo = aColorOut;\n";
+            }
         }
     } else {
         if(diffuseMapActivated){
-            // Added diffuse map sampler array down below
-            albedoString = "vec4 albedo = texture(diffuseMap, vec3(aTexCoord0Out, diffuseMapIndices[objID].x));\n";
+            if(diffuseUniformUsed){ // Diffuse Map + Base Color
+                // Added diffuse map sampler array down below
+                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*materials[objID].diffuseUniform;\n";
+            } else{ // Diffuse Map only
+                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x));\n";
+            }
         } else {
-            albedoString = "vec4 albedo = vec4(1.0);\n";
+            if(diffuseUniformUsed){ // Base Color only
+                albedoString = "vec4 albedo = materials[objID].diffuseUniform;\n";
+            } else { // None color information
+                albedoString = "vec4 albedo = vec4(1.0);\n";
+            }
         }
     }
-    if(diffuseMapActivated){ // Only diffuse map
-        code.AddMaterialMapArray(ShaderStage::Fragment, "diffuseMap");
-        code.CreateUniformBlock(ShaderStage::Fragment, "diffuseMapIndicesUBO", "ivec4 diffuseMapIndices[" + maxObjectsGroupString + "];"); // UBO diffuse map indices
-        code.SetBindingPurpose(ShaderStage::Fragment, "diffuseMapIndicesUBO", "diffuseMapIndices");
+    if(materialsUniformBlockToUse){
+        code.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
+        code.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[" + maxObjectsGroupString + "];");
+        code.SetBindingPurpose(ShaderStage::Fragment, "matUBO", Constants::ShaderStandard::materialsBinding);
     }
+    if(diffuseMapActivated){ // Only diffuse map
+        code.AddMaterialMapArray(ShaderStage::Fragment, diffuseMapString);
+        code.CreateUniformBlock(ShaderStage::Fragment, "diffuseMapIndicesUBO", "ivec4 diffuseMapIndices[" + maxObjectsGroupString + "];"); // UBO diffuse map indices
+        code.SetBindingPurpose(ShaderStage::Fragment, "diffuseMapIndicesUBO", Constants::ShaderStandard::diffuseMapIndicesBinding);
+    }
+    for(auto &&uniform : uniforms){
+        if(uniform.second)
+            code.AddMaterialVec4ToStruct("Material", ShaderStage::Fragment, uniform.first);
+    }
+
     if(lightingActivated){
         if(normalEnabled){ // Declare normal attribute to do calculations
             // Already declared aNormal input
             code.AddOutput(ShaderStage::Vertex, "aNormalOut", ShaderDataType::Float3);
             code.CreateUniformBlock(ShaderStage::Vertex, "normalMatrixUBO", "mat4 normalMatrices[" + maxObjectsGroupString + "];");
-            code.SetBindingPurpose(ShaderStage::Vertex, "normalMatrixUBO", "normalMatrices"); // Transpose of inverse of model
+            code.SetBindingPurpose(ShaderStage::Vertex, "normalMatrixUBO", Constants::ShaderStandard::normalMatricesBinding); // Transpose of inverse of model
             normalMatrixString += "mat3 normalMatrix = mat3(normalMatrices[objID]);\n";
             normalOutSetString = "aNormalOut = normalMatrix * aNormal;\n";
 
             code.CreateUniformBlock(ShaderStage::Vertex, "modelsUBO", "mat4 models[" + maxObjectsGroupString + "];"); // Models uniform block. Used to world space transformations only
-            code.SetBindingPurpose(ShaderStage::Vertex, "modelsUBO", "models");
+            code.SetBindingPurpose(ShaderStage::Vertex, "modelsUBO", Constants::ShaderStandard::modelsBinding);
             code.AddOutput(ShaderStage::Vertex, "fragPos", ShaderDataType::Float3);
             fragPosSetting += "fragPos = vec3(models[objID] * vec4(aPosition, 1.0));\n";
 
@@ -255,10 +316,10 @@ ShaderCode ShaderStandard::ProcessCode()
                 if(normalMapActivated){ // Using a normal map to retrieve normals
                     if(!texCoord0Enabled)
                         return ShaderCode();
-                    code.AddMaterialMapArray(ShaderStage::Fragment, "normalMap");
+                    code.AddMaterialMapArray(ShaderStage::Fragment, normalMapString);
                     code.CreateUniformBlock(ShaderStage::Fragment, "normalMapIndicesUBO", "ivec4 normalMapIndices[" + maxObjectsGroupString + "];"); // UBO normal map indices
-                    code.SetBindingPurpose(ShaderStage::Fragment, "normalMapIndicesUBO", "normalMapIndices");
-                    normalString = "vec3 normal = texture(normalMap, vec3(aTexCoord0Out, normalMapIndices[objID].x)).rgb;\n";
+                    code.SetBindingPurpose(ShaderStage::Fragment, "normalMapIndicesUBO", Constants::ShaderStandard::normalMapIndicesBinding);
+                    normalString = "vec3 normal = texture("+normalMapString+", vec3(aTexCoord0Out, normalMapIndices[objID].x)).rgb;\n";
                     normalString += "normal = normalize(normal * 2.0 - 1.0);\n"; // Tangent space normal
                 }
             } else { // Use world space to do lighting calculations
@@ -266,11 +327,11 @@ ShaderCode ShaderStandard::ProcessCode()
                 code.AddUniform(ShaderStage::Fragment, "viewPos", ShaderDataType::Float3);
                 lightSetupString += "vec3 lightDir = normalize(lightPos - fragPos);\n";
                 lightSetupString += "vec3 viewDir = normalize(viewPos - fragPos);\n";
-                attenuationString += "float lightDistance = length(lightPos - lightPos);\n";
+                attenuationString += "float lightDistance = length(lightPos - fragPos);\n";
             }
 
             // Ambient
-            ambientString += "vec3 ambient = 0.001 * albedo.rgb;\n";
+            ambientString += "vec3 ambient = vec3(0.01, 0.01, 0.01) * albedo.rgb;\n";
 
             // Diffuse
             diffuseString += "float diff = max(dot(normal, lightDir), 0.0);\n";
@@ -280,12 +341,15 @@ ShaderCode ShaderStandard::ProcessCode()
             specularString += "vec3 halfwayDir = normalize(lightDir + viewDir);\n";
             specularString += "float spec = pow(max(dot(normal, halfwayDir), 0.0), 16.0);\n";
             if(specularMapActivated){
-                code.AddMaterialMapArray(ShaderStage::Fragment, "specularMap");
+                code.AddMaterialMapArray(ShaderStage::Fragment, specularMapString);
                 code.CreateUniformBlock(ShaderStage::Fragment, "specularMapIndicesUBO", "ivec4 specularMapIndices[" + maxObjectsGroupString + "];"); // UBO specular map indices
-                code.SetBindingPurpose(ShaderStage::Fragment, "specularMapIndicesUBO", "specularMapIndices");
-                specularString += "vec3 specular = spec * texture(specularMap, vec3(aTexCoord0Out, specularMapIndices[objID].x)).rgb * lightColor;\n";
+                code.SetBindingPurpose(ShaderStage::Fragment, "specularMapIndicesUBO", Constants::ShaderStandard::specularMapIndicesBinding);
+                specularString += "vec3 specular = texture("+specularMapString+", vec3(aTexCoord0Out, specularMapIndices[objID].x)).rgb * spec * lightColor;\n";
             } else {
-                specularString += "vec3 specular = vec3(0.04) * spec * lightColor;\n";
+                if(specularUniformUsed)
+                    specularString += "vec3 specular = materials[objID].specularUniform.rgb * spec * lightColor;\n";
+                else
+                    specularString += "vec3 specular = vec3(0.03) * spec * lightColor;\n";
             }
             attenuationString += "float att_kc = 1.0;\n";
             attenuationString += "float att_kl = 0.2;\n";

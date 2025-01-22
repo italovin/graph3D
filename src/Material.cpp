@@ -19,6 +19,13 @@ Material::Material(Ref<Shader> shader)
         matParameter.data = Ref<Texture>(nullptr);
         AddParameter(materialMap.first, matParameter);
     }
+    auto materialUniforms = this->shader->GetUniforms();
+    for(auto &&materialUniform : materialUniforms){
+        MaterialParameter matParameter;
+        matParameter.type = MaterialParameterType::Vector4;
+        matParameter.data = glm::vec4(1.0f);
+        AddParameter(materialUniform.first, matParameter);
+    }
     auto materialFlags = this->shader->GetFlags();
     for(const auto &materialFlag : materialFlags){
         flags.push_back(materialFlag);

@@ -1,9 +1,9 @@
 #include "Model.hpp"
 #include "ShaderStandard.hpp"
+#include "Constants.hpp"
 #include <stb/stb_image.h>
 #include <gli/gli.hpp>
 #include <variant>
-#include <tbb/task_group.h>
 #include <fmt/core.h>
 
 void Model::processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4 &parentTransform)
@@ -218,10 +218,29 @@ Ref<Material> Model::processMaterial(aiMaterial *material)
         normalMapTextureType = aiTextureType_NORMALS;
     Ref<Texture> normalMap = loadMaterialTexture(material, normalMapTextureType);
     Ref<Texture> specularMap = loadMaterialTexture(material, aiTextureType_SPECULAR);
-    materialData->SetParameterMap("diffuseMap", diffuseMap);
-    materialData->SetParameterMap("normalMap", normalMap);
-    materialData->SetParameterMap("specularMap", specularMap);
-    materialData->SetFlag("lighting", useLighting);
+    materialData->SetParameterMap(Constants::ShaderStandard::diffuseMapName, diffuseMap);
+    materialData->SetParameterMap(Constants::ShaderStandard::normalMapName, normalMap);
+    materialData->SetParameterMap(Constants::ShaderStandard::specularMapName, specularMap);
+    { // Diffuse uniform or base color (albedo)
+        // For while, base color and color diffuse are same info
+        // Generally, color diffuse is for classic lighting and base color for PBR
+        aiColor4D diffuse(1.0f, 1.0f, 1.0f, 1.0f);
+        if (AI_SUCCESS == material->Get(AI_MATKEY_BASE_COLOR, diffuse)) {
+            materialData->SetParameterVector4(Constants::ShaderStandard::diffuseUniformName, glm::vec4(diffuse.r,diffuse.g,diffuse.b,diffuse.a));
+        } else if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse)) {
+            materialData->SetParameterVector4(Constants::ShaderStandard::diffuseUniformName, glm::vec4(diffuse.r,diffuse.g,diffuse.b,diffuse.a));
+        } else {
+            materialData->SetParameterVector4(Constants::ShaderStandard::diffuseUniformName, glm::vec4(diffuse.r,diffuse.g,diffuse.b,diffuse.a));
+        }
+    }
+    { // Specular uniform
+        aiColor4D specularColor(0.0f, 0.0f, 0.0f, 1.0f);
+        float specularFactor = 1.0f;
+        material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
+        material->Get(AI_MATKEY_SPECULAR_FACTOR, specularFactor);
+        materialData->SetParameterVector4(Constants::ShaderStandard::specularUniformName, specularFactor*glm::vec4(specularColor.r,specularColor.g,specularColor.b,specularColor.b));
+    }
+    materialData->SetFlag(Constants::ShaderStandard::lightingName, useLighting);
     return materialData;
 }
 

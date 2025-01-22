@@ -29,7 +29,7 @@ int main(int argc, const char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    ///glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+    //glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     const int WIDTH = 1366;
     const int HEIGHT = 768;
 
@@ -503,7 +503,7 @@ int main(int argc, const char *argv[])
     std::vector<ModelDescriptor> modelsDescriptors;
     modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
     modelsDescriptors.emplace_back("../resources/modelos/porsche/scene.gltf");
-    modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", false);
+    //modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", false);
     std::vector<Model> models(modelsDescriptors.size());
     std::vector<Entity> sceneObjects;
     auto loadBegin = std::chrono::high_resolution_clock::now();
@@ -541,6 +541,9 @@ int main(int argc, const char *argv[])
     glClearColor(0, 0, 0, 1);
     // Enabling some opengl fragment tests
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     double time = 0;
     double lastTime = 0;
@@ -548,6 +551,7 @@ int main(int argc, const char *argv[])
     double maxDeltaTime = 0;
     double minDeltaTime = 0;
     unsigned long ticks = 0;
+    glfwSwapInterval(1);
 
     mainCamera.transform = freeCameraTransform;
     // Camera parameters
