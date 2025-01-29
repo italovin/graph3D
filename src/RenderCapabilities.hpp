@@ -14,9 +14,11 @@ public:
     static int GetMinorVersion();
     static GLApiVersion GetAPIVersion();
     static int GetMaxUBOSize();
+    static int GetMaxUBOBindings();
     static int GetMaxTextureArrayLayers();
     static int GetMaxTextureImageUnits();
     static int GetMaxVertexAttributes();
+    static int GetMaxVertexOutputComponents();
 
 private:
     RenderCapabilities();

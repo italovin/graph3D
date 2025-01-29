@@ -18,6 +18,7 @@ const std::string ShaderCode::GLSLTypeToString(ShaderDataType type){
         //case ShaderDataType::UInt3: return "uvec3";
         case ShaderDataType::Float3: return "vec3";
         //case ShaderDataType::Double3: return "dvec3";
+        case ShaderDataType::Mat3: return "mat3";
         case ShaderDataType::Float4: return "vec4";
         case ShaderDataType::Mat4: return "mat4";
         default: return "undefined"; //It will cause shader compilation error
@@ -64,9 +65,10 @@ void ShaderCode::AddVertexAttribute(const std::string &name, ShaderDataType data
     vertexShader.inputs[name] = parameter; 
 }
 
-void ShaderCode::AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location){
+void ShaderCode::AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location, int arraySize){
     ShaderCodeParameter parameter;
     parameter.location = location;
+    parameter.arraySize = arraySize;
     parameter.dataType = dataType;
     switch(shaderStage){
         case ShaderStage::Vertex : vertexShader.outputs[name] = parameter; break;
@@ -78,9 +80,10 @@ void ShaderCode::AddOutput(ShaderStage shaderStage, const std::string &name, Sha
     }
 }
 
-void ShaderCode::AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location){
+void ShaderCode::AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location, int arraySize){
     ShaderCodeParameter parameter;
     parameter.location = location;
+    parameter.arraySize = arraySize;
     parameter.dataType = dataType;
     switch(shaderStage){
         case ShaderStage::Vertex : vertexShader.uniforms[name] = parameter; break;
@@ -92,7 +95,7 @@ void ShaderCode::AddUniform(ShaderStage shaderStage, const std::string &name, Sh
     }
 }
 
-std::string ShaderCode::CreateStruct(ShaderStage shaderStage, const std::string &structType, const std::string &name)
+std::string ShaderCode::CreateStruct(ShaderStage shaderStage, const std::string &structType)
 {
     switch(shaderStage){
         case ShaderStage::Vertex : vertexShader.regularStructs[structType] = std::unordered_map<std::string, ShaderCodeParameter>(); return structType;
@@ -103,6 +106,32 @@ std::string ShaderCode::CreateStruct(ShaderStage shaderStage, const std::string 
         default: return std::string();
     }
     return structType;
+}
+
+void ShaderCode::AddParameterToStruct(ShaderStage shaderStage, const std::string &structType, const std::string &paramName, ShaderDataType type){
+    switch(shaderStage){
+        case ShaderStage::Vertex : 
+        if(vertexShader.regularStructs[structType].try_emplace(paramName, ShaderCodeParameter{std::nullopt, type}).second)
+            vertexShader.regularStructsOrders[structType].emplace_back(paramName, ShaderCodeParameter{std::nullopt, type});
+        break;
+        case ShaderStage::TesselationControl : 
+        if(tesselationControlShader.regularStructs[structType].try_emplace(paramName, ShaderCodeParameter{std::nullopt, type}).second)
+            tesselationControlShader.regularStructsOrders[structType].emplace_back(paramName, ShaderCodeParameter{std::nullopt, type});
+        break;
+        case ShaderStage::TesselationEvaluation : 
+        if(tesselationEvaluationShader.regularStructs[structType].try_emplace(paramName, ShaderCodeParameter{std::nullopt, type}).second)
+            tesselationEvaluationShader.regularStructsOrders[structType].emplace_back(paramName, ShaderCodeParameter{std::nullopt, type});
+        break;
+        case ShaderStage::Geometry : 
+        if(geometryShader.regularStructs[structType].try_emplace(paramName, ShaderCodeParameter{std::nullopt, type}).second)
+            geometryShader.regularStructsOrders[structType].emplace_back(paramName, ShaderCodeParameter{std::nullopt, type});
+        break;
+        case ShaderStage::Fragment : 
+        if(fragmentShader.regularStructs[structType].try_emplace(paramName, ShaderCodeParameter{std::nullopt, type}).second)
+            fragmentShader.regularStructsOrders[structType].emplace_back(paramName, ShaderCodeParameter{std::nullopt, type});
+        break;
+        default: return;
+    }
 }
 
 std::string ShaderCode::DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType)
@@ -196,6 +225,18 @@ void ShaderCode::CreateUniformBlock(ShaderStage shaderStage, const std::string &
     }
 }
 
+void ShaderCode::PushOutsideCode(ShaderStage shaderStage, const std::string &code)
+{
+    switch(shaderStage){
+        case ShaderStage::Vertex : vertexShader.outsideCodes.push_back(code); break;
+        case ShaderStage::TesselationControl : tesselationControlShader.outsideCodes.push_back(code); break;
+        case ShaderStage::TesselationEvaluation : tesselationEvaluationShader.outsideCodes.push_back(code); break;
+        case ShaderStage::Geometry : geometryShader.outsideCodes.push_back(code); break;
+        case ShaderStage::Fragment : fragmentShader.outsideCodes.push_back(code); break;
+        default: return;
+    }
+}
+
 void ShaderCode::SetMain(ShaderStage shaderStage, const std::string &main){
     switch(shaderStage){
         case ShaderStage::Vertex : vertexShader.main = main; break;
@@ -231,16 +272,28 @@ std::string &outsideString, std::string &outsideStringIns){
         std::string flatString;
         if(parameter.second.dataType == ShaderDataType::Int)
             flatString = "flat ";
+        std::string arraySizeString;
+        if(parameter.second.arraySize > 0)
+            arraySizeString = "[" + std::to_string(parameter.second.arraySize) + "]";
         outsideString += locationString + flatString + "out " + GLSLTypeToString(parameter.second.dataType) +
-        + " " + parameter.first + ";\n";
+        + " " + parameter.first + arraySizeString + ";\n";
         outsideStringIns += locationString + flatString  + "in " + GLSLTypeToString(parameter.second.dataType)
-        + " " + parameter.first + ";\n";
+        + " " + parameter.first + arraySizeString + ";\n";
     }
 
     if(!shaderStageCode.materialPropertiesOrder.empty()){
         outsideString += "struct " + shaderStageCode.materialProperties.first + "{\n";
         for(auto &&matParameter : shaderStageCode.materialPropertiesOrder){
             outsideString += GLSLMatTypeToString(matParameter.second.type) + " " + matParameter.first + ";\n";
+        }
+        outsideString += "};\n";
+    }
+
+    for(auto &&regularStruct : shaderStageCode.regularStructsOrders){
+        if(regularStruct.second.empty()) continue;
+        outsideString += "struct " + regularStruct.first + "{\n";
+        for(auto &&parameter : regularStruct.second){
+            outsideString += GLSLTypeToString(parameter.second.dataType) + " " + parameter.first + ";\n";
         }
         outsideString += "};\n";
     }
@@ -254,13 +307,20 @@ std::string &outsideString, std::string &outsideStringIns){
     }
 
     for(auto &&parameter : shaderStageCode.uniforms){
+        std::string arraySizeString;
+        if(parameter.second.arraySize > 0)
+            arraySizeString = "[" + std::to_string(parameter.second.arraySize) + "]";
         outsideString += "uniform " + GLSLTypeToString(parameter.second.dataType) +
-        + " " + parameter.first + ";\n";
+        + " " + parameter.first + arraySizeString + ";\n";
     }
 
 
     for(auto &&uniformBlock : shaderStageCode.uniformBlocks){
         outsideString += "layout (std140) uniform " + uniformBlock.first + "{\n" + uniformBlock.second + "};\n";
+    }
+
+    for(auto &&outsideCode : shaderStageCode.outsideCodes){
+        outsideString += outsideCode + "\n";
     }
 }
 
@@ -382,7 +442,7 @@ Ref<GL::ShaderGL> ShaderCode::Generate()
             "void main(){\n" +
             mainString + "\n}";
         } else {
-            shaderSource = versionString + extensionsString + outsideString + outsideStringInsPrevious +
+            shaderSource = versionString + extensionsString + outsideStringInsPrevious + outsideString +
             "void main(){\n" +
             mainString + "\n}";
         }

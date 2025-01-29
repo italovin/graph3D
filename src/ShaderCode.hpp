@@ -28,6 +28,7 @@ struct ShaderStageCode{
     std::unordered_map<std::string, ShaderCodeParameter> outputs;
     std::unordered_map<std::string, ShaderCodeParameter> uniforms;
     std::unordered_map<std::string, std::unordered_map<std::string, ShaderCodeParameter>> regularStructs;
+    std::unordered_map<std::string, std::vector<std::pair<std::string, ShaderCodeParameter>>> regularStructsOrders;
     // Designed for material parameters batching
     std::pair<std::string, std::unordered_map<std::string, MaterialParameter>> materialProperties;
     std::vector<std::pair<std::string, MaterialParameter>> materialPropertiesOrder;
@@ -38,6 +39,8 @@ struct ShaderStageCode{
     std::unordered_map<std::string, std::string> uniformBlocks;
     ///
     std::unordered_map<std::string, std::string> uniformBlockBindingPurposes;
+    // Auxiliar outside codes. Useful for defining structs or functions
+    std::vector<std::string> outsideCodes;
     std::string main;
 };
 
@@ -67,9 +70,10 @@ public:
     void SetAdditionalOutsideString(const std::string &additionalOutsideString);
     void SetStageToPipeline(ShaderStage shaderStage, bool enabled);
     void AddVertexAttribute(const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
-    void AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
-    void AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt);
-    std::string CreateStruct(ShaderStage shaderStage, const std::string &structType, const std::string &name);
+    void AddOutput(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt, int arraySize = 0);
+    void AddUniform(ShaderStage shaderStage, const std::string &name, ShaderDataType dataType, std::optional<int> location = std::nullopt, int arraySize = 0);
+    std::string CreateStruct(ShaderStage shaderStage, const std::string &structType);
+    void AddParameterToStruct(ShaderStage shaderStage, const std::string &structType, const std::string &paramName, ShaderDataType type);
     std::string DefineMaterialParametersStruct(ShaderStage shaderStage, const std::string &structType);
     void AddMaterialFloatToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, float defaultValue = 0.0f);
     void AddMaterialBoolToStruct(const std::string &structType, ShaderStage shaderStage, const std::string &name, bool defaultValue = false);
@@ -77,6 +81,7 @@ public:
     void AddMaterialMapArray(ShaderStage shaderStage, const std::string &name, Ref<Texture> defaultValue = nullptr);
     void UpdateMaterialParameterUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
     void CreateUniformBlock(ShaderStage shaderStage, const std::string &name, const std::string &body);
+    void PushOutsideCode(ShaderStage shaderStage, const std::string &code);
     void SetMain(ShaderStage shaderStage, const std::string &main);
     const std::unordered_map<std::string, ShaderCodeParameter> &GetUniforms(ShaderStage shaderStage);
     std::vector<std::pair<std::string, MaterialParameter>> GetMaterialParameters(ShaderStage shaderStage);

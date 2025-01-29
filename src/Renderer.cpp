@@ -435,6 +435,46 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         fmt::print("\n-- Building render group {0}\n",  i + 1);
         BuildRenderGroup(renderGroups[i], renderGroupsBuffers[i], shaderGroups[i]);
     }
+
+    // Point Light
+    {
+        size_t maxSize = sizeof(PointLight)*Constants::ShaderStandard::maxPointLights;
+        GLuint pointLightUniformBufferName = 0;
+        glCreateBuffers(1, std::addressof(pointLightUniformBufferName));
+        pointLightUniformBuffer.name = pointLightUniformBufferName;
+        pointLightUniformBuffer.bufferSize = maxSize;
+        pointLightUniformBuffer.stride = sizeof(PointLight);
+        pointLightUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::pointLightsBinding];
+        
+        glNamedBufferStorage(pointLightUniformBuffer.name, maxSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    }
+    // Directional Light
+    {
+        size_t maxSize = sizeof(DirectionalLight)*Constants::ShaderStandard::maxDirectionalLights;
+        GLuint directionalLightUniformBufferName = 0;
+        glCreateBuffers(1, std::addressof(directionalLightUniformBufferName));
+        directionalLightUniformBuffer.name = directionalLightUniformBufferName;
+        directionalLightUniformBuffer.bufferSize = maxSize;
+        directionalLightUniformBuffer.stride = sizeof(DirectionalLight);
+        directionalLightUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::directionalLightsBinding];
+        
+        glNamedBufferStorage(directionalLightUniformBuffer.name, maxSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    }
+    // Spot Light
+    {
+        size_t maxSize = sizeof(SpotLight)*Constants::ShaderStandard::maxSpotLights;
+        GLuint spotLightUniformBufferName = 0;
+        glCreateBuffers(1, std::addressof(spotLightUniformBufferName));
+        spotLightUniformBuffer.name = spotLightUniformBufferName;
+        spotLightUniformBuffer.bufferSize = sizeof(SpotLight)*spotLights.size();
+        spotLightUniformBuffer.stride = sizeof(SpotLight);
+        spotLightUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::spotLightsBinding];
+        
+        glNamedBufferStorage(spotLightUniformBuffer.name, maxSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    }
+    glBindBufferBase(GL_UNIFORM_BUFFER, pointLightUniformBuffer.bindingPoint, pointLightUniformBuffer.name);
+    glBindBufferBase(GL_UNIFORM_BUFFER, directionalLightUniformBuffer.bindingPoint, directionalLightUniformBuffer.name);
+    glBindBufferBase(GL_UNIFORM_BUFFER, spotLightUniformBuffer.bindingPoint, spotLightUniformBuffer.name);
 }
 
 std::optional<int> Renderer::AddUBOBindingPurpose(const std::string &purpose){
@@ -1305,23 +1345,68 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
             break;
         }
     }
-    LightComponent mainLight;
-    TransformComponent mainLightTransform;
 
     auto lightView = registry.view<LightComponent, TransformComponent>();
+    size_t pointLightCounter = 0;
+    size_t directionalLightCounter = 0;
+    size_t spotLightCounter = 0;
     for(auto entity : lightView){
         auto &light = lightView.get<LightComponent>(entity);
-        auto &lightTransform = lightView.get<TransformComponent>(entity);
-        if(light.isMain){
-            mainLight = light;
-            mainLightTransform = lightTransform;
-            break;
+        auto &transform = lightView.get<TransformComponent>(entity);
+        if(light.type == LightType::Point && pointLightCounter < Constants::ShaderStandard::maxPointLights){
+            PointLight pointLight;
+            pointLight.position = glm::vec4(transform.position, 1.0f);
+            pointLight.color = glm::vec4(glm::max(light.color, glm::vec3(0.0f)), 1.0f);
+            pointLight.intensity = glm::max(light.intensity, 0.0f);
+            pointLight.colorTemperature = light.colorTemperature;
+            pointLight.range = glm::max(light.range, 0.0f);
+            pointLight.cutoff = glm::clamp(light.cutoff, 0.0f, 1.0f);
+            if(pointLightCounter < pointLights.size()){
+                pointLights[pointLightCounter++] = pointLight;
+            } else {
+                pointLights.push_back(pointLight);
+                pointLightCounter++;
+            }
+        } else if(light.type == LightType::Directional && directionalLightCounter < Constants::ShaderStandard::maxDirectionalLights){
+            DirectionalLight directionalLight;
+            directionalLight.direction = glm::vec4(transform.Forward(), 1.0f);
+            directionalLight.color = glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f);
+            if(directionalLightCounter < directionalLights.size()){
+                directionalLights[directionalLightCounter++] = directionalLight;
+            } else {
+                directionalLights.push_back(directionalLight);
+                directionalLightCounter++;
+            }
+                
+        } else if(light.type == LightType::Spot && spotLightCounter < Constants::ShaderStandard::maxSpotLights){
+            SpotLight spotLight;
+            spotLight.position = glm::vec4(transform.position, 1.0f);
+            spotLight.direction = glm::vec4(transform.Forward(), 1.0f);
+            spotLight.color = glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f);
+            spotLight.range = glm::max(light.range, 0.0f);
+            spotLight.cutoff = glm::clamp(light.cutoff, 0.0f, 1.0f);
+            // Calculate cosine of the angles in CPU side
+            spotLight.innerCutoff = glm::cos(glm::radians(glm::clamp(light.spotlightInnerCutoff, 0.0f, 90.0f)));
+            spotLight.outerCutoff = glm::cos(glm::radians(glm::clamp(light.spotlightOuterCutoff, 0.0f, 90.0f)));
+            if(spotLightCounter < spotLights.size()){
+                spotLights[spotLightCounter++] = spotLight;
+            } else {
+                spotLights.push_back(spotLight);
+                spotLightCounter++;
+            }
         }
     }
-    Draw(mainCamera, mainCameraTransform, mainLight, mainLightTransform);
+    glNamedBufferSubData(pointLightUniformBuffer.name, 0, sizeof(PointLight)*pointLights.size(), pointLights.data());
+    glNamedBufferSubData(directionalLightUniformBuffer.name, 0, sizeof(DirectionalLight)*directionalLights.size(), directionalLights.data());
+    glNamedBufferSubData(spotLightUniformBuffer.name, 0, sizeof(SpotLight)*spotLights.size(), spotLights.data());
+    Draw(mainCamera, mainCameraTransform, std::vector<std::pair<std::string, size_t>>{
+        {Constants::ShaderStandard::pointLightCountName, pointLightCounter},
+        {Constants::ShaderStandard::directionalLightCountName, directionalLightCounter},
+        {Constants::ShaderStandard::spotLightCountName, spotLightCounter}
+    });
 }
 
-void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform, const LightComponent &mainLight, const TransformComponent &lightTransform){
+void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform, const std::vector<std::pair<std::string, size_t>> &lightsCounters){
     glm::mat4 mainCameraProjection = mainCamera.isPerspective ?
     glm::perspectiveLH(glm::radians(mainCamera.fieldOfView), mainCamera.aspectRatio,
     mainCamera.nearPlane, mainCamera.farPlane) :
@@ -1343,9 +1428,11 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
             renderGroup.shader->Use();
             lastShaderProgram = renderGroup.shader->GetHandle();
         }
-        renderGroup.shader->SetVec3("lightPos", lightTransform.position);
-        renderGroup.shader->SetVec3("viewPos", mainCameraTransform.position);
-        renderGroup.shader->SetVec3("lightColor", mainLight.color);
+        for(auto& [name, count] : lightsCounters){
+            renderGroup.shader->SetInt(name, count);
+        }
+        renderGroup.shader->SetVec3(Constants::ShaderStandard::viewPosName, mainCameraTransform.position);
+
         renderGroup.vao.Bind();
 
         for(int i = 0; i < renderGroup.objectsCount; i++){

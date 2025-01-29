@@ -1,5 +1,5 @@
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include <SDL2/SDL.h>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
@@ -13,23 +13,29 @@
 #include "Input.hpp"
 #include "Model.hpp"
 #include <filesystem>
-#include <nlohmann/json.hpp>
-#include <stb/stb_image.h>
-#include <tbb/parallel_for.h>
 #include <fmt/core.h>
+#include <sail-c++/sail-c++.h>
 #include <sail-common/log.h>
+#include <tbb/parallel_for.h>
+
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
 
 int main(int argc, const char *argv[])
 {
     setlocale(LC_ALL, ".UTF-8");
-    /* Initialize the library */
-    if (!glfwInit())
+    
+    //// SDL
+    // Inicializa a SDL
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+        std::cerr << "Erro ao inicializar SDL: " << SDL_GetError() << std::endl;
         return -1;
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    //glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+    }
+    // Define configurações do OpenGL
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // Versão principal do OpenGL (exemplo: 3.3)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); // Perfil core
+    //SDL_SetRelativeMouseMode(SDL_TRUE);
+
     const int WIDTH = 1366;
     const int HEIGHT = 768;
 
@@ -38,38 +44,51 @@ int main(int argc, const char *argv[])
 
     if (!window.Create(std::string("Graph 3D"), WIDTH, HEIGHT))
     {
-        glfwTerminate();
+        std::cerr << "Erro ao criar janela: " << SDL_GetError() << std::endl;
+        SDL_Quit();
         return -1;
     }
 
     /* Make the window's context current */
-    window.MakeContextCurrent();
+    if (!window.MakeContextCurrent()) {
+        std::cerr << "Erro ao criar contexto OpenGL: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window.GetHandle());
+        SDL_Quit();
+        return -1;
+    }
 
-    Input::RegisterWindow(window);
     // Initialize the renderer API info
+    window.SetContextVersion(RenderCapabilities::GetMajorVersion(), RenderCapabilities::GetMinorVersion(), 0);
+
+    // Ativa sincronização vertical (VSync)
+    if (SDL_GL_SetSwapInterval(1) < 0) {
+        std::cerr << "Aviso: Não foi possível ativar VSync: " << SDL_GetError() << std::endl;
+    }
+
     RenderCapabilities::Initialize();
     fmt::print("GL_MAX_UNIFORM_BLOCK_SIZE is {0} bytes\n", RenderCapabilities::GetMaxUBOSize());
     fmt::print("GL_MAX_ARRAY_TEXTURE_LAYERS is {0}\n", RenderCapabilities::GetMaxTextureArrayLayers());
     fmt::print("GL_MAX_TEXTURE_UNITS is {0}\n", RenderCapabilities::GetMaxTextureImageUnits());
     fmt::print("GL_MAX_VERTEX_ATTRIBS is {0}\n", RenderCapabilities::GetMaxVertexAttributes());
+    fmt::print("GL_MAX_VERTEX_OUTPUT_COMPONENTS is {0}\n", RenderCapabilities::GetMaxVertexOutputComponents());
+    fmt::print("GL_MAX_UNIFORM_BUFFER_BINDINGS is {0}\n", RenderCapabilities::GetMaxUBOBindings());
     fmt::println(RenderCapabilities::GetVersionString());
     fmt::println(RenderCapabilities::GetVendorString());
 
-    window.SetContextVersion(RenderCapabilities::GetMajorVersion(), RenderCapabilities::GetMinorVersion(), 0);
-
-    GLenum err=glewInit();
-    if(err != GLEW_OK){
-        std::cout << "Failed to start GLEW" << std::endl;
-        return -1;
+    /// GLEW
+    // Init GLEW - GL extensions loader
+    {
+        GLenum err=glewInit();
+        if(err != GLEW_OK){
+            std::cout << "Failed to start GLEW" << std::endl;
+            return -1;
+        }
     }
 
-    if(GLEW_ARB_direct_state_access)
-        std::cout << "Direct access extension suported\n\n";
-
+    /// SAIL
+    sail_set_log_barrier(SAIL_LOG_LEVEL_SILENCE);
 
     const int glslVersion = RenderCapabilities::GetGLSLVersion();
-
-    stbi_set_flip_vertically_on_load(true);
 
     std::string var1 = "s";
     std::string var2 = "t";
@@ -344,18 +363,10 @@ int main(int argc, const char *argv[])
     }
     Ref<Texture> tex0;
     {
-        int width, height, channels;
-        GLubyte *data = stbi_load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").generic_string().c_str(),
-        &width, &height, &channels, 0);
-        std::vector<GLubyte> pixels;
-        if(data){
-            pixels = std::vector<GLubyte>(data, data + width*height*channels);
-            stbi_image_free(data);
-            tex0 = CreateRef<Texture>();
-            tex0->LoadFromMemory(pixels, gli::format::FORMAT_RGB8_SRGB_PACK8, width, height);
-        } else {
+        tex0 = CreateRef<Texture>();
+        if(!tex0->Load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").generic_string())){
             tex0 = defaultTexture;
-        }
+        } 
     }
 
     shaderCodeTest->AddMaterialMapArray(ShaderStage::Fragment, "texArray", defaultTexture);
@@ -378,87 +389,12 @@ int main(int argc, const char *argv[])
     materialTestRed->SetParameterMap("diffuseMap", defaultTexture);
     materialTestRed->SetFlag("lighting", false);
 
-    std::filesystem::path modelsDirectory;
-    if(std::filesystem::exists(std::filesystem::path("../resources/modelos"))){
-        modelsDirectory = std::filesystem::path("../resources/modelos");
-    } else if(std::filesystem::exists(std::filesystem::path("./resources/modelos"))){
-        modelsDirectory = std::filesystem::path("./resources/modelos");
-    } else {
-        std::cout << "Insira manualmente o diretório base dos modelos:";
-        std::cin >> modelsDirectory;
-    }
-    if(!std::filesystem::exists(modelsDirectory)){
-        std::cout << "Diretório dos modelos inválido\n";
-        return -1;
-    }
-
-    const std::string modelsVerticesKey = "vertices";
-    const std::string modelsIndicesKey = "indices";
-
-    std::ifstream model1Stream(modelsDirectory/"ball.json");
-    if(!model1Stream || !nlohmann::json::accept(model1Stream)){
-        std::cout << "JSON do model 1 não existe ou é inválido\n";
-        return -1;
-    }
-    model1Stream.seekg(0);
-
-    nlohmann::json model1Json = nlohmann::json::parse(model1Stream);
-    std::vector<float> model1Vertices = model1Json[modelsVerticesKey].get<std::vector<float>>();
-    std::vector<unsigned short> model1Indices = model1Json[modelsIndicesKey].get<std::vector<unsigned short>>();
-    Ref<Mesh> model1Mesh = CreateRef<Mesh>();
-    model1Mesh->PushAttributePosition(model1Vertices);
-    model1Mesh->PushAttributeTexCoord0(std::vector<float>(model1Vertices.size()/3 * 2, 0));
-    model1Mesh->SetIndices(model1Indices, MeshTopology::Triangles);
-    Ref<Material> model1Material = CreateRef<Material>(shaderStandard);
-    model1Material->SetFlag("lighting", false);
-    model1Material->SetParameterMap("diffuseMap", tex0);
-
-    std::ifstream model2Stream(modelsDirectory/"cone1.json");
-    if(!model2Stream || !nlohmann::json::accept(model2Stream)){
-        std::cout << "JSON do model 2 não existe ou é inválido\n";
-        return -1;
-    }
-    model2Stream.seekg(0);
-
-    nlohmann::json model2Json = nlohmann::json::parse(model2Stream);
-    std::vector<float> model2Vertices = model2Json[modelsVerticesKey].get<std::vector<float>>();
-    std::vector<unsigned short> model2Indices = model2Json[modelsIndicesKey].get<std::vector<unsigned short>>();
-    Ref<Mesh> model2Mesh = CreateRef<Mesh>();
-    model2Mesh->PushAttributePosition(model2Vertices);
-    model2Mesh->PushAttributeTexCoord0(std::vector<float>(model2Vertices.size()/3 * 2, 0));
-    model2Mesh->SetIndices(model2Indices, MeshTopology::Triangles);
-    Ref<Material> model2Material = CreateRef<Material>(shaderStandard);
-    model2Material->SetFlag("lighting", false);
-    model2Material->SetParameterMap("diffuseMap", tex0);
-
-    std::ifstream model3Stream(modelsDirectory/"cylinder.json");
-    if(!model3Stream || !nlohmann::json::accept(model3Stream)){
-        std::cout << "JSON do model 3 não existe ou é inválido\n";
-        return -1;
-    }
-    model3Stream.seekg(0);
-
-    nlohmann::json model3Json = nlohmann::json::parse(model3Stream);
-    std::vector<float> model3Vertices = model3Json[modelsVerticesKey].get<std::vector<float>>();
-    std::vector<unsigned short> model3Indices = model3Json[modelsIndicesKey].get<std::vector<unsigned short>>();
-    Ref<Mesh> model3Mesh = CreateRef<Mesh>();
-    model3Mesh->PushAttributePosition(model3Vertices);
-    model3Mesh->PushAttributeTexCoord0(std::vector<float>(model3Vertices.size()/3 * 2, 0));
-    model3Mesh->SetIndices(model3Indices, MeshTopology::Triangles);
-    Ref<Material> model3Material = CreateRef<Material>(shaderStandard);
-    model3Material->SetFlag("lighting", false);
-    model3Material->SetParameterMap("diffuseMap", tex0);
-
     Scene mainScene;
     Entity quad1 = mainScene.CreateEntity();
     Entity tri1 = mainScene.CreateEntity();
     Entity quad2 = mainScene.CreateEntity();
     Entity graph = mainScene.CreateEntity();
-    Entity model1 = mainScene.CreateEntity();
-    Entity model2 = mainScene.CreateEntity();
-    Entity model3 = mainScene.CreateEntity();
     Entity mainCamera = mainScene.CreateEntity();
-    Entity mainLight = mainScene.CreateEntity();
     // Rotation Euler angles +X = Look Down; +Y = Look Right
     // Left handed system is ok with rotations: Positive rotations are clockwise and z+ points into screen
     TransformComponent freeCameraTransform;
@@ -480,16 +416,6 @@ int main(int argc, const char *argv[])
     graph.AddComponent<MeshRendererComponent>(graphMesh, graphMaterial);
     graph.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
 
-    // model1.AddComponent<MeshRendererComponent>(model1Mesh, model1Material);
-    // model1.GetComponent<TransformComponent>().position = glm::vec3(-2, 0, 0);
-    // model2.AddComponent<MeshRendererComponent>(model2Mesh, model2Material);
-    // model2.GetComponent<TransformComponent>().position = glm::vec3(2, 0, 0);
-    // model3.AddComponent<MeshRendererComponent>(model3Mesh, model3Material);
-    // model3.GetComponent<TransformComponent>().position = glm::vec3(0, 0, 0);
-    // model3.transform.scale = glm::vec3(0.2f, 0.2f, 0.2f);
-
-    sail_set_log_barrier(SAIL_LOG_LEVEL_SILENCE);
-
     // Descriptor of models
     // FlipUVs is true for default - This is correct if y-axis convention is equal OpenGL
     // If y-axis convention is opposite of OpenGL, set FlipUVs to false
@@ -501,16 +427,14 @@ int main(int argc, const char *argv[])
         ModelDescriptor(const std::string &path, bool flipUVs):path(path), flipUVs(flipUVs){}
     };
     std::vector<ModelDescriptor> modelsDescriptors;
-    modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
+    //modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
     modelsDescriptors.emplace_back("../resources/modelos/porsche/scene.gltf");
-    //modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", false);
+    modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", false);
     std::vector<Model> models(modelsDescriptors.size());
     std::vector<Entity> sceneObjects;
     auto loadBegin = std::chrono::high_resolution_clock::now();
     tbb::parallel_for(0, static_cast<int>(modelsDescriptors.size()), [&](int i){
         Model model = Model();
-        if(modelsDescriptors[i].path == "../resources/modelos/backpack/backpack.obj")
-            model.SetScale(1.0f);
         if(!model.Load(modelsDescriptors[i].path, shaderStandard, true, modelsDescriptors[i].flipUVs))
             return;
         models[i] = model;
@@ -528,13 +452,44 @@ int main(int argc, const char *argv[])
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
-    mainLight.AddComponent<LightComponent>().color = glm::vec3(0.7f, 0.7f, 0.7f);
-    mainLight.transform.position = glm::vec3(3, 3, 0);
+    Entity sunLight = mainScene.CreateEntity();
+    sunLight.AddComponent<LightComponent>().color = glm::vec3(1.0f, 1.0f, 1.0f);
+    sunLight.GetComponent<LightComponent>().type = LightType::Directional;
+    sunLight.transform.position = glm::vec3(0, 5, 0);
+    sunLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
+
+    // Entity testLight = mainScene.CreateEntity();
+    // testLight.AddComponent<LightComponent>().color = glm::vec3(1.0f, 1.0f, 1.0f);
+    // testLight.GetComponent<LightComponent>().range = 15.0f;
+    // testLight.GetComponent<LightComponent>().type = LightType::Spot;
+    // testLight.transform.position = glm::vec3(0, 5.0f, 0);
+    // testLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
+
+    int lightCount = 10;
+    std::vector<Entity> lights;
+    std::default_random_engine e;
+    std::uniform_int_distribution<int> disInt(0, 3);
+    for(int i = 0; i < lightCount; i++){
+        Entity light = mainScene.CreateEntity();
+        int lightChannel = disInt(e);
+        glm::vec3 color;
+        if(lightChannel == 0)
+            color = glm::vec3(1.0f, 0, 0);
+        else if(lightChannel == 1)
+            color = glm::vec3(0, 1.0f, 0);
+        else if(lightChannel == 2)
+            color = glm::vec3(0, 0, 1.0f);
+        light.AddComponent<LightComponent>().color = color;
+        light.GetComponent<LightComponent>().range = 5.0f;
+        light.transform.position = glm::vec3(3*glm::cos(glm::radians((360.0f/lightCount)*i)), 3, 3*glm::sin(glm::radians((360.0f/lightCount)*i)));
+        lights.push_back(light);
+    }
+
     Renderer mainRenderer = Renderer();
     mainRenderer.SetMainWindow(std::addressof(window));
-    double initialRendererTime = glfwGetTime();
+    double initialRendererTime = SDL_GetTicks64();
     mainRenderer.Start(mainScene.registry);
-    double prepareTime = glfwGetTime() - initialRendererTime;
+    double prepareTime = (SDL_GetTicks64() - initialRendererTime)/1000;
     fmt::print("\nTime to prepare meshes for grouping: {0:.2f} (ms)\n", 1000*prepareTime);
     fmt::print("Computed draw groups: {0}\n\n", mainRenderer.GetDrawGroupsCount());
 
@@ -551,7 +506,6 @@ int main(int argc, const char *argv[])
     double maxDeltaTime = 0;
     double minDeltaTime = 0;
     unsigned long ticks = 0;
-    glfwSwapInterval(1);
 
     mainCamera.transform = freeCameraTransform;
     // Camera parameters
@@ -562,9 +516,10 @@ int main(int argc, const char *argv[])
     float yRotation = 180.0f;
     freeCameraTransform.rotation = glm::quat(glm::vec3(glm::radians(xRotation), glm::radians(yRotation), 0.0f));
     /* Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window.GetHandle()))
+    bool running = true;
+    while (running)
     {
-        time = glfwGetTime();
+        time = SDL_GetTicks64()/1000.0;
         deltaTime = time - lastTime;
         lastTime = time;
 
@@ -580,19 +535,21 @@ int main(int argc, const char *argv[])
             }
             ticks++;
         }
-        //Input
+        // Input
         /* Poll for and process events */
-        glfwPollEvents();
-        Input::Update(window);
-        ///////
+        Input::Update();
+        if(Input::GetQuitState()){
+            running = false;
+        }
+        /////
 
-        if (Input::GetKeyDown(GLFW_KEY_ESCAPE)){
+        if (Input::GetKeyDown(SDLK_ESCAPE)){
             if(perfomanceCounter){
                 fmt::print("Min Delta Time: {0:.2f} ms\n", 1000*minDeltaTime);
                 fmt::print("Max Delta Time: {0:.2f} ms\n", 1000*maxDeltaTime);
                 fmt::print("Ticks/Sec: {0:.2f}\n", ticks/time);
             }
-            glfwSetWindowShouldClose(window.GetHandle(), true);
+            running = false;
         }
 
         if(isFreeCamera){
@@ -601,20 +558,14 @@ int main(int argc, const char *argv[])
             glm::vec3 forward = freeCameraTransform.Forward();
             float cameraSpeed = static_cast<float>(2.0 * deltaTime);
 
-            float horizontalKeyboard = Input::GetAxis(KeyboardAxis::Horizontal);
-            float verticalKeyboard = Input::GetAxis(KeyboardAxis::Vertical);
-            if (Input::GetKeyHeld(GLFW_KEY_SPACE)){
+            float horizontal = Input::GetAxis(Axis::Horizontal);
+            float vertical= Input::GetAxis(Axis::Vertical);
+            if (Input::GetKeyHeld(SDLK_SPACE)){
                 freeCameraTransform.position += cameraSpeed * up;
             }
-            int jid = GLFW_JOYSTICK_1;
-            float horizontalJoystick = Input::GetJoystickAxisLeftX(jid);
-            float verticalJoystick = Input::GetJoystickAxisLeftY(jid);
-            float horizontal = glm::abs(horizontalKeyboard) > glm::abs(horizontalJoystick) ? horizontalKeyboard:horizontalJoystick;
-            float vertical = glm::abs(verticalKeyboard) > glm::abs(verticalJoystick) ? verticalKeyboard:verticalJoystick;
             freeCameraTransform.position += cameraSpeed * right * horizontal;
             freeCameraTransform.position += cameraSpeed * forward * vertical;
 
-            
             float mouseX = factor*Input::GetMouseDeltaX()*deltaTime;
             float mouseY = factor*Input::GetMouseDeltaY()*deltaTime;
             xRotation -= mouseY;
@@ -625,7 +576,8 @@ int main(int argc, const char *argv[])
             // glm::quat qYaw = glm::angleAxis(glm::radians(yRotation), glm::vec3(0, 1, 0));  // Yaw (Y)
             //freeCameraTransform.rotation = qYaw * qPitch;
             // Calcula o novo alvo de rotação com base nos ângulos
-            glm::quat targetRotation = glm::quat(glm::vec3(glm::radians(xRotation), glm::radians(yRotation), 0.0f));
+            //glm::quat targetRotation = glm::quat(glm::vec3(glm::radians(xRotation), glm::radians(yRotation), 0.0f));
+            glm::quat targetRotation = glm::quat(glm::radians(glm::vec3(xRotation, yRotation, 0.0f)));
 
             // Taxa de interpolação (controla suavidade)
             float interpolationSpeed = interpolationFactor * deltaTime;
@@ -637,25 +589,34 @@ int main(int argc, const char *argv[])
         } else {
             mainCamera.transform = topDownCameraTransform;
         }
-        if (Input::GetKeyDown(GLFW_KEY_T)){
+        if (Input::GetKeyDown(SDLK_t)){
             isFreeCamera = !isFreeCamera;
         }
-        mainLight.transform.position = glm::vec3(1.5f*glm::cos(time), 3, 1.5f*glm::sin(time));
+        //mainLight.transform.position = glm::vec3(1.5f*glm::cos(time), 3, 1.5f*glm::sin(time));
+        const float lightsSpeed = 60.0f;
+        const float lightsRadius = 3.0f;
+        for(size_t i = 0; i < lights.size(); i++){
+            lights[i].transform.position = 
+            glm::vec3(lightsRadius*glm::cos(glm::radians((360.0f/lightCount)*i + lightsSpeed*time)), 
+            3, 
+            lightsRadius*glm::sin(glm::radians((360.0f/lightCount)*i + lightsSpeed*time)));
+        }
+        
         //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
 
         graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);
         graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
-        model2.transform.eulerAngles(glm::vec3(30*time, -30*time, 0));
-        model3.transform.eulerAngles(glm::vec3(-30*time, 30*time, 0));
+        // Rendering
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mainRenderer.Update(mainScene.registry, deltaTime);
         /* Swap front and back buffers */
-        glfwSwapBuffers(window.GetHandle());
+        SDL_GL_SwapWindow(window.GetHandle());
     }
-    glfwDestroyWindow(window.GetHandle());
-    glfwTerminate();
+    SDL_GL_DeleteContext(SDL_GL_GetCurrentContext());
+    SDL_DestroyWindow(window.GetHandle());
+    SDL_Quit();
     return 0;
 }
 

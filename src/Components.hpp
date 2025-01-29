@@ -31,9 +31,28 @@ struct CameraComponent{
     float nearPlane = 0.1f;
 };
 
+enum class LightType{
+    Point,
+    Directional,
+    Spot
+};
+
 struct LightComponent{
-    bool isMain = true;
-    glm::vec3 color;
+    LightType type = LightType::Point;
+    glm::vec3 color = glm::vec3(1.0f);
+    float colorTemperature = 6500.0f;
+    // Intensity of positive light multiplier
+    float intensity = 1.0f;
+    // Radial distance for point or spot light range
+    float range = 5.0f;
+    // Cutoff attenuation value for point and spot lights. Below cutoff the attenuation coefficient 
+    // is smoothly transitioned to zero
+    // This value is normally betwen 0.0 and 1.0, but anyways is clamped before passing to shader
+    float cutoff = 0.0f;
+    // Inner cutoff angle in degrees for spot lights. This generally is between 0° and 90°
+    float spotlightInnerCutoff = 15.0f;
+    // Outer cutoff angle in degrees for spot lights. This generally is between 0° and 90°
+    float spotlightOuterCutoff = 17.5f;
 };
 
 #endif

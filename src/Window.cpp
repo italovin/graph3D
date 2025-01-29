@@ -1,17 +1,21 @@
 #include "Window.hpp"
-
-void Window::ResizeCallback(GLFWwindow *window, int width, int height){
-    glViewport(0, 0, width, height);
-}
+#include <SDL2/SDL_opengl.h>
 
 bool Window::Create(const std::string &title, int width, int height)
 {
+    handle = SDL_CreateWindow(title.c_str(),
+                            SDL_WINDOWPOS_CENTERED,
+                            SDL_WINDOWPOS_CENTERED,
+                            width, height, // Resolução da janela
+                            SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    if(handle == nullptr)
+        return false;
+
     this->title = title;
     this->width = width;
     this->height = height;
-    handle = glfwCreateWindow(this->width, this->height, (this->title).c_str(), nullptr, nullptr);
-    glfwSetFramebufferSizeCallback(handle, ResizeCallback);
-    return handle != nullptr;
+    glViewport(0, 0, width, height);
+    return true;
 }
 
 void Window::SetContextVersion(int majorVersion, int minorVersion, int patchVersion){
@@ -39,24 +43,12 @@ int Window::GetGLSLVersion(){
     return contextMajorVersion * 100 + contextMinorVersion * 10;
 }
 
-void Window::MakeContextCurrent(){
-    glfwMakeContextCurrent(handle);
+SDL_GLContext Window::MakeContextCurrent(){
+    return SDL_GL_CreateContext(this->handle);
 }
 
-GLFWwindow* Window::GetHandle() const {
+SDL_Window* Window::GetHandle() const {
     return handle;
-}
-
-void Window::SetMouseCallback(GLFWcursorposfun callback){
-    glfwSetCursorPosCallback(handle, callback);
-}
-
-void Window::SetKeyCallback(GLFWkeyfun callback){
-    glfwSetKeyCallback(handle, callback);
-}
-
-void Window::SetMouseButtonCallback(GLFWmousebuttonfun callback){
-    glfwSetMouseButtonCallback(handle, callback);
 }
 
 int Window::GetWidth() const{

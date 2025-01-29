@@ -124,6 +124,11 @@ int RenderCapabilities::GetMaxUBOSize(){
     return maxUBOSize;
 }
 
+int RenderCapabilities::GetMaxUBOBindings()
+{
+    return maxUniformBufferBindings;
+}
+
 int RenderCapabilities::GetMaxTextureArrayLayers(){
     return maxTextureArrayLayers;
 }
@@ -134,4 +139,9 @@ int RenderCapabilities::GetMaxTextureImageUnits(){
 
 int RenderCapabilities::GetMaxVertexAttributes(){
     return maxVertexAttributes;
+}
+
+int RenderCapabilities::GetMaxVertexOutputComponents()
+{
+    return maxVertexOutputComponents;
 }

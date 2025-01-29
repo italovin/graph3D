@@ -160,19 +160,16 @@ ShaderCode ShaderStandard::ProcessCode()
     std::string objIDOutSetString;
     std::string texCoord0OutSetting; // Setting output texCoord0Out
     std::string normalMatrixString; // Get normal matrix at objID position from uniform block
+    std::string modelMatrixString; // Get model matrix at objID position from uniform block
+    std::string mvpMatrixString; // Get mvp matrix at objID position from uniform block
     std::string normalOutSetString; // When used normal output
     std::string fragPosSetting; // Setting world space frag position
     std::string tbnCalcString; // Calculate TBN matrix to transform vector to tangent space
-    std::string lightOutSetString; // Setting lighting relevant vectors to tangent space
     std::string glPositionString; // Final gl_Position string setting
     // Fragment strings
     std::string albedoString;
     std::string normalString;
-    std::string lightSetupString; // Setup view dir and light dir
-    std::string ambientString; // Ambient light
-    std::string diffuseString; // Diffuse light calculation
-    std::string specularString; // Specular light calculation
-    std::string attenuationString; // Attenuation of light source for the distance
+    std::string specularColorString;
     std::string fragColorString; // Final color result
 
     // Used Uniforms:
@@ -200,13 +197,13 @@ ShaderCode ShaderStandard::ProcessCode()
     objIDOutSetString = "objID = " + objIDString + ";\n";
     if(positionEnabled){
         code.AddVertexAttribute("aPosition", ShaderDataType::Float3, positionLocation);
-        glPositionString = "gl_Position = mvps[objID]*vec4(aPosition, 1.0);\n";
         code.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[" + maxObjectsGroupString + "];"); // MVPs uniform block
         code.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", Constants::ShaderStandard::mvpsBinding);
+        mvpMatrixString = "mat4 mvp = mvps[objID];\n";
+        glPositionString = "gl_Position = mvp*vec4(aPosition, 1.0);\n";
     } else {
         glPositionString = "gl_Position = vec4(1.0)\n";
     }
-
 
     if(texCoord0Enabled){
         code.AddVertexAttribute("aTexCoord0", ShaderDataType::Float2, texCoord0Location);
@@ -228,37 +225,38 @@ ShaderCode ShaderStandard::ProcessCode()
         if(diffuseMapActivated){
             if(diffuseUniformUsed){ // Color Attrib + Diffuse Map + Base Color
                 // Added diffuse map sampler array down below
-                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut*materials[objID].diffuseUniform;\n";
+                albedoString = "albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut*materials[objID].diffuseUniform;\n";
             } else { // Color Attrib + Diffuse Map
-                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut;\n";
+                albedoString = "albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut;\n";
             }
             
         } else {
             if(diffuseUniformUsed){ // Color Attrib + Base Color
-                albedoString = "vec4 albedo = aColorOut*materials[objID].diffuseUniform;\n";
+                albedoString = "albedo = aColorOut*materials[objID].diffuseUniform;\n";
             } else { // Only Color Attrib
-                albedoString = "vec4 albedo = aColorOut;\n";
+                albedoString = "albedo = aColorOut;\n";
             }
         }
     } else {
         if(diffuseMapActivated){
             if(diffuseUniformUsed){ // Diffuse Map + Base Color
                 // Added diffuse map sampler array down below
-                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*materials[objID].diffuseUniform;\n";
+                albedoString = "albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*materials[objID].diffuseUniform;\n";
             } else{ // Diffuse Map only
-                albedoString = "vec4 albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x));\n";
+                albedoString = "albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x));\n";
             }
         } else {
             if(diffuseUniformUsed){ // Base Color only
-                albedoString = "vec4 albedo = materials[objID].diffuseUniform;\n";
+                albedoString = "albedo = materials[objID].diffuseUniform;\n";
             } else { // None color information
-                albedoString = "vec4 albedo = vec4(1.0);\n";
+                albedoString = "albedo = vec4(1.0);\n";
             }
         }
     }
+    const std::string materialStructName = "Material";
     if(materialsUniformBlockToUse){
-        code.DefineMaterialParametersStruct(ShaderStage::Fragment, "Material");
-        code.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", "Material materials[" + maxObjectsGroupString + "];");
+        code.DefineMaterialParametersStruct(ShaderStage::Fragment, materialStructName);
+        code.UpdateMaterialParameterUniformBlock(ShaderStage::Fragment, "matUBO", materialStructName + " materials[" + maxObjectsGroupString + "];");
         code.SetBindingPurpose(ShaderStage::Fragment, "matUBO", Constants::ShaderStandard::materialsBinding);
     }
     if(diffuseMapActivated){ // Only diffuse map
@@ -268,123 +266,217 @@ ShaderCode ShaderStandard::ProcessCode()
     }
     for(auto &&uniform : uniforms){
         if(uniform.second)
-            code.AddMaterialVec4ToStruct("Material", ShaderStage::Fragment, uniform.first);
+            code.AddMaterialVec4ToStruct(materialStructName, ShaderStage::Fragment, uniform.first);
     }
 
+    code.PushOutsideCode(ShaderStage::Fragment, "vec4 albedo = vec4(0.0);");
+
     if(lightingActivated){
-        if(normalEnabled){ // Declare normal attribute to do calculations
-            // Already declared aNormal input
-            code.AddOutput(ShaderStage::Vertex, "aNormalOut", ShaderDataType::Float3);
+        if(normalEnabled && tangentEnabled){ // Declare normal attribute to do calculations
+            //// Vertex shader
+
             code.CreateUniformBlock(ShaderStage::Vertex, "normalMatrixUBO", "mat4 normalMatrices[" + maxObjectsGroupString + "];");
             code.SetBindingPurpose(ShaderStage::Vertex, "normalMatrixUBO", Constants::ShaderStandard::normalMatricesBinding); // Transpose of inverse of model
-            normalMatrixString += "mat3 normalMatrix = mat3(normalMatrices[objID]);\n";
-            normalOutSetString = "aNormalOut = normalMatrix * aNormal;\n";
-
+            
             code.CreateUniformBlock(ShaderStage::Vertex, "modelsUBO", "mat4 models[" + maxObjectsGroupString + "];"); // Models uniform block. Used to world space transformations only
             code.SetBindingPurpose(ShaderStage::Vertex, "modelsUBO", Constants::ShaderStandard::modelsBinding);
+            
             code.AddOutput(ShaderStage::Vertex, "fragPos", ShaderDataType::Float3);
-            fragPosSetting += "fragPos = vec3(models[objID] * vec4(aPosition, 1.0));\n";
+            code.AddOutput(ShaderStage::Vertex, "TBN", ShaderDataType::Mat3);
+            code.AddOutput(ShaderStage::Vertex, "aNormalOut", ShaderDataType::Float3);
 
-            code.AddUniform(ShaderStage::Fragment, "lightColor", ShaderDataType::Float3); // Setting light color
-            normalString = "vec3 normal = normalize(aNormalOut);\n";
+            normalMatrixString = "mat3 normalMatrix = mat3(normalMatrices[objID]);\n";
+            modelMatrixString = "mat4 modelMatrix = models[objID];\n";
+            fragPosSetting = "fragPos = vec3(modelMatrix * vec4(aPosition, 1.0));\n";
+            tbnCalcString += "vec3 T = normalize(normalMatrix * aTangent);\n"
+                             "vec3 N = normalize(normalMatrix * aNormal);\n"
+                             "T = normalize(T - dot(T, N) * N);\n";
+            if(bitangentEnabled){ // Bitangent only makes sense working with normal and tangent
+                // Already declared aBitangent input
+                tbnCalcString += "vec3 B = normalize(normalMatrix * aBitangent);\n";
+            } else {
+                tbnCalcString += "vec3 B = cross(N, T);\n";
+            }
+            tbnCalcString += "TBN = mat3(T, B, N);\n";
+            normalOutSetString = "aNormalOut = N;\n";
 
-            if(tangentEnabled){ // Use tangent space to do lighting calculations
-                // Already declared aTangent input
-                tbnCalcString += "vec3 T = normalize(normalMatrix * aTangent);\n";
-                tbnCalcString += "vec3 N = normalize(normalMatrix * aNormal);\n";
-                tbnCalcString += "T = normalize(T - dot(T, N) * N);\n";
-                if(bitangentEnabled){ // Bitangent only makes sense working with normal and tangent
-                    // Already declared aBitangent input
-                    tbnCalcString += "vec3 B = normalize(normalMatrix * aBitangent);\n";
-                } else {
-                    tbnCalcString += "vec3 B = cross(N, T);\n";
-                }
-                tbnCalcString += "mat3 TBN = transpose(mat3(T, B, N));\n";
-                // Lighting
-                code.AddUniform(ShaderStage::Vertex, "lightPos", ShaderDataType::Float3); // Get World space light position
-                code.AddUniform(ShaderStage::Vertex, "viewPos", ShaderDataType::Float3); // Get World space view position
-                code.AddOutput(ShaderStage::Vertex, "TangentLightPos", ShaderDataType::Float3);
-                code.AddOutput(ShaderStage::Vertex, "TangentViewPos", ShaderDataType::Float3);
-                code.AddOutput(ShaderStage::Vertex, "TangentFragPos", ShaderDataType::Float3);
-                lightOutSetString += "TangentLightPos = TBN * lightPos;\n";
-                lightOutSetString += "TangentViewPos = TBN * viewPos;\n";
-                lightOutSetString += "TangentFragPos  = TBN * fragPos;\n";
-                // Fragment
-                lightSetupString += "vec3 lightDir = normalize(TangentLightPos - TangentFragPos);\n";
-                lightSetupString += "vec3 viewDir = normalize(TangentViewPos - TangentFragPos);\n";
-                attenuationString += "float lightDistance = length(TangentLightPos - TangentFragPos);\n";
-                if(normalMapActivated){ // Using a normal map to retrieve normals
-                    if(!texCoord0Enabled)
-                        return ShaderCode();
-                    code.AddMaterialMapArray(ShaderStage::Fragment, normalMapString);
-                    code.CreateUniformBlock(ShaderStage::Fragment, "normalMapIndicesUBO", "ivec4 normalMapIndices[" + maxObjectsGroupString + "];"); // UBO normal map indices
-                    code.SetBindingPurpose(ShaderStage::Fragment, "normalMapIndicesUBO", Constants::ShaderStandard::normalMapIndicesBinding);
-                    normalString = "vec3 normal = texture("+normalMapString+", vec3(aTexCoord0Out, normalMapIndices[objID].x)).rgb;\n";
-                    normalString += "normal = normalize(normal * 2.0 - 1.0);\n"; // Tangent space normal
-                }
-            } else { // Use world space to do lighting calculations
-                code.AddUniform(ShaderStage::Fragment, "lightPos", ShaderDataType::Float3);
-                code.AddUniform(ShaderStage::Fragment, "viewPos", ShaderDataType::Float3);
-                lightSetupString += "vec3 lightDir = normalize(lightPos - fragPos);\n";
-                lightSetupString += "vec3 viewDir = normalize(viewPos - fragPos);\n";
-                attenuationString += "float lightDistance = length(lightPos - fragPos);\n";
+            //// Fragment shader
+            const std::string pointLightStruct = "PointLight";
+            // 48 bytes per light
+            code.CreateStruct(ShaderStage::Fragment, pointLightStruct);
+            code.AddParameterToStruct(ShaderStage::Fragment, pointLightStruct, "position", ShaderDataType::Float4);
+            code.AddParameterToStruct(ShaderStage::Fragment, pointLightStruct, "color", ShaderDataType::Float4);
+            code.AddParameterToStruct(ShaderStage::Fragment, pointLightStruct, "intensity", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, pointLightStruct, "colorTemperature", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, pointLightStruct, "range", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, pointLightStruct, "cutoff", ShaderDataType::Float);
+
+            const std::string directionalLightStruct = "DirectionalLight";
+            // 32 bytes per light
+            code.CreateStruct(ShaderStage::Fragment, directionalLightStruct);
+            code.AddParameterToStruct(ShaderStage::Fragment, directionalLightStruct, "direction", ShaderDataType::Float4);
+            code.AddParameterToStruct(ShaderStage::Fragment, directionalLightStruct, "color", ShaderDataType::Float4);
+            
+            const std::string spotLightStruct = "SpotLight";
+            // 64 bytes per light
+            code.CreateStruct(ShaderStage::Fragment, spotLightStruct);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "position", ShaderDataType::Float4);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "direction", ShaderDataType::Float4);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "color", ShaderDataType::Float4);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "range", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "cutoff", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "innerCutoff", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "outerCutoff", ShaderDataType::Float);
+
+            const std::string maxPointLightsString = std::to_string(Constants::ShaderStandard::maxPointLights);
+            const std::string maxDirectionalLightsString = std::to_string(Constants::ShaderStandard::maxDirectionalLights);
+            const std::string maxSpotLightsString = std::to_string(Constants::ShaderStandard::maxSpotLights);
+            code.CreateUniformBlock(ShaderStage::Fragment, "pointLightUBO", pointLightStruct+" pointLights[" + maxPointLightsString + "];");
+            code.SetBindingPurpose(ShaderStage::Fragment, "pointLightUBO", Constants::ShaderStandard::pointLightsBinding);
+            code.CreateUniformBlock(ShaderStage::Fragment, "directionalLightUBO", directionalLightStruct+" directionalLights[" + maxDirectionalLightsString + "];");
+            code.SetBindingPurpose(ShaderStage::Fragment, "directionalLightUBO", Constants::ShaderStandard::directionalLightsBinding);
+            code.CreateUniformBlock(ShaderStage::Fragment, "spotLightUBO", spotLightStruct+" spotLights[" + maxSpotLightsString + "];");
+            code.SetBindingPurpose(ShaderStage::Fragment, "spotLightUBO", Constants::ShaderStandard::spotLightsBinding);
+            // Uniform (vertex and fragment) to set the number of lights to use
+            const std::string pointLightCountName = Constants::ShaderStandard::pointLightCountName;
+            const std::string directionalLightCountName = Constants::ShaderStandard::directionalLightCountName;
+            const std::string spotLightCountName = Constants::ShaderStandard::spotLightCountName;
+            const std::string viewPosName = Constants::ShaderStandard::viewPosName;
+            code.AddUniform(ShaderStage::Fragment, pointLightCountName, ShaderDataType::Int);
+            code.AddUniform(ShaderStage::Fragment, directionalLightCountName, ShaderDataType::Int);
+            code.AddUniform(ShaderStage::Fragment, spotLightCountName, ShaderDataType::Int);
+            code.AddUniform(ShaderStage::Fragment, viewPosName, ShaderDataType::Float3); // Get World space view position
+            
+            // Lighting
+
+            if(normalMapActivated){ // Using a normal map to retrieve normals
+                if(!texCoord0Enabled)
+                    return ShaderCode();
+                code.AddMaterialMapArray(ShaderStage::Fragment, normalMapString);
+                code.CreateUniformBlock(ShaderStage::Fragment, "normalMapIndicesUBO", "ivec4 normalMapIndices[" + maxObjectsGroupString + "];"); // UBO normal map indices
+                code.SetBindingPurpose(ShaderStage::Fragment, "normalMapIndicesUBO", Constants::ShaderStandard::normalMapIndicesBinding);
+                normalString += "normal = texture("+normalMapString+", vec3(aTexCoord0Out, normalMapIndices[objID].x)).rgb;\n";
+                normalString += "normal = normalize(TBN*(normal * 2.0 - 1.0));\n"; // World space normal
+            } else {
+                normalString += "normal = normalize(aNormalOut);\n";
             }
 
-            // Ambient
-            ambientString += "vec3 ambient = vec3(0.01, 0.01, 0.01) * albedo.rgb;\n";
-
-            // Diffuse
-            diffuseString += "float diff = max(dot(normal, lightDir), 0.0);\n";
-            diffuseString += "vec3 diffuse = diff * albedo.rgb * lightColor;\n";
-
-            // Specular
-            specularString += "vec3 halfwayDir = normalize(lightDir + viewDir);\n";
-            specularString += "float spec = pow(max(dot(normal, halfwayDir), 0.0), 16.0);\n";
             if(specularMapActivated){
                 code.AddMaterialMapArray(ShaderStage::Fragment, specularMapString);
                 code.CreateUniformBlock(ShaderStage::Fragment, "specularMapIndicesUBO", "ivec4 specularMapIndices[" + maxObjectsGroupString + "];"); // UBO specular map indices
                 code.SetBindingPurpose(ShaderStage::Fragment, "specularMapIndicesUBO", Constants::ShaderStandard::specularMapIndicesBinding);
-                specularString += "vec3 specular = texture("+specularMapString+", vec3(aTexCoord0Out, specularMapIndices[objID].x)).rgb * spec * lightColor;\n";
+                specularColorString += "specularColor = texture("+specularMapString+", vec3(aTexCoord0Out, specularMapIndices[objID].x)).rgb;\n";
             } else {
                 if(specularUniformUsed)
-                    specularString += "vec3 specular = materials[objID].specularUniform.rgb * spec * lightColor;\n";
+                    specularColorString += "specularColor = materials[objID].specularUniform.rgb;\n";
                 else
-                    specularString += "vec3 specular = vec3(0.03) * spec * lightColor;\n";
+                    specularColorString += "specularColor = vec3(0.03);\n";
             }
-            attenuationString += "float att_kc = 1.0;\n";
-            attenuationString += "float att_kl = 0.2;\n";
-            attenuationString += "float att_kq = 0.5;\n";
-            attenuationString += "float attenuation = 1.0 / (att_kc + att_kl*lightDistance + att_kq*lightDistance*lightDistance);\n";
-            attenuationString += "diffuse *= attenuation;\n";
-            attenuationString += "specular *= attenuation;\n";
-            fragColorString += "vec3 finalColor = ambient + diffuse + specular;\n";
-            fragColorString += "FragColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);\n";
 
-        } else { // Cannot do lighting without normal attribute
+            code.PushOutsideCode(ShaderStage::Fragment, "vec3 normal = vec3(0.0);");
+            code.PushOutsideCode(ShaderStage::Fragment, "vec3 specularColor = vec3(0.0);");
+
+            code.PushOutsideCode(ShaderStage::Fragment, 
+            "vec3 CalcPointLight("+pointLightStruct+" pointLight){\n"
+            "  vec3 lightPos = pointLight.position.xyz;\n"
+            "  vec3 lightDirNorm = normalize(lightPos - fragPos);\n" // Norm vector
+            "  vec3 viewDirNorm = normalize("+viewPosName+" - fragPos);\n"
+            "  vec3 halfwayDirNorm = normalize(lightDirNorm + viewDirNorm);\n"
+            "  float diff = max(dot(normal, lightDirNorm), 0.0);\n"
+            "  float spec = pow(max(dot(normal, halfwayDirNorm), 0.0), 16.0);\n"
+            "  float lightRange = pointLight.range;\n"
+            "  vec3 lightFragDirection = lightPos - fragPos;\n"
+            "  float lightFragDistance = length(lightFragDirection);\n"
+            "  float attenuation = clamp(1.0 - (lightFragDistance / lightRange), 0.0, 1.0);\n"
+            "  attenuation *= attenuation;\n"
+            "  float cutoff = pointLight.cutoff;\n"
+            "  float cutoffFactor = smoothstep(cutoff, cutoff * 1.2, attenuation);\n" // Smooth transition to cutoff region
+            "  attenuation *= cutoffFactor;\n"
+            "  vec3 lightColor = pointLight.color.rgb;\n"
+            "  vec3 diffuse = diff * albedo.rgb;\n"
+            "  vec3 specular = spec * specularColor;\n"
+            "  return (diffuse + specular) * lightColor * attenuation;\n" // Final color
+            "}"
+            );
+            code.PushOutsideCode(ShaderStage::Fragment, 
+            "vec3 CalcDirectionalLight("+directionalLightStruct+" directionalLight){\n"
+            "   vec3 lightDirNorm = normalize(-directionalLight.direction.xyz);\n"
+            "   vec3 viewDirNorm = normalize("+viewPosName+" - fragPos);\n"
+            "   vec3 halfwayDirNorm = normalize(lightDirNorm + viewDirNorm);\n"
+            "   float diff = max(dot(normal, lightDirNorm), 0.0);\n"
+            "   float spec = pow(max(dot(normal, halfwayDirNorm), 0.0), 16.0);\n"
+            "   vec3 lightColor = directionalLight.color.rgb;\n"
+            "   vec3 diffuse = diff * albedo.rgb;\n"
+            "   vec3 specular = spec * specularColor;\n"
+            "   return (diffuse + specular) * lightColor;\n"
+            "}");
+            code.PushOutsideCode(ShaderStage::Fragment, 
+            "vec3 CalcSpotLight("+spotLightStruct+" spotLight){\n"
+            "  vec3 lightPos = spotLight.position.xyz;\n"
+            "  vec3 lightDirNorm = normalize(lightPos - fragPos);\n"
+            "  vec3 viewDirNorm = normalize("+viewPosName+" - fragPos);\n"
+            "  vec3 halfwayDirNorm = normalize(lightDirNorm + viewDirNorm);\n"
+            "  float diff = max(dot(normal, lightDirNorm), 0.0);\n"
+            "  float spec = pow(max(dot(normal, halfwayDirNorm), 0.0), 16.0);\n"
+            "  float lightRange = spotLight.range;\n"
+            "  vec3 lightFragDirection = lightPos - fragPos;\n"
+            "  float lightFragDistance = length(lightFragDirection);\n"
+            "  float attenuation = clamp(1.0 - (lightFragDistance / lightRange), 0.0, 1.0);\n"
+            "  attenuation *= attenuation;\n"
+            "  float cutoff = spotLight.cutoff;\n"
+            "  float cutoffFactor = smoothstep(cutoff, cutoff * 1.2, attenuation);\n" // Smooth transition to cutoff region
+            "  attenuation *= cutoffFactor;\n"
+            "  float theta = dot(lightDirNorm, normalize(-spotLight.direction.xyz));\n"
+            "  float epsilon = spotLight.innerCutoff - spotLight.outerCutoff;\n"
+            "  float spotIntensity = clamp((theta - spotLight.outerCutoff) / epsilon, 0.0, 1.0);\n"
+            "  vec3 lightColor = spotLight.color.rgb;\n"
+            "  vec3 diffuse = diff * albedo.rgb;\n"
+            "  vec3 specular = spec * specularColor;\n"
+            "  return (diffuse + specular) * attenuation * spotIntensity;\n" // Final color
+            "}"
+            );
+            fragColorString += 
+            "vec3 finalColor = vec3(0.0);\n"
+            "vec3 ambientLight = vec3(0.005, 0.005, 0.005);\n"
+            "vec3 ambient = ambientLight * albedo.rgb;\n"
+            "finalColor += ambient;\n"
+            "for(int i = 0; i < "+pointLightCountName+"; i++){\n"
+            "   finalColor += CalcPointLight(pointLights[i]);\n"
+            "}\n"
+            "for(int i = 0; i < "+directionalLightCountName+"; i++){\n"
+            "   finalColor += CalcDirectionalLight(directionalLights[i]);\n"
+            "}\n"
+            "for(int i = 0; i < "+spotLightCountName+"; i++){\n"
+            "   finalColor += CalcSpotLight(spotLights[i]);\n"
+            "}\n"
+            "float gamma = 2.2;\n"
+            "FragColor = vec4(pow(finalColor, vec3(1.0/gamma)), albedo.a);\n";
+
+        } else { // Cannot do lighting without normal and tangent attribute
             return ShaderCode();
         }
     } else {
+        fragColorString += "float gamma = 2.2;\n";
         // The albedo vector4 is set of combination of using color attribute and diffuse map
-        fragColorString += "FragColor = vec4(pow(albedo.rgb, vec3(1.0/2.2)), albedo.a);\n";
+        fragColorString += "FragColor = vec4(pow(albedo.rgb, vec3(1.0/gamma)), albedo.a);\n";
     }
     std::string vertexMainString;
     vertexMainString += objIDOutSetString;
-    vertexMainString += fragPosSetting;
     vertexMainString += normalMatrixString;
+    vertexMainString += modelMatrixString;
+    vertexMainString += mvpMatrixString;
+    vertexMainString += fragPosSetting;
+    vertexMainString += tbnCalcString;
     vertexMainString += normalOutSetString;
     vertexMainString += texCoord0OutSetting;
-    vertexMainString += tbnCalcString;
-    vertexMainString += lightOutSetString;
     vertexMainString += glPositionString;
 
     std::string fragmentMainString;
+    // Attribution phase
     fragmentMainString += albedoString;
     fragmentMainString += normalString;
-    fragmentMainString += lightSetupString;
-    fragmentMainString += ambientString;
-    fragmentMainString += diffuseString;
-    fragmentMainString += specularString;
-    fragmentMainString += attenuationString;
+    fragmentMainString += specularColorString;
+    ///
     fragmentMainString += fragColorString;
 
     code.SetMain(ShaderStage::Vertex, vertexMainString);

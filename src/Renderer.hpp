@@ -162,7 +162,36 @@ private:
         //
         bool useLighting = false;
     };
+    struct PointLight{
+        glm::vec4 position = glm::vec4(0.0f);
+        glm::vec4 color = glm::vec4(1.0f);
+        float intensity = 0.0f;
+        float colorTemperature = 0.0f;
+        float range = 0.0f;
+        float cutoff = 0.0f;
+    };
+    struct DirectionalLight{
+        glm::vec4 direction = glm::vec4(0.0f);
+        glm::vec4 color = glm::vec4(1.0f);
+        // For alignment reasons, the intensity is multiplied directly by the color for passing to the shader
+    };
+    struct SpotLight{
+        glm::vec4 position = glm::vec4(0.0f);
+        glm::vec4 direction = glm::vec4(0.0f);
+        glm::vec4 color = glm::vec4(1.0f);
+        float range = 0.0f;
+        float cutoff = 0.0f;
+        float innerCutoff = 0.0f;
+        float outerCutoff = 0.0f;
+        // For alignment reasons, the intensity is multiplied directly by the color for passing to the shader
+    };
     std::vector<RenderGroup> renderGroups;
+    std::vector<PointLight> pointLights;
+    std::vector<DirectionalLight> directionalLights;
+    std::vector<SpotLight> spotLights;
+    Buffer pointLightUniformBuffer;
+    Buffer directionalLightUniformBuffer;
+    Buffer spotLightUniformBuffer;
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
@@ -182,7 +211,7 @@ private:
     void PrepareRenderGroups(entt::registry &registry);
     std::optional<int> AddUBOBindingPurpose(const std::string &purpose);
     // Executes the drawing at update call
-    void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform, const LightComponent &mainLight, const TransformComponent &lightTransform);
+    void Draw(const CameraComponent &mainCamera, const TransformComponent &mainCameraTransform, const std::vector<std::pair<std::string, size_t>> &lightsCounters);
 public:
     Renderer();
     void SetMainWindow(Window *mainWindow);
