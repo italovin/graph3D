@@ -11,8 +11,8 @@ private:
 public:
     Texture() = default;
     // Generic load function for common image formats or compressed textures
-    bool Load(const std::string &filePath, bool isSRGB = true);
-    bool LoadFromMemory(const std::vector<unsigned char> &pixels, gli::format format, int width, int height);
+    bool Load(const std::string &filePath, bool isSRGB = true, bool mirrorVertically = false);
+    bool LoadFromMemory(const std::vector<unsigned char> &pixels, gli::format format, int width, int height, bool mirrorVertically = false);
     gli::format GetFormat() const;
     // Get GLenum equivalent to texture internal format. You also can force srgb return value
     static GLenum GliInternalFormatToGLenum(gli::format format, bool forceSRGB = false);

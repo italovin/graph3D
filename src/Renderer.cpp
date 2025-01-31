@@ -98,7 +98,10 @@ void Renderer::BufferSubDataNormalMatrices(RenderGroup &renderGroup){
 }
 
 void Renderer::SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLayout &layout){
+    int relativeOffset = 0;
+    // This indexer is used when not interleaved vertex data
     int bindingPoint = 0;
+    GLuint vao = renderGroup.vao.GetHandle();
     for(auto &&attribute : layout.attributes){
         GLenum type;
         GLboolean normalized;
@@ -117,14 +120,14 @@ void Renderer::SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLa
         int location = attribute.location;
         for(int i = location; i < location + locations; i++){
             if(attribute.interpretAsInt){
-                glVertexArrayAttribIFormat(renderGroup.vao.GetHandle(), i, attribute.ScalarElementsCount(), type, 0);
+                glVertexArrayAttribIFormat(vao, i, attribute.ScalarElementsCount(), type, relativeOffset);
             } else{
-                glVertexArrayAttribFormat(renderGroup.vao.GetHandle(), i, attribute.ScalarElementsCount(), type, normalized, 0);
+                glVertexArrayAttribFormat(vao, i, attribute.ScalarElementsCount(), type, normalized, relativeOffset);
             }
-            glEnableVertexArrayAttrib(renderGroup.vao.GetHandle(), i);
-            glVertexArrayAttribBinding(renderGroup.vao.GetHandle(), i, bindingPoint);
+            glEnableVertexArrayAttrib(vao, i);
+            glVertexArrayAttribBinding(vao, i, interleaveAttributes ? vboBindingPoint : bindingPoint++);
         }
-        bindingPoint++;
+        relativeOffset += interleaveAttributes ? attribute.AttributeDataSize() : 0;
     }
 }
 
@@ -132,7 +135,10 @@ void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup, const 
 {
     std::vector<GLuint> buffers(renderGroup.attributesCount, renderGroup.attributesBuffer.name);
 
-    glVertexArrayVertexBuffers(renderGroup.vao.GetHandle(), 0, renderGroup.attributesCount, buffers.data(), offsets.data(), strides.data());
+    if(!interleaveAttributes)
+        glVertexArrayVertexBuffers(renderGroup.vao.GetHandle(), 0, renderGroup.attributesCount, buffers.data(), offsets.data(), strides.data());
+    else // In this case (interleaved), vector of strides contains same value
+        glVertexArrayVertexBuffer(renderGroup.vao.GetHandle(), vboBindingPoint, renderGroup.attributesBuffer.name, 0, strides[0]);
     glVertexArrayElementBuffer(renderGroup.vao.GetHandle(), renderGroup.indicesBuffer.name);
 }
 
@@ -1133,19 +1139,22 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     int attributesBufferTotalSize = 0;
     std::vector<GLintptr> attributesOffsets(attributesCount);
     std::vector<GLsizei> attributesStrides(attributesCount);
-    for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
-        attributesOffsets[i] = attributesBufferTotalSize;
-        attributesStrides[i] = renderGroupBuffers.attributesData[i].attribute.AttributeDataSize();
-        attributesBufferTotalSize += renderGroupBuffers.attributesData[i].dataSize;
-    }
+    
     // VBO
+    if(!interleaveAttributes)
     {
+        for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
+            attributesOffsets[i] = attributesBufferTotalSize;
+            attributesStrides[i] = renderGroupBuffers.attributesData[i].attribute.AttributeDataSize();
+            attributesBufferTotalSize += renderGroupBuffers.attributesData[i].dataSize;
+        }
+
         GLuint attributesBuffersName = 0;
         glCreateBuffers(1, std::addressof(attributesBuffersName));
         renderGroup.attributesBuffer.name = attributesBuffersName;
         renderGroup.attributesBuffer.bufferSize = attributesBufferTotalSize;
         renderGroup.attributesBuffer.stride = attributesBufferTotalSize;
-        renderGroup.attributesBuffer.bindingPoint = 0;
+        renderGroup.attributesBuffer.bindingPoint = vboBindingPoint;
         glNamedBufferStorage(renderGroup.attributesBuffer.name, renderGroup.attributesBuffer.bufferSize,
         nullptr, GL_DYNAMIC_STORAGE_BIT);
         for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
@@ -1167,6 +1176,45 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
                 case MeshAttributeType::None: break;
             }
         }
+        meshesTotalSize += attributesBufferTotalSize;
+    } else {
+        int attributesOffset = 0;
+        
+        std::vector<char> vboData;
+        for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
+            attributesOffsets[i] = attributesOffset;
+            attributesOffset += renderGroupBuffers.attributesData[i].attribute.AttributeDataSize();
+            attributesBufferTotalSize += renderGroupBuffers.attributesData[i].dataSize;
+        }
+        int vertexSize = attributesOffset;
+        for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
+            attributesStrides[i] = vertexSize;
+        }
+        vboData.resize(attributesBufferTotalSize);
+        size_t verticesCount = 0;
+        size_t firstScalarsCount = renderGroupBuffers.attributesData[0].attribute.ScalarElementsCount();
+        std::visit([&verticesCount, firstScalarsCount](auto&& vector){
+            verticesCount = vector.size() / firstScalarsCount;
+        }, renderGroupBuffers.attributesData[0].data);      
+        for(size_t i = 0; i < verticesCount; i++){
+            for(size_t j = 0; j < renderGroupBuffers.attributesData.size(); j++){
+                size_t scalarsCount = renderGroupBuffers.attributesData[j].attribute.ScalarElementsCount();
+                size_t attribSize = renderGroupBuffers.attributesData[j].attribute.AttributeDataSize();
+                std::visit([&vboData, &attributesOffsets, i, j, vertexSize, scalarsCount, attribSize](auto&& vector){
+                    std::memcpy(&vboData[vertexSize*i + attributesOffsets[j]], &vector[i*scalarsCount], attribSize);
+                }, renderGroupBuffers.attributesData[j].data);
+            }
+        }
+
+        GLuint attributesBuffersName = 0;
+        glCreateBuffers(1, std::addressof(attributesBuffersName));
+        renderGroup.attributesBuffer.name = attributesBuffersName;
+        renderGroup.attributesBuffer.bufferSize = attributesBufferTotalSize;
+        renderGroup.attributesBuffer.stride = vertexSize;
+        renderGroup.attributesBuffer.bindingPoint = vboBindingPoint;
+        glNamedBufferStorage(renderGroup.attributesBuffer.name, renderGroup.attributesBuffer.bufferSize,
+        vboData.data(), GL_DYNAMIC_STORAGE_BIT);
+                
         meshesTotalSize += attributesBufferTotalSize;
     }
     // EBO
@@ -1323,6 +1371,11 @@ void Renderer::DrawFunctionNonIndirect(RenderGroup &renderGroup){
 
 void Renderer::SetMainWindow(Window *mainWindow){
     this->mainWindow = mainWindow;
+}
+
+void Renderer::SetInterleaveAttribState(bool interleave)
+{
+    this->interleaveAttributes = interleave;
 }
 
 void Renderer::Start(entt::registry &registry){

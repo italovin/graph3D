@@ -27,7 +27,7 @@ src/Texture.cpp
 src/Window.cpp
 )
 if(LINUX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE GL GLEW SDL2 tbb assimp fmt sail sail-c++ sail-common)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GL GLEW SDL3 tbb assimp fmt sail sail-c++ sail-common)
 endif()
 
 if(MINGW)

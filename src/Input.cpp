@@ -1,10 +1,11 @@
 #include "Input.hpp"
 
+
 Input::Mouse Input::mouse = Input::Mouse(glm::vec2(0), 0, 0, true, std::unordered_map<int, MouseButtonState>());
 
-Input::Keyboard Input::keyboard = Input::Keyboard(std::unordered_map<SDL_Keycode, KeyState>(), SDLK_d, SDLK_a, SDLK_w, SDLK_s);
+Input::Keyboard Input::keyboard = Input::Keyboard(std::unordered_map<SDL_Keycode, KeyState>(), SDLK_D, SDLK_A, SDLK_W, SDLK_S);
 
-std::map<int, Input::GameController> Input::gameControllers = std::map<int, GameController>();
+std::map<int, Input::Gamepad> Input::gamepads = std::map<int, Gamepad>();
 
 bool Input::quitState = false;
 
@@ -22,41 +23,41 @@ void Input::Update(){
     SDL_Event event;
     while(SDL_PollEvent(&event)){ // This also pump events
         switch(event.type){
-            case SDL_QUIT:
+            case SDL_EVENT_QUIT:
                 quitState = true;
                 break;
-            case SDL_MOUSEMOTION:
-                if (!mouseInitialFakeMotion) { // Fake mouse motion from SDL2
+            case SDL_EVENT_MOUSE_MOTION:
+                if (!mouseInitialFakeMotion) { // Fake mouse motion from SDL3
                     mouseInitialFakeMotion = true;
                 } else if(mouse.firstMove){ // Real first mouse motion - Initialize mouse state
-                    int x,y;
+                    float x,y;
                     SDL_GetMouseState(&x, &y);
                     mouse.xDelta = 0.0f;
                     mouse.yDelta = 0.0f;
-                    mouse.position = glm::vec2((float)x, (float)y);
+                    mouse.position = glm::vec2(x, y);
                     mouse.firstMove = false;
                 }
                 break;
-            case SDL_KEYDOWN: // This starts monitoring the specific key in undefined state
-                MonitorKey(event.key.keysym.sym, KeyState::Unknown);
+            case SDL_EVENT_KEY_DOWN: // This starts monitoring the specific key in undefined state
+                MonitorKey(event.key.key, KeyState::Unknown);
                 break;
-            case SDL_MOUSEBUTTONDOWN: // This starts monitoring the specific mouse button in undefined state
+            case SDL_EVENT_MOUSE_BUTTON_DOWN: // This starts monitoring the specific mouse button in undefined state
                 MonitorMouseButton(event.button.button, MouseButtonState::Unknown);
                 break;
-            case SDL_CONTROLLERDEVICEADDED:
+            case SDL_EVENT_GAMEPAD_ADDED:
                 {
-                    SDL_GameController *controllerHandle = SDL_GameControllerOpen(event.cdevice.which);
-                    if(!controllerHandle) // Exceptional case when controller added cannot be opened
+                    SDL_Gamepad *gamepadHandle = SDL_OpenGamepad(event.gdevice.which);
+                    if(!gamepadHandle) // Exceptional case when controller added cannot be opened
                         break;
 
-                    std::string controllerName = SDL_GameControllerName(controllerHandle);
-                    GameController controller(controllerName, controllerHandle);
-                    gameControllers.try_emplace(event.cdevice.which, controller);
+                    std::string gamepadName = SDL_GetGamepadName(gamepadHandle);
+                    Gamepad gamepad(gamepadName, gamepadHandle);
+                    gamepads.try_emplace(event.gdevice.which, gamepad);
                 }
                 break;
-            case SDL_CONTROLLERDEVICEREMOVED:
-                SDL_GameControllerClose(gameControllers[event.cdevice.which].controller);
-                gameControllers.erase(event.cdevice.which);
+            case SDL_EVENT_GAMEPAD_REMOVED:
+                SDL_CloseGamepad(gamepads[event.gdevice.which].gamepad);
+                gamepads.erase(event.gdevice.which);
                 break;
             default:
                 break;
@@ -67,10 +68,10 @@ void Input::Update(){
 }
 
 void Input::UpdateMouse(){
-    int x = 0, y = 0;
+    float x = 0.0f, y = 0.0f;
     int mouseState = SDL_GetMouseState(&x, &y); // Obtém posição e estado do mouse
     if(!mouse.firstMove){
-        glm::vec2 newMousePos((float)x, (float)y);
+        glm::vec2 newMousePos(x, y);
         glm::vec2 delta = newMousePos - mouse.position;
         mouse.xDelta = delta.x;
         mouse.yDelta = -delta.y; // Inverter o eixo Y, se necessário
@@ -79,7 +80,7 @@ void Input::UpdateMouse(){
     for (auto &&i : mouse.monitoredButtons){
         MouseButtonState lastMouseBtnState = i.second;
         int button = i.first;
-        int state = mouseState && SDL_BUTTON(button);
+        int state = mouseState && SDL_BUTTON_MASK(button);
         if((lastMouseBtnState == MouseButtonState::Up || lastMouseBtnState == MouseButtonState::Released || lastMouseBtnState == MouseButtonState::Unknown) && state == 1){
             mouse.monitoredButtons[button] = MouseButtonState::Down;
         } else if((lastMouseBtnState == MouseButtonState::Down || lastMouseBtnState == MouseButtonState::Held) && state == 1){
@@ -93,12 +94,12 @@ void Input::UpdateMouse(){
 }
 
 void Input::UpdateKeyboard(){
-    const Uint8 *keyStates = SDL_GetKeyboardState(nullptr);
+    const bool *keyStates = SDL_GetKeyboardState(nullptr);
     for (auto &&i : keyboard.monitoredKeys)
     {
         KeyState lastKeyState = i.second;
         int key = i.first;
-        int state = keyStates[SDL_GetScancodeFromKey(key)];
+        int state = keyStates[SDL_GetScancodeFromKey(key, nullptr)];
         if((lastKeyState == KeyState::Up || lastKeyState == KeyState::Released || lastKeyState == KeyState::Unknown) && state == 1){
             keyboard.monitoredKeys[key] = KeyState::Down;
         } else if((lastKeyState == KeyState::Down || lastKeyState == KeyState::Held) && state == 1){
@@ -212,51 +213,51 @@ float Input::GetAxis(Axis axis, int controllerIndex)
 
 int Input::ControllersCount()
 {
-    return gameControllers.size();
+    return gamepads.size();
 }
 
 float Input::GetControllerAxisLeftX(int index){
-    if(gameControllers.count(index) == 0)
+    if(gamepads.count(index) == 0)
         return 0;
-    int value = SDL_GameControllerGetAxis(gameControllers[index].controller, SDL_CONTROLLER_AXIS_LEFTX);
+    int value = SDL_GetGamepadAxis(gamepads[index].gamepad, SDL_GAMEPAD_AXIS_LEFTX);
     float ratio = value < 0 ? 32768.0f : 32767.0f;
     return (float)value/ratio;
 }
 
 float Input::GetControllerAxisLeftY(int index){
-    if(gameControllers.count(index) == 0)
+    if(gamepads.count(index) == 0)
         return 0;
-    int value = -SDL_GameControllerGetAxis(gameControllers[index].controller, SDL_CONTROLLER_AXIS_LEFTY);//controller +Y is down, then negate it
+    int value = -SDL_GetGamepadAxis(gamepads[index].gamepad, SDL_GAMEPAD_AXIS_LEFTY);//controller +Y is down, then negate it
     float ratio = value < 0 ? 32768.0f : 32767.0f;
     return (float)value/ratio;
 }
 
 float Input::GetControllerAxisRightX(int index){
-    if(gameControllers.count(index) == 0)
+    if(gamepads.count(index) == 0)
         return 0;
-    int value = SDL_GameControllerGetAxis(gameControllers[index].controller, SDL_CONTROLLER_AXIS_RIGHTX);
+    int value = SDL_GetGamepadAxis(gamepads[index].gamepad, SDL_GAMEPAD_AXIS_RIGHTX);
     float ratio = value < 0 ? 32768.0f : 32767.0f;
     return (float)value/ratio;
 }
 
 float Input::GetControllerAxisRightY(int index){
-    if(gameControllers.count(index) == 0)
+    if(gamepads.count(index) == 0)
         return 0;
-    int value = -SDL_GameControllerGetAxis(gameControllers[index].controller, SDL_CONTROLLER_AXIS_RIGHTY);
+    int value = -SDL_GetGamepadAxis(gamepads[index].gamepad, SDL_GAMEPAD_AXIS_RIGHTY);
     float ratio = value < 0 ? 32768.0f : 32767.0f;
     return (float)value/ratio;
 }
 
 float Input::GetControllerLeftTrigger(int index){
-    if(gameControllers.count(index) == 0)
+    if(gamepads.count(index) == 0)
         return 0;
-    int value = SDL_GameControllerGetAxis(gameControllers[index].controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+    int value = SDL_GetGamepadAxis(gamepads[index].gamepad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
     return (float)value/32767.0f;
 }
 
 float Input::GetControllerRightTrigger(int index){
-    if(gameControllers.count(index) == 0)
+    if(gamepads.count(index) == 0)
         return 0;
-    int value = SDL_GameControllerGetAxis(gameControllers[index].controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+    int value = SDL_GetGamepadAxis(gamepads[index].gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
     return (float)value/32767.0f;
 }

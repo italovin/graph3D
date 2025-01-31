@@ -1,13 +1,11 @@
 #include "Window.hpp"
-#include <SDL2/SDL_opengl.h>
+#include <SDL3/SDL_opengl.h>
 
 bool Window::Create(const std::string &title, int width, int height)
 {
     handle = SDL_CreateWindow(title.c_str(),
-                            SDL_WINDOWPOS_CENTERED,
-                            SDL_WINDOWPOS_CENTERED,
                             width, height, // Resolução da janela
-                            SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+                            SDL_WINDOW_OPENGL);
     if(handle == nullptr)
         return false;
 

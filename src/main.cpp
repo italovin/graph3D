@@ -1,5 +1,5 @@
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
@@ -26,7 +26,7 @@ int main(int argc, const char *argv[])
     
     //// SDL
     // Inicializa a SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         std::cerr << "Erro ao inicializar SDL: " << SDL_GetError() << std::endl;
         return -1;
     }
@@ -61,7 +61,7 @@ int main(int argc, const char *argv[])
     window.SetContextVersion(RenderCapabilities::GetMajorVersion(), RenderCapabilities::GetMinorVersion(), 0);
 
     // Ativa sincronização vertical (VSync)
-    if (SDL_GL_SetSwapInterval(1) < 0) {
+    if (!SDL_GL_SetSwapInterval(1)) {
         std::cerr << "Aviso: Não foi possível ativar VSync: " << SDL_GetError() << std::endl;
     }
 
@@ -364,7 +364,7 @@ int main(int argc, const char *argv[])
     Ref<Texture> tex0;
     {
         tex0 = CreateRef<Texture>();
-        if(!tex0->Load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").generic_string())){
+        if(!tex0->Load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").generic_string(), true, true)){
             tex0 = defaultTexture;
         } 
     }
@@ -427,7 +427,7 @@ int main(int argc, const char *argv[])
         ModelDescriptor(const std::string &path, bool flipUVs):path(path), flipUVs(flipUVs){}
     };
     std::vector<ModelDescriptor> modelsDescriptors;
-    //modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
+    modelsDescriptors.emplace_back("../resources/modelos/sponza/Sponza.gltf");
     modelsDescriptors.emplace_back("../resources/modelos/porsche/scene.gltf");
     modelsDescriptors.emplace_back("../resources/modelos/backpack/backpack.obj", false);
     std::vector<Model> models(modelsDescriptors.size());
@@ -453,7 +453,7 @@ int main(int argc, const char *argv[])
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
     Entity sunLight = mainScene.CreateEntity();
-    sunLight.AddComponent<LightComponent>().color = glm::vec3(1.0f, 1.0f, 1.0f);
+    sunLight.AddComponent<LightComponent>().color = glm::vec3(0.0f, 0.0f, 0.0f);
     sunLight.GetComponent<LightComponent>().type = LightType::Directional;
     sunLight.transform.position = glm::vec3(0, 5, 0);
     sunLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
@@ -465,7 +465,7 @@ int main(int argc, const char *argv[])
     // testLight.transform.position = glm::vec3(0, 5.0f, 0);
     // testLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
 
-    int lightCount = 10;
+    int lightCount = 5;
     std::vector<Entity> lights;
     std::default_random_engine e;
     std::uniform_int_distribution<int> disInt(0, 3);
@@ -487,9 +487,10 @@ int main(int argc, const char *argv[])
 
     Renderer mainRenderer = Renderer();
     mainRenderer.SetMainWindow(std::addressof(window));
-    double initialRendererTime = SDL_GetTicks64();
+    mainRenderer.SetInterleaveAttribState(true);
+    double initialRendererTime = SDL_GetTicks();
     mainRenderer.Start(mainScene.registry);
-    double prepareTime = (SDL_GetTicks64() - initialRendererTime)/1000;
+    double prepareTime = (SDL_GetTicks() - initialRendererTime)/1000;
     fmt::print("\nTime to prepare meshes for grouping: {0:.2f} (ms)\n", 1000*prepareTime);
     fmt::print("Computed draw groups: {0}\n\n", mainRenderer.GetDrawGroupsCount());
 
@@ -519,7 +520,7 @@ int main(int argc, const char *argv[])
     bool running = true;
     while (running)
     {
-        time = SDL_GetTicks64()/1000.0;
+        time = SDL_GetTicks()/1000.0;
         deltaTime = time - lastTime;
         lastTime = time;
 
@@ -589,7 +590,7 @@ int main(int argc, const char *argv[])
         } else {
             mainCamera.transform = topDownCameraTransform;
         }
-        if (Input::GetKeyDown(SDLK_t)){
+        if (Input::GetKeyDown(SDLK_T)){
             isFreeCamera = !isFreeCamera;
         }
         //mainLight.transform.position = glm::vec3(1.5f*glm::cos(time), 3, 1.5f*glm::sin(time));
@@ -614,7 +615,7 @@ int main(int argc, const char *argv[])
         /* Swap front and back buffers */
         SDL_GL_SwapWindow(window.GetHandle());
     }
-    SDL_GL_DeleteContext(SDL_GL_GetCurrentContext());
+    SDL_GL_DestroyContext(SDL_GL_GetCurrentContext());
     SDL_DestroyWindow(window.GetHandle());
     SDL_Quit();
     return 0;

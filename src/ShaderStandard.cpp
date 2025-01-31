@@ -187,10 +187,10 @@ ShaderCode ShaderStandard::ProcessCode()
     code.AddOutput(ShaderStage::Fragment, "FragColor", ShaderDataType::Float4); // Final color output in fragment shader
 
     std::string objIDString;
-    if(RenderCapabilities::GetAPIVersion() < GLApiVersion::V460){
+    if(RenderCapabilities::GetAPIVersion() < GLApiVersion::V460){ // This works with the non indirect drawing version
         code.AddExtension("GL_ARB_shader_draw_parameters");
         objIDString = "gl_DrawIDARB + gl_BaseInstanceARB + gl_InstanceID";
-    } else {
+    } else { // This works with the indirect drawing version
         objIDString = "gl_BaseInstance + gl_InstanceID";
     }
     code.AddOutput(ShaderStage::Vertex, "objID", ShaderDataType::Int);

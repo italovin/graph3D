@@ -1,7 +1,7 @@
 #ifndef INPUT_H
 #define INPUT_H
 #include <glm/glm.hpp>
-#include <SDL2/SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <unordered_map>
 #include <map>
 #include <iostream>
@@ -49,13 +49,13 @@ private:
         monitoredKeys(monitoredKeys),positiveHorizontalKey(positiveHorizontalKey),negativeHorizontalKey(negativeHorizontalKey),positiveVerticalKey(positiveVerticalKey),negativeVerticalKey(negativeVerticalKey){}
     }; 
     static Keyboard keyboard;
-    struct GameController{
+    struct Gamepad{
         std::string name;
-        SDL_GameController* controller;
-        GameController() = default;
-        GameController(const std::string &name, SDL_GameController* controller):name(name),controller(controller){}
+        SDL_Gamepad* gamepad;
+        Gamepad() = default;
+        Gamepad(const std::string &name, SDL_Gamepad* gamepad):name(name),gamepad(gamepad){}
     };
-    static std::map<int, GameController> gameControllers;
+    static std::map<int, Gamepad> gamepads;
     // Check quit event
     static bool quitState;
     // Auxiliar boolean to check initial fake mouse motion

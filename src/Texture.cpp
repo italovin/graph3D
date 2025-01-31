@@ -3,7 +3,7 @@
 #include <sail-c++/sail-c++.h>
 #include <stb/stb_image.h>
 
-bool Texture::Load(const std::string &filePath, bool isSRGB)
+bool Texture::Load(const std::string &filePath, bool isSRGB, bool mirrorVertically)
 {
     if(!sail::is_file(filePath))
         return false;
@@ -18,8 +18,9 @@ bool Texture::Load(const std::string &filePath, bool isSRGB)
 
     if(!image.is_valid())
         return false;
-    // sail images stores pixels in Y = 0 = top orientation. Needs flip then
-    //image.mirror(SailOrientation::SAIL_ORIENTATION_MIRRORED_VERTICALLY);
+    // sail images stores pixels in Y = 0 = top orientation.
+    if(mirrorVertically)
+        image.mirror(SailOrientation::SAIL_ORIENTATION_MIRRORED_VERTICALLY);
     glm::ivec2 dimensions = glm::ivec2(image.width(), image.height());
 
     gli::format format;
@@ -41,13 +42,15 @@ bool Texture::Load(const std::string &filePath, bool isSRGB)
     return true;
 }
 
-bool Texture::LoadFromMemory(const std::vector<unsigned char> &pixels, gli::format format, int width, int height)
+bool Texture::LoadFromMemory(const std::vector<unsigned char> &pixels, gli::format format, int width, int height, bool mirrorVertically)
 {
     handle = gli::texture2d(format, glm::ivec2(width, height));
     if(handle.empty() || handle.size() < sizeof(unsigned char)*pixels.size())
         return false;
 
     std::memcpy(handle.data(), pixels.data(), sizeof(unsigned char)*pixels.size());
+    if(mirrorVertically)
+        handle = gli::flip(handle);
     return true;
 }
 

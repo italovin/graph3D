@@ -185,6 +185,11 @@ private:
         float outerCutoff = 0.0f;
         // For alignment reasons, the intensity is multiplied directly by the color for passing to the shader
     };
+    // Default binding point to bind vertex attributes when using interleaved mode
+    int vboBindingPoint = 0;
+    // This flag sets when interleave attributes in vertex buffer. If not enabled, attributes of objects are
+    // put in separated blocks in the VBO
+    bool interleaveAttributes = false;
     std::vector<RenderGroup> renderGroups;
     std::vector<PointLight> pointLights;
     std::vector<DirectionalLight> directionalLights;
@@ -215,6 +220,7 @@ private:
 public:
     Renderer();
     void SetMainWindow(Window *mainWindow);
+    void SetInterleaveAttribState(bool interleave);
     void Start(entt::registry &registry) override;
     void Update(entt::registry &registry, float deltaTime) override;
     int GetDrawGroupsCount();
