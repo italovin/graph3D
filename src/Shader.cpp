@@ -26,12 +26,11 @@ std::size_t Shader::Hash() const {
         for (const auto& [key, value] : map) {
             std::size_t keyHash = std::hash<std::string>()(key);
             std::size_t valueHash = std::hash<bool>()(value.first) ^ 
-            (std::hash<int>()(value.second.location) << 1) ^
-            (std::hash<MeshAttributeType>()(value.second.type) << 2) ^
-            (std::hash<MeshAttributeFormat>()(value.second.format) << 3) ^ 
-            (std::hash<MeshAttributeAlias>()(value.second.alias) << 4) ^ 
-            (std::hash<bool>()(value.second.normalized) << 5) ^ 
-            (std::hash<bool>()(value.second.interpretAsInt) << 6);
+            (std::hash<MeshAttributeType>()(value.second.type) << 1) ^
+            (std::hash<MeshAttributeFormat>()(value.second.format) << 2) ^ 
+            (std::hash<MeshAttributeAlias>()(value.second.alias) << 3) ^ 
+            (std::hash<bool>()(value.second.normalized) << 4) ^ 
+            (std::hash<bool>()(value.second.interpretAsInt) << 5);
 
             hash ^= keyHash ^ (valueHash << 1);
         }

@@ -5,7 +5,7 @@
 // }
 
 template <typename T>
-bool Mesh::PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+bool Mesh::PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
 std::vector<T> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     std::div_t verticesDiv = std::div(data.size(), MeshAttribute::ScalarElementsCount(format));
     if(verticesDiv.rem > 0 || (verticesCount > 0 && verticesCount != verticesDiv.quot)){
@@ -15,7 +15,6 @@ std::vector<T> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     }
     MeshAttribute meshAttribute;
     meshAttribute.name = name;
-    meshAttribute.location = location;
     meshAttribute.type = type;
     meshAttribute.format = format;
     meshAttribute.normalized = normalized;
@@ -28,9 +27,9 @@ std::vector<T> &&data, bool interpretAsInt, MeshAttributeAlias alias){
 }
 
 template <typename T>
-bool Mesh::PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+bool Mesh::PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
 const std::vector<T> &data, bool interpretAsInt, MeshAttributeAlias alias){
-    return PushAttributeBase(name, location, format, type, normalized, std::vector<T>(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, type, normalized, std::vector<T>(data), interpretAsInt, alias);
 }
 
 bool Mesh::CheckIfAliasExists(MeshAttributeAlias alias)
@@ -63,160 +62,160 @@ void Mesh::SetIndices(std::vector<unsigned int> &&indices, MeshTopology topology
     this->topology = topology;
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Float, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Float, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Float, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Float, normalized, std::move(data), interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Int, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Int, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Int, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Int, normalized, std::move(data), interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedInt, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::UnsignedInt, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedInt, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::UnsignedInt, normalized, std::move(data), interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Byte, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Byte, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Byte, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Byte, normalized, std::move(data), interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedByte, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::UnsignedByte, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedByte, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::UnsignedByte, normalized, std::move(data), interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Short, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Short, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::Short, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::Short, normalized, std::move(data), interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedShort, normalized, data, interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::UnsignedShort, normalized, data, interpretAsInt, alias);
 }
 
-bool Mesh::PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt, MeshAttributeAlias alias){
+bool Mesh::PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt, MeshAttributeAlias alias){
     if(CheckIfAliasExists(alias))
         return false;
-    return PushAttributeBase(name, location, format, MeshAttributeType::UnsignedShort, normalized, std::move(data), interpretAsInt, alias);
+    return PushAttributeBase(name, format, MeshAttributeType::UnsignedShort, normalized, std::move(data), interpretAsInt, alias);
 }
 bool Mesh::PushAttributePosition(const std::vector<float> &positions){
-    return PushAttribute("position", locationCounter++, MeshAttributeFormat::Vec3, false, positions, false, MeshAttributeAlias::Position);
+    return PushAttribute("position", MeshAttributeFormat::Vec3, false, positions, false, MeshAttributeAlias::Position);
 }
 bool Mesh::PushAttributeTexCoord0(const std::vector<float> &texCoords0){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords0, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, false, texCoords0, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord0(const std::vector<unsigned short> &texCoords0){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords0, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords0, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord1(const std::vector<float> &texCoords1){
-    return PushAttribute("texCoord1", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords1, false, MeshAttributeAlias::TexCoord1);
+    return PushAttribute("texCoord1", MeshAttributeFormat::Vec2, false, texCoords1, false, MeshAttributeAlias::TexCoord1);
 }
 bool Mesh::PushAttributeTexCoord1(const std::vector<unsigned short> &texCoords1){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords1, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords1, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord2(const std::vector<float> &texCoords2){
-    return PushAttribute("texCoord2", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords2, false, MeshAttributeAlias::TexCoord2);
+    return PushAttribute("texCoord2", MeshAttributeFormat::Vec2, false, texCoords2, false, MeshAttributeAlias::TexCoord2);
 }
 bool Mesh::PushAttributeTexCoord2(const std::vector<unsigned short> &texCoords2){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords2, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords2, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord3(const std::vector<float> &texCoords3){
-    return PushAttribute("texCoord3", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords3, false, MeshAttributeAlias::TexCoord3);
+    return PushAttribute("texCoord3", MeshAttributeFormat::Vec2, false, texCoords3, false, MeshAttributeAlias::TexCoord3);
 }
 bool Mesh::PushAttributeTexCoord3(const std::vector<unsigned short> &texCoords3){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords3, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords3, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord4(const std::vector<float> &texCoords4){
-    return PushAttribute("texCoord4", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords4, false, MeshAttributeAlias::TexCoord4);
+    return PushAttribute("texCoord4", MeshAttributeFormat::Vec2, false, texCoords4, false, MeshAttributeAlias::TexCoord4);
 }
 bool Mesh::PushAttributeTexCoord4(const std::vector<unsigned short> &texCoords4){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords4, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords4, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord5(const std::vector<float> &texCoords5){
-    return PushAttribute("texCoord5", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords5, false, MeshAttributeAlias::TexCoord5);
+    return PushAttribute("texCoord5", MeshAttributeFormat::Vec2, false, texCoords5, false, MeshAttributeAlias::TexCoord5);
 }
 bool Mesh::PushAttributeTexCoord5(const std::vector<unsigned short> &texCoords5){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords5, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords5, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord6(const std::vector<float> &texCoords6){
-    return PushAttribute("texCoord6", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords6, false, MeshAttributeAlias::TexCoord6);
+    return PushAttribute("texCoord6", MeshAttributeFormat::Vec2, false, texCoords6, false, MeshAttributeAlias::TexCoord6);
 }
 bool Mesh::PushAttributeTexCoord6(const std::vector<unsigned short> &texCoords6){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords6, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords6, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeTexCoord7(const std::vector<float> &texCoords7){
-    return PushAttribute("texCoord7", locationCounter++, MeshAttributeFormat::Vec2, false, texCoords7, false, MeshAttributeAlias::TexCoord7);
+    return PushAttribute("texCoord7", MeshAttributeFormat::Vec2, false, texCoords7, false, MeshAttributeAlias::TexCoord7);
 }
 bool Mesh::PushAttributeTexCoord7(const std::vector<unsigned short> &texCoords7){
-    return PushAttribute("texCoord0", locationCounter++, MeshAttributeFormat::Vec2, true, texCoords7, false, MeshAttributeAlias::TexCoord0);
+    return PushAttribute("texCoord0", MeshAttributeFormat::Vec2, true, texCoords7, false, MeshAttributeAlias::TexCoord0);
 }
 bool Mesh::PushAttributeNormal(const std::vector<float> &normals){
-    return PushAttribute("normal", locationCounter++, MeshAttributeFormat::Vec3, false, normals, false, MeshAttributeAlias::Normal);
+    return PushAttribute("normal", MeshAttributeFormat::Vec3, false, normals, false, MeshAttributeAlias::Normal);
 }
 bool Mesh::PushAttributeNormal(const std::vector<short> &normals){
-    return PushAttribute("normal", locationCounter++, MeshAttributeFormat::Vec3, true, normals, false, MeshAttributeAlias::Normal);
+    return PushAttribute("normal", MeshAttributeFormat::Vec3, true, normals, false, MeshAttributeAlias::Normal);
 }
 bool Mesh::PushAttributeTangent(const std::vector<float> &tangents){
-    return PushAttribute("tangent", locationCounter++, MeshAttributeFormat::Vec3, false, tangents, false, MeshAttributeAlias::Tangent);
+    return PushAttribute("tangent", MeshAttributeFormat::Vec3, false, tangents, false, MeshAttributeAlias::Tangent);
 }
 bool Mesh::PushAttributeTangent(const std::vector<short> &tangents){
-    return PushAttribute("tangent", locationCounter++, MeshAttributeFormat::Vec3, true, tangents, false, MeshAttributeAlias::Tangent);
+    return PushAttribute("tangent", MeshAttributeFormat::Vec3, true, tangents, false, MeshAttributeAlias::Tangent);
 }
 bool Mesh::PushAttributeBitangent(const std::vector<float> &bitangents){
-    return PushAttribute("bitangent", locationCounter++, MeshAttributeFormat::Vec3, false, bitangents, false, MeshAttributeAlias::Bitangent);
+    return PushAttribute("bitangent", MeshAttributeFormat::Vec3, false, bitangents, false, MeshAttributeAlias::Bitangent);
 }
 bool Mesh::PushAttributeBitangent(const std::vector<short> &bitangents){
-    return PushAttribute("bitangent", locationCounter++, MeshAttributeFormat::Vec3, true, bitangents, false, MeshAttributeAlias::Bitangent);
+    return PushAttribute("bitangent", MeshAttributeFormat::Vec3, true, bitangents, false, MeshAttributeAlias::Bitangent);
 }
 bool Mesh::PushAttributeColor(const std::vector<unsigned char> &colors){
-    return PushAttribute("color", locationCounter++, MeshAttributeFormat::Vec4, true, colors, false, MeshAttributeAlias::Color);
+    return PushAttribute("color", MeshAttributeFormat::Vec4, true, colors, false, MeshAttributeAlias::Color);
 }
 int Mesh::GetAttributesCount() const{
     return attributesData.size();

@@ -5,19 +5,19 @@
 #include "Constants.hpp"
 ShaderStandard::ShaderStandard(){
     // Declare attributes used in shader
-    attributes.emplace("position", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("normal", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord0", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord1", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord2", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord3", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord4", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord5", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord6", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("texCoord7", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("tangent", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("bitangent", std::make_pair(false, MeshAttribute()));
-    attributes.emplace("color", std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::positionAttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::normalAttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::tangentAttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::bitangentAttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::colorAttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord0AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord1AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord2AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord3AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord4AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord5AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord6AttribName, std::make_pair(false, MeshAttribute()));
+    attributes.emplace(Constants::ShaderStandard::texCoord7AttribName, std::make_pair(false, MeshAttribute()));
     // Declare parameters and maps used in shader
     maps.emplace(Constants::ShaderStandard::diffuseMapName, false);
     maps.emplace(Constants::ShaderStandard::specularMapName, false);
@@ -115,19 +115,20 @@ ShaderCode ShaderStandard::ProcessCode()
 {
     ShaderCode code; // Shader code to build
     // Attributes
-    int positionLocation = attributes["position"].second.location;
-    int normalLocation = attributes["normal"].second.location;
-    int texCoord0Location = attributes["texCoord0"].second.location;
-    int texCoord1Location = attributes["texCoord1"].second.location;
-    int texCoord2Location = attributes["texCoord2"].second.location;
-    int texCoord3Location = attributes["texCoord3"].second.location;
-    int texCoord4Location = attributes["texCoord4"].second.location;
-    int texCoord5Location = attributes["texCoord5"].second.location;
-    int texCoord6Location = attributes["texCoord6"].second.location;
-    int texCoord7Location = attributes["texCoord7"].second.location;
-    int tangentLocation = attributes["tangent"].second.location;
-    int bitangentLocation = attributes["bitangent"].second.location;
-    int colorLocation = attributes["color"].second.location;
+    int positionLocation = Constants::ShaderStandard::positionAttribLocation;
+    int normalLocation = Constants::ShaderStandard::normalAttribLocation;
+    int tangentLocation = Constants::ShaderStandard::tangentAttribLocation;
+    int bitangentLocation = Constants::ShaderStandard::bitangentAttribLocation;
+    int colorLocation = Constants::ShaderStandard::colorAttribLocation;
+    int texCoord0Location = Constants::ShaderStandard::texCoord0AttribLocation;
+    int texCoord1Location = Constants::ShaderStandard::texCoord1AttribLocation;
+    int texCoord2Location = Constants::ShaderStandard::texCoord2AttribLocation;
+    int texCoord3Location = Constants::ShaderStandard::texCoord3AttribLocation;
+    int texCoord4Location = Constants::ShaderStandard::texCoord4AttribLocation;
+    int texCoord5Location = Constants::ShaderStandard::texCoord5AttribLocation;
+    int texCoord6Location = Constants::ShaderStandard::texCoord6AttribLocation;
+    int texCoord7Location = Constants::ShaderStandard::texCoord7AttribLocation;
+    
     bool positionEnabled = attributes["position"].first;
     bool normalEnabled = attributes["normal"].first;
     bool texCoord0Enabled = attributes["texCoord0"].first;
@@ -449,6 +450,7 @@ ShaderCode ShaderStandard::ProcessCode()
             "for(int i = 0; i < "+spotLightCountName+"; i++){\n"
             "   finalColor += CalcSpotLight(spotLights[i]);\n"
             "}\n"
+            //"finalColor = finalColor / (finalColor + vec3(1.0));\n"
             "float gamma = 2.2;\n"
             "FragColor = vec4(pow(finalColor, vec3(1.0/gamma)), albedo.a);\n";
 

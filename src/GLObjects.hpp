@@ -32,11 +32,16 @@ namespace GL{
         TextureGL(GLenum textureType);
         TextureGL(GLenum textureType, GLenum internalFormat);
         void Bind(int texUnit);
+        // Default parameters setup
         void SetupParameters();
+        // Manual parameters setting
+        void SetParameterI(GLenum pname, GLint param);
         void SetupStorage2D(GLsizei width, GLsizei height);
+        void SetupImage2D(GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
         void SetupStorage3D(GLsizei width, GLsizei height, int layers);
         void PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLubyte> &pixels);
         void PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLfloat> &pixels);
+        void PushData2D(GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
         void PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLubyte>> &pixels);
         void PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLfloat>> &pixels);
         // Single upload all layers for a 3D texture or texture array
@@ -110,9 +115,30 @@ namespace GL{
         void Release() override;
     };
 
+    class RenderBufferGL : public ObjectGL{
+    private:
+        GLenum internalFormat;
+    public:
+        RenderBufferGL(GLenum internalFormat);
+        void SetupStorage(GLsizei width, GLsizei height);
+    };
+
+    class FrameBufferGL : public ObjectGL {
+    public:
+        FrameBufferGL();
+        void AttachTexture(GLenum attachment, GLuint tex, GLint mipmapLevel);
+        void AttachRenderBuffer(GLenum attachment, GLuint renderBuf);
+        void SpecifyDrawBufferMode(GLenum mode);
+        void SpecifyReadBufferMode(GLenum mode);
+        bool CheckStatus();
+        void Bind();
+        void Release() override;
+    }; 
+
     using TextureGLResource = Resource<TextureGL>;
     using ShaderObjectGLResource = Resource<ShaderObjectGL>;
     using ShaderGLResource = Resource<ShaderGL>;
+    using FrameBufferGLResource = Resource<FrameBufferGL>;
 }
 
 #endif

@@ -117,7 +117,23 @@ void Renderer::SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLa
             default: type = GL_FLOAT;
         }
         normalized = attribute.normalized ? GL_TRUE : GL_FALSE;
-        int location = attribute.location;
+        int location = 0;
+        switch(attribute.alias){
+            case MeshAttributeAlias::Position: location = Constants::ShaderStandard::positionAttribLocation; break;
+            case MeshAttributeAlias::Normal: location = Constants::ShaderStandard::normalAttribLocation; break;
+            case MeshAttributeAlias::Tangent: location = Constants::ShaderStandard::tangentAttribLocation; break;
+            case MeshAttributeAlias::Bitangent: location = Constants::ShaderStandard::bitangentAttribLocation; break;
+            case MeshAttributeAlias::Color: location = Constants::ShaderStandard::colorAttribLocation; break;
+            case MeshAttributeAlias::TexCoord0: location = Constants::ShaderStandard::texCoord0AttribLocation; break;
+            case MeshAttributeAlias::TexCoord1: location = Constants::ShaderStandard::texCoord1AttribLocation; break;
+            case MeshAttributeAlias::TexCoord2: location = Constants::ShaderStandard::texCoord2AttribLocation; break;
+            case MeshAttributeAlias::TexCoord3: location = Constants::ShaderStandard::texCoord3AttribLocation; break;
+            case MeshAttributeAlias::TexCoord4: location = Constants::ShaderStandard::texCoord4AttribLocation; break;
+            case MeshAttributeAlias::TexCoord5: location = Constants::ShaderStandard::texCoord5AttribLocation; break;
+            case MeshAttributeAlias::TexCoord6: location = Constants::ShaderStandard::texCoord6AttribLocation; break;
+            case MeshAttributeAlias::TexCoord7: location = Constants::ShaderStandard::texCoord7AttribLocation; break;
+            case MeshAttributeAlias::None: location = bindingPoint; break;
+        }
         for(int i = location; i < location + locations; i++){
             if(attribute.interpretAsInt){
                 glVertexArrayAttribIFormat(vao, i, attribute.ScalarElementsCount(), type, relativeOffset);
@@ -125,9 +141,10 @@ void Renderer::SetRenderGroupLayout(const RenderGroup &renderGroup, const MeshLa
                 glVertexArrayAttribFormat(vao, i, attribute.ScalarElementsCount(), type, normalized, relativeOffset);
             }
             glEnableVertexArrayAttrib(vao, i);
-            glVertexArrayAttribBinding(vao, i, interleaveAttributes ? vboBindingPoint : bindingPoint++);
+            glVertexArrayAttribBinding(vao, i, interleaveAttributesFlag ? vboBindingPoint : bindingPoint);
         }
-        relativeOffset += interleaveAttributes ? attribute.AttributeDataSize() : 0;
+        relativeOffset += interleaveAttributesFlag ? attribute.AttributeDataSize() : 0;
+        bindingPoint++;
     }
 }
 
@@ -135,7 +152,7 @@ void Renderer::BindRenderGroupAttributesBuffers(RenderGroup &renderGroup, const 
 {
     std::vector<GLuint> buffers(renderGroup.attributesCount, renderGroup.attributesBuffer.name);
 
-    if(!interleaveAttributes)
+    if(!interleaveAttributesFlag)
         glVertexArrayVertexBuffers(renderGroup.vao.GetHandle(), 0, renderGroup.attributesCount, buffers.data(), offsets.data(), strides.data());
     else // In this case (interleaved), vector of strides contains same value
         glVertexArrayVertexBuffer(renderGroup.vao.GetHandle(), vboBindingPoint, renderGroup.attributesBuffer.name, 0, strides[0]);
@@ -1131,6 +1148,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     
     auto bufferBegin = std::chrono::high_resolution_clock::now();
     renderGroup.objectsCount = objectsCount;
+
     //renderGroup.materialsStructArray = matParamStructArray;
     // Size of all meshes (attributes + indices)
     int meshesTotalSize = 0;
@@ -1141,7 +1159,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     std::vector<GLsizei> attributesStrides(attributesCount);
     
     // VBO
-    if(!interleaveAttributes)
+    if(!interleaveAttributesFlag)
     {
         for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
             attributesOffsets[i] = attributesBufferTotalSize;
@@ -1373,9 +1391,50 @@ void Renderer::SetMainWindow(Window *mainWindow){
     this->mainWindow = mainWindow;
 }
 
+void Renderer::SetupDepthShader()
+{
+    ShaderCode depthCode;
+    depthCode.SetVersion(RenderCapabilities::GetGLSLVersion());
+    depthCode.SetStageToPipeline(ShaderStage::Vertex, true);
+    depthCode.SetStageToPipeline(ShaderStage::Fragment, true);
+    depthCode.AddVertexAttribute("aPosition", ShaderDataType::Float3, Constants::ShaderStandard::positionAttribLocation);
+    std::string objIDString;
+    if(RenderCapabilities::GetAPIVersion() < GLApiVersion::V460){ // This works with the non indirect drawing version
+        depthCode.AddExtension("GL_ARB_shader_draw_parameters");
+        objIDString = "gl_DrawIDARB + gl_BaseInstanceARB + gl_InstanceID";
+    } else { // This works with the indirect drawing version
+        objIDString = "gl_BaseInstance + gl_InstanceID";
+    }
+    std::string maxObjectsGroupString = std::to_string(
+        glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::ShaderStandard::maxObjectsToGroup)
+    );
+    depthCode.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[" + maxObjectsGroupString + "];"); // MVPs uniform block
+    depthCode.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", Constants::ShaderStandard::mvpsBinding);
+    depthCode.SetMain(ShaderStage::Vertex, 
+    "int objID = "+objIDString+";\n"
+    "mat4 mvp = mvps[objID];\n"
+    "gl_Position = mvp*vec4(aPosition, 1.0);\n"
+    );
+    depthCode.SetMain(ShaderStage::Fragment, "");
+    depthShader = depthCode.Generate();
+    for(auto &&bindingPurpose : depthCode.GetBindingsPurposes(ShaderStage::Vertex)){
+        std::optional<int> binding = AddUBOBindingPurpose(bindingPurpose.second);
+        if(!binding.has_value()){
+            // No binding point available
+            return;
+        }
+        depthShader->SetBlockBinding(bindingPurpose.first, uboBindingsPurposes[bindingPurpose.second]);
+    }
+
+}
+
 void Renderer::SetInterleaveAttribState(bool interleave)
 {
-    this->interleaveAttributes = interleave;
+    this->interleaveAttributesFlag = interleave;
+}
+
+void Renderer::SetDepthPrepassState(bool depthPass){
+    this->depthPassFlag = depthPass;
 }
 
 void Renderer::Start(entt::registry &registry){
@@ -1472,22 +1531,9 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         translate = glm::translate(translate, -mainCameraTransform.position);
         mainCameraView = rotate * translate;
     }
-    for(auto &&renderGroup : renderGroups){
-        for(size_t i = 0; i < renderGroup.texturesArrays.size(); i++){
-            renderGroup.texturesArrays[i]->Bind(i);
-        }
-        // Remember last shader program handle
-        if(renderGroup.shader->GetHandle() != lastShaderProgram){
-            renderGroup.shader->Use();
-            lastShaderProgram = renderGroup.shader->GetHandle();
-        }
-        for(auto& [name, count] : lightsCounters){
-            renderGroup.shader->SetInt(name, count);
-        }
-        renderGroup.shader->SetVec3(Constants::ShaderStandard::viewPosName, mainCameraTransform.position);
 
-        renderGroup.vao.Bind();
-
+    // Updating matrices
+    for(auto &renderGroup : renderGroups){
         for(int i = 0; i < renderGroup.objectsCount; i++){
             auto& transform = renderGroup.transforms[i];
             glm::mat4 model = glm::mat4(1.0f);
@@ -1502,7 +1548,45 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         BufferSubDataMVPs(renderGroup); // Update MVPs of objects
         BufferSubDataModels(renderGroup); // Update models of objects
         BufferSubDataNormalMatrices(renderGroup); // Update normal matrices of objects
-        // UBO bindings
+    }
+
+    // Clearing depth buffer from depth framebuffer
+    glClearNamedFramebufferfv(0, GL_DEPTH, 0, depthClearValue.data());
+
+    if(depthPassFlag){
+        glColorMask(0,0,0,0);
+        glDepthFunc(GL_LESS);
+        glDisable(GL_BLEND);
+        depthShader->Use();
+        // Depth prepass rendering
+        for(auto &&renderGroup : renderGroups){
+            // VAO Binding
+            renderGroup.vao.Bind();
+            
+            // Binding MVPs UBO
+            glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
+            // Render
+            (this->*DrawFunction)(renderGroup);
+        }
+    }
+
+    glColorMask(1,1,1,1); 
+    glDepthFunc(depthPassFlag ? GL_EQUAL : GL_LESS);
+    glEnable(GL_BLEND);
+    // Clear color buffer of default framebuffer
+    glClearNamedFramebufferfv(0, GL_COLOR, 0, colorClearValue.data());
+
+    for(auto &&renderGroup : renderGroups){
+        // Remember last shader program handle
+        // Use main shader
+        if(renderGroup.shader->GetHandle() != lastShaderProgram){
+            renderGroup.shader->Use();
+            lastShaderProgram = renderGroup.shader->GetHandle();
+        }
+        // VAO Binding
+        renderGroup.vao.Bind();
+
+        // Binding UBOs
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.modelsUniformBuffer.bindingPoint, renderGroup.modelsUniformBuffer.name);
         glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.normalMatricesUniformBuffer.bindingPoint, renderGroup.normalMatricesUniformBuffer.name);
@@ -1511,6 +1595,20 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         for(auto &&buffer : renderGroup.texLayersIndexBuffers){
             glBindBufferBase(GL_UNIFORM_BUFFER, buffer.bindingPoint, buffer.name);
         }
+        for(size_t i = 0; i < renderGroup.texturesArrays.size(); i++){
+            renderGroup.texturesArrays[i]->Bind(i);
+        }
+        ////
+        // Lighting
+        for(auto& [name, count] : lightsCounters){
+            renderGroup.shader->SetInt(name, count);
+        }
+        ////
+        // Camera / View
+        renderGroup.shader->SetVec3(Constants::ShaderStandard::viewPosName, mainCameraTransform.position);
+        ////
+        // Render
+
         (this->*DrawFunction)(renderGroup);
     }
 }
@@ -1521,8 +1619,13 @@ Renderer::Renderer(){
     for(GLuint i = 0; i < maxBindingPoints; i++){
         availableBindingPoints.emplace(i, true);
     }
+    // Enabling some opengl fragment tests
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     SetDrawFunction();
+    SetupDepthShader();
 }
 
 int Renderer::GetDrawGroupsCount(){

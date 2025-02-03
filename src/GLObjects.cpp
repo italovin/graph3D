@@ -66,10 +66,21 @@ void GL::TextureGL::SetupParameters(){
     glTextureParameteri(this->handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
+void GL::TextureGL::SetParameterI(GLenum pname, GLint param){
+    glTextureParameteri(this->handle, pname, param);
+}
+
 void GL::TextureGL::SetupStorage2D(GLsizei width, GLsizei height){
     this->width = width;
     this->height = height;
     glTextureStorage2D(this->handle, 1, this->internalFormat, width, height);
+}
+
+void GL::TextureGL::SetupImage2D(GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels){
+    this->width = width;
+    this->height = height;
+    glBindTexture(textureType, this->handle);
+    glTexImage2D(textureType, 0, internalFormat, width, height, 0, format, type, pixels);
 }
 
 void GL::TextureGL::SetupStorage3D(GLsizei width, GLsizei height, int layers){
@@ -83,36 +94,40 @@ void GL::TextureGL::SetupStorage3D(GLsizei width, GLsizei height, int layers){
 }
 
 void GL::TextureGL::PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLubyte> &pixels){
-    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, pixels.data());
+    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, pixels.size() == 0 ? nullptr : pixels.data());
 }
 
 void GL::TextureGL::PushData2D(GLsizei width, GLsizei height, GLenum format, const std::vector<GLfloat> &pixels){
-    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, GL_FLOAT, pixels.data());
+    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, GL_FLOAT, pixels.size() == 0 ? nullptr : pixels.data());
+}
+
+void GL::TextureGL::PushData2D(GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels){
+    glTextureSubImage2D(this->handle, 0, 0, 0, width, height, format, type, pixels);
 }
 
 void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLubyte>> &pixels){
     int layers = pixels.size();
     for(int i = 0; i < layers; i++){
-        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_UNSIGNED_BYTE, pixels[i].data());
+        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_UNSIGNED_BYTE, pixels[i].size() == 0 ? nullptr : pixels[i].data());
     }
 }
 
 void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, GLenum format, const std::vector<std::vector<GLfloat>> &pixels){
     int layers = pixels.size();
     for(int i = 0; i < layers; i++){
-        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_FLOAT, pixels[i].data());
+        glTextureSubImage3D(this->handle, 0, 0, 0, i, width, height, 1, format, GL_FLOAT, pixels[i].size() == 0 ? nullptr : pixels[i].data());
     }
 }
 void GL::TextureGL::PushData3D(GLsizei width, GLsizei height, int layers, GLenum format, const std::vector<GLubyte> &pixels){
-    glTextureSubImage3D(this->handle, 0, 0, 0, 0, width, height, layers, format, GL_UNSIGNED_BYTE, pixels.data());
+    glTextureSubImage3D(this->handle, 0, 0, 0, 0, width, height, layers, format, GL_UNSIGNED_BYTE, pixels.size() == 0 ? nullptr : pixels.data());
 }
 
 void GL::TextureGL::PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLubyte> &pixels){
-    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, GL_UNSIGNED_BYTE, pixels.data());
+    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, GL_UNSIGNED_BYTE, pixels.size() == 0 ? nullptr : pixels.data());
 }
 
 void GL::TextureGL::PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, const std::vector<GLfloat> &pixels){
-    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, GL_FLOAT, pixels.data());
+    glTextureSubImage3D(this->handle, 0, 0, 0, layer, width, height, 1, format, GL_FLOAT, pixels.size() == 0 ? nullptr : pixels.data());
 }
 
 void GL::TextureGL::PushData3DLayer(GLsizei width, GLsizei height, int layer, GLenum format, GLenum type, const void *pixels)
@@ -388,7 +403,56 @@ void GL::VertexArrayGL::Bind(){
 }
 
 void GL::VertexArrayGL::Release(){
-    glDeleteVertexArrays(1, &handle);
+    glDeleteVertexArrays(1, &this->handle);
+}
+
+/////
+
+// RenderBufferGL
+
+GL::RenderBufferGL::RenderBufferGL(GLenum internalFormat)
+{
+    this->internalFormat = internalFormat;
+    glCreateRenderbuffers(1, &this->handle);
+}
+
+void GL::RenderBufferGL::SetupStorage(GLsizei width, GLsizei height){
+    glNamedRenderbufferStorage(this->handle, this->internalFormat, width, height);
+}
+
+// FrameBufferGL
+
+GL::FrameBufferGL::FrameBufferGL()
+{
+    glCreateFramebuffers(1, &this->handle);
+}
+
+void GL::FrameBufferGL::AttachTexture(GLenum attachment, GLuint tex, GLint mipmapLevel){
+    glNamedFramebufferTexture(this->handle, attachment, tex, mipmapLevel);
+}
+
+void GL::FrameBufferGL::AttachRenderBuffer(GLenum attachment, GLuint renderBuf){
+    glNamedFramebufferRenderbuffer(this->handle, attachment, GL_RENDERBUFFER, renderBuf);
+}
+
+void GL::FrameBufferGL::SpecifyDrawBufferMode(GLenum mode){
+    glNamedFramebufferDrawBuffer(this->handle, mode);
+}
+
+void GL::FrameBufferGL::SpecifyReadBufferMode(GLenum mode){
+    glNamedFramebufferReadBuffer(this->handle, mode);
+}
+
+bool GL::FrameBufferGL::CheckStatus(){
+    return glCheckNamedFramebufferStatus(this->handle, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+}
+
+void GL::FrameBufferGL::Bind(){
+    glBindFramebuffer(GL_FRAMEBUFFER, this->handle);
+}
+
+void GL::FrameBufferGL::Release(){
+    glDeleteFramebuffers(1, &this->handle);
 }
 
 /////

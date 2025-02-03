@@ -10,6 +10,58 @@ namespace Constants
         /* Maximum number of objects to group in a single render group
            This also defines the size of the uniform buffers in standard shaders*/
         const unsigned long maxObjectsToGroup = 8192;
+        // Default position attribute location
+        const int positionAttribLocation = 0;
+        // Default normal attribute location
+        const int normalAttribLocation = 1;
+        // Default tangent attribute location
+        const int tangentAttribLocation = 2;
+        // Default bitangent attribute location
+        const int bitangentAttribLocation = 3;
+        // Default color attribute location
+        const int colorAttribLocation = 4;
+        // Default tex coordinate 0 attribute location
+        const int texCoord0AttribLocation = 5;
+        // Default tex coordinate 1 attribute location
+        const int texCoord1AttribLocation = 6;
+        // Default tex coordinate 2 attribute location
+        const int texCoord2AttribLocation = 7;
+        // Default tex coordinate 3 attribute location
+        const int texCoord3AttribLocation = 8;
+        // Default tex coordinate 4 attribute location
+        const int texCoord4AttribLocation = 9;
+        // Default tex coordinate 5 attribute location
+        const int texCoord5AttribLocation = 10;
+        // Default tex coordinate 6 attribute location
+        const int texCoord6AttribLocation = 11;
+        // Default tex coordinate 7 attribute location
+        const int texCoord7AttribLocation = 12;
+        // Default position attribute name
+        const std::string positionAttribName = "position";
+        // Default normal attribute name
+        const std::string normalAttribName = "normal";
+        // Default tangent attribute name
+        const std::string tangentAttribName = "tangent";
+        // Default bitangent attribute name
+        const std::string bitangentAttribName = "bitangent";
+        // Default color attribute name
+        const std::string colorAttribName = "color";
+        // Default tex coordinate 0 attribute name
+        const std::string texCoord0AttribName = "texCoord0";
+        // Default tex coordinate 1 attribute name
+        const std::string texCoord1AttribName = "texCoord1";
+        // Default tex coordinate 2 attribute name
+        const std::string texCoord2AttribName = "texCoord2";
+        // Default tex coordinate 3 attribute name
+        const std::string texCoord3AttribName = "texCoord3";
+        // Default tex coordinate 4 attribute name
+        const std::string texCoord4AttribName = "texCoord4";
+        // Default tex coordinate 5 attribute name
+        const std::string texCoord5AttribName = "texCoord5";
+        // Default tex coordinate 6 attribute name
+        const std::string texCoord6AttribName = "texCoord6";
+        // Default tex coordinate 7 attribute name
+        const std::string texCoord7AttribName = "texCoord7";
         // Uniform name for the view/camera/eye world position
         const std::string viewPosName = "viewPos";
         // Default diffuse map key name

@@ -34,6 +34,7 @@ int main(int argc, const char *argv[])
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // Versão principal do OpenGL (exemplo: 3.3)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); // Perfil core
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     //SDL_SetRelativeMouseMode(SDL_TRUE);
 
     const int WIDTH = 1366;
@@ -61,8 +62,9 @@ int main(int argc, const char *argv[])
     window.SetContextVersion(RenderCapabilities::GetMajorVersion(), RenderCapabilities::GetMinorVersion(), 0);
 
     // Ativa sincronização vertical (VSync)
-    if (!SDL_GL_SetSwapInterval(1)) {
-        std::cerr << "Aviso: Não foi possível ativar VSync: " << SDL_GetError() << std::endl;
+    if (!SDL_GL_SetSwapInterval(-1)) {
+        if(!SDL_GL_SetSwapInterval(1))
+            std::cerr << "Aviso: Não foi possível ativar VSync: " << SDL_GetError() << std::endl;
     }
 
     RenderCapabilities::Initialize();
@@ -267,7 +269,7 @@ int main(int argc, const char *argv[])
     ////
 
     Ref<Mesh> graphMesh = CreateRef<Mesh>();
-    graphMesh->PushAttribute("params", 0, MeshAttributeFormat::Vec2, false, parameters);
+    graphMesh->PushAttribute("params", MeshAttributeFormat::Vec2, false, parameters);
     graphMesh->SetIndices(indices, MeshTopology::Lines);
 
     Ref<ShaderCode> graphShaderCode = CreateRef<ShaderCode>();
@@ -465,10 +467,11 @@ int main(int argc, const char *argv[])
     // testLight.transform.position = glm::vec3(0, 5.0f, 0);
     // testLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
 
-    int lightCount = 5;
+    int lightCount = 10;
     std::vector<Entity> lights;
     std::default_random_engine e;
     std::uniform_int_distribution<int> disInt(0, 3);
+    std::uniform_real_distribution<float> disFloat(0, 1.0f);
     for(int i = 0; i < lightCount; i++){
         Entity light = mainScene.CreateEntity();
         int lightChannel = disInt(e);
@@ -479,27 +482,21 @@ int main(int argc, const char *argv[])
             color = glm::vec3(0, 1.0f, 0);
         else if(lightChannel == 2)
             color = glm::vec3(0, 0, 1.0f);
-        light.AddComponent<LightComponent>().color = color;
-        light.GetComponent<LightComponent>().range = 5.0f;
+        light.AddComponent<LightComponent>().color = glm::vec3(0.5f + disFloat(e), 0.5f + disFloat(e), 0.5f + disFloat(e));;
+        light.GetComponent<LightComponent>().range = 4.0f;
         light.transform.position = glm::vec3(3*glm::cos(glm::radians((360.0f/lightCount)*i)), 3, 3*glm::sin(glm::radians((360.0f/lightCount)*i)));
         lights.push_back(light);
     }
 
     Renderer mainRenderer = Renderer();
     mainRenderer.SetMainWindow(std::addressof(window));
-    mainRenderer.SetInterleaveAttribState(true);
+    mainRenderer.SetInterleaveAttribState(false);
+    mainRenderer.SetDepthPrepassState(true);
     double initialRendererTime = SDL_GetTicks();
     mainRenderer.Start(mainScene.registry);
     double prepareTime = (SDL_GetTicks() - initialRendererTime)/1000;
     fmt::print("\nTime to prepare meshes for grouping: {0:.2f} (ms)\n", 1000*prepareTime);
     fmt::print("Computed draw groups: {0}\n\n", mainRenderer.GetDrawGroupsCount());
-
-    glClearColor(0, 0, 0, 1);
-    // Enabling some opengl fragment tests
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     double time = 0;
     double lastTime = 0;
@@ -609,8 +606,6 @@ int main(int argc, const char *argv[])
         graph.transform.eulerAngles(glm::vec3(0, -30*time, 0));
         // Rendering
         /* Render here */
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         mainRenderer.Update(mainScene.registry, deltaTime);
         /* Swap front and back buffers */
         SDL_GL_SwapWindow(window.GetHandle());

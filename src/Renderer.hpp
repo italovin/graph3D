@@ -152,6 +152,9 @@ private:
         GLenum indicesType; // Equivalent to mesh indices data type
         MeshIndexType indicesTypeEnum;
         int indicesTypeSize = 0;
+        // This is a vector with objects count size that defines drawing order
+        // This is 1:1 for indirect drawing
+        std::vector<int> drawOrder;
         /// Used in multi draw indirect type
         DrawCmdBuffer drawCmdBuffer;
         std::vector<DrawElementsIndirectCommand> commands;
@@ -189,7 +192,7 @@ private:
     int vboBindingPoint = 0;
     // This flag sets when interleave attributes in vertex buffer. If not enabled, attributes of objects are
     // put in separated blocks in the VBO
-    bool interleaveAttributes = false;
+    bool interleaveAttributesFlag = false;
     std::vector<RenderGroup> renderGroups;
     std::vector<PointLight> pointLights;
     std::vector<DirectionalLight> directionalLights;
@@ -197,6 +200,13 @@ private:
     Buffer pointLightUniformBuffer;
     Buffer directionalLightUniformBuffer;
     Buffer spotLightUniformBuffer;
+
+    // Objects used for depth prepass
+    bool depthPassFlag = true;
+    std::array<float, 4> colorClearValue = {0.0f,0.0f,0.0f,1.0f};
+    std::array<float, 1> depthClearValue = {1.0f};
+    Ref<GL::ShaderGL> depthShader;
+    //
     GLenum GetDrawMode(MeshTopology topology);
     GLenum GetIndicesType(MeshIndexType type);
     void BufferSubDataMVPs(RenderGroup &renderGroup);
@@ -206,6 +216,7 @@ private:
     void BindRenderGroupAttributesBuffers(RenderGroup &renderGroup, const std::vector<GLintptr> &offsets, const std::vector<GLsizei> &strides);
     void DrawFunctionNonIndirect(RenderGroup &renderGroup);
     void DrawFunctionIndirect(RenderGroup &renderGroup);
+    void SetupDepthShader();
     void SetDrawFunction();
     void BuildRenderGroupBuffers(RenderGroupBuffers &renderGroupBuffers, const ShaderGroup &shaderGroup);
     void BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffers &renderGroupBuffers, const ShaderGroup &shaderGroup);
@@ -221,6 +232,7 @@ public:
     Renderer();
     void SetMainWindow(Window *mainWindow);
     void SetInterleaveAttribState(bool interleave);
+    void SetDepthPrepassState(bool depthPass);
     void Start(entt::registry &registry) override;
     void Update(entt::registry &registry, float deltaTime) override;
     int GetDrawGroupsCount();

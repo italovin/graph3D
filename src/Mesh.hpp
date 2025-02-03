@@ -30,7 +30,6 @@ enum class MeshIndexType{
 
 struct MeshAttribute{
     std::string name;
-    int location = 0;
     MeshAttributeType type = MeshAttributeType::None;
     MeshAttributeFormat format = MeshAttributeFormat::None;
     MeshAttributeAlias alias = MeshAttributeAlias::None;
@@ -38,8 +37,8 @@ struct MeshAttribute{
     bool interpretAsInt = false;
     MeshAttribute() = default;
 
-    MeshAttribute(const std::string &name, int location, MeshAttributeType type, MeshAttributeFormat format, bool normalized):
-    name(name), location(location), type(type), format(format), normalized(normalized){
+    MeshAttribute(const std::string &name, MeshAttributeType type, MeshAttributeFormat format, bool normalized):
+    name(name), type(type), format(format), normalized(normalized){
     }
 
     bool operator == (const MeshAttribute &attribute) const{
@@ -152,12 +151,11 @@ private:
     std::vector<MeshAttributeData> attributesData;
     int verticesCount = 0;
     MeshLayout layout;
-    int locationCounter = 0;
     template <typename T>
-    bool PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+    bool PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
     std::vector<T> &&data, bool interpretAsInt, MeshAttributeAlias alias);
     template <typename T>
-    bool PushAttributeBase(const std::string &name, int location, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
+    bool PushAttributeBase(const std::string &name, MeshAttributeFormat format, MeshAttributeType type, bool normalized, 
     const std::vector<T> &data, bool interpretAsInt, MeshAttributeAlias alias);
     // Layout can only contains one alias or one attribute purpose
     bool CheckIfAliasExists(MeshAttributeAlias alias);
@@ -168,20 +166,20 @@ public:
     void SetIndices(std::vector<unsigned short> &&indices, MeshTopology toplogy);
     void SetIndices(const std::vector<unsigned int> &indices, MeshTopology topology);
     void SetIndices(std::vector<unsigned int> &&indices, MeshTopology topology);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
-    bool PushAttribute(const std::string &name, int location, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<float> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<float> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<int> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<int> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned int> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned int> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<char> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<char> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned char> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned char> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<short> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<short> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, const std::vector<unsigned short> &data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
+    bool PushAttribute(const std::string &name, MeshAttributeFormat format, bool normalized, std::vector<unsigned short> &&data, bool interpretAsInt = false, MeshAttributeAlias alias = MeshAttributeAlias::None);
     // Standard specific attributes push functions
     bool PushAttributePosition(const std::vector<float> &positions);
     // You can pass a vector of floats or unsigned shorts for tex coordinates
