@@ -129,19 +129,20 @@ ShaderCode ShaderStandard::ProcessCode()
     int texCoord6Location = Constants::ShaderStandard::texCoord6AttribLocation;
     int texCoord7Location = Constants::ShaderStandard::texCoord7AttribLocation;
     
-    bool positionEnabled = attributes["position"].first;
-    bool normalEnabled = attributes["normal"].first;
-    bool texCoord0Enabled = attributes["texCoord0"].first;
-    bool texCoord1Enabled = attributes["texCoord1"].first;
-    bool texCoord2Enabled = attributes["texCoord2"].first;
-    bool texCoord3Enabled = attributes["texCoord3"].first;
-    bool texCoord4Enabled = attributes["texCoord4"].first;
-    bool texCoord5Enabled = attributes["texCoord5"].first;
-    bool texCoord6Enabled = attributes["texCoord6"].first;
-    bool texCoord7Enabled = attributes["texCoord7"].first;
-    bool tangentEnabled = attributes["tangent"].first;
-    bool bitangentEnabled = attributes["bitangent"].first;
-    bool colorEnabled = attributes["color"].first;
+    bool positionEnabled = attributes[Constants::ShaderStandard::positionAttribName].first;
+    bool normalEnabled = attributes[Constants::ShaderStandard::normalAttribName].first;
+    bool tangentEnabled = attributes[Constants::ShaderStandard::tangentAttribName].first;
+    bool bitangentEnabled = attributes[Constants::ShaderStandard::bitangentAttribName].first;
+    bool colorEnabled = attributes[Constants::ShaderStandard::colorAttribName].first;
+    bool texCoord0Enabled = attributes[Constants::ShaderStandard::texCoord0AttribName].first;
+    bool texCoord1Enabled = attributes[Constants::ShaderStandard::texCoord1AttribName].first;
+    bool texCoord2Enabled = attributes[Constants::ShaderStandard::texCoord2AttribName].first;
+    bool texCoord3Enabled = attributes[Constants::ShaderStandard::texCoord3AttribName].first;
+    bool texCoord4Enabled = attributes[Constants::ShaderStandard::texCoord4AttribName].first;
+    bool texCoord5Enabled = attributes[Constants::ShaderStandard::texCoord5AttribName].first;
+    bool texCoord6Enabled = attributes[Constants::ShaderStandard::texCoord6AttribName].first;
+    bool texCoord7Enabled = attributes[Constants::ShaderStandard::texCoord7AttribName].first;
+    
     // Modules
     bool diffuseMapActivated = maps[Constants::ShaderStandard::diffuseMapName];
     bool specularMapActivated = maps[Constants::ShaderStandard::specularMapName];
@@ -325,9 +326,9 @@ ShaderCode ShaderStandard::ProcessCode()
             code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "direction", ShaderDataType::Float4);
             code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "color", ShaderDataType::Float4);
             code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "range", ShaderDataType::Float);
-            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "cutoff", ShaderDataType::Float);
             code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "innerCutoff", ShaderDataType::Float);
             code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "outerCutoff", ShaderDataType::Float);
+            code.AddParameterToStruct(ShaderStage::Fragment, spotLightStruct, "cutoff", ShaderDataType::Float);
 
             const std::string maxPointLightsString = std::to_string(Constants::ShaderStandard::maxPointLights);
             const std::string maxDirectionalLightsString = std::to_string(Constants::ShaderStandard::maxDirectionalLights);
@@ -391,7 +392,7 @@ ShaderCode ShaderStandard::ProcessCode()
             "  float attenuation = clamp(1.0 - (lightFragDistance / lightRange), 0.0, 1.0);\n"
             "  attenuation *= attenuation;\n"
             "  float cutoff = pointLight.cutoff;\n"
-            "  float cutoffFactor = smoothstep(cutoff, cutoff * 1.2, attenuation);\n" // Smooth transition to cutoff region
+            "  float cutoffFactor = (cutoff == 0.0) ? step(cutoff, attenuation) : smoothstep(cutoff, cutoff * 1.2, attenuation);\n" // Smooth transition to cutoff region
             "  attenuation *= cutoffFactor;\n"
             "  vec3 lightColor = pointLight.color.rgb;\n"
             "  vec3 diffuse = diff * albedo.rgb;\n"
@@ -425,7 +426,7 @@ ShaderCode ShaderStandard::ProcessCode()
             "  float attenuation = clamp(1.0 - (lightFragDistance / lightRange), 0.0, 1.0);\n"
             "  attenuation *= attenuation;\n"
             "  float cutoff = spotLight.cutoff;\n"
-            "  float cutoffFactor = smoothstep(cutoff, cutoff * 1.2, attenuation);\n" // Smooth transition to cutoff region
+            "  float cutoffFactor = (cutoff == 0.0) ? step(cutoff, attenuation) : smoothstep(cutoff, cutoff * 1.2, attenuation);\n" // Smooth transition to cutoff region
             "  attenuation *= cutoffFactor;\n"
             "  float theta = dot(lightDirNorm, normalize(-spotLight.direction.xyz));\n"
             "  float epsilon = spotLight.innerCutoff - spotLight.outerCutoff;\n"
@@ -453,7 +454,6 @@ ShaderCode ShaderStandard::ProcessCode()
             //"finalColor = finalColor / (finalColor + vec3(1.0));\n"
             "float gamma = 2.2;\n"
             "FragColor = vec4(pow(finalColor, vec3(1.0/gamma)), albedo.a);\n";
-
         } else { // Cannot do lighting without normal and tangent attribute
             return ShaderCode();
         }

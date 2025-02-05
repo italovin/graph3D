@@ -35,6 +35,7 @@ int main(int argc, const char *argv[])
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); // Perfil core
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     //SDL_SetRelativeMouseMode(SDL_TRUE);
 
     const int WIDTH = 1366;
@@ -454,11 +455,11 @@ int main(int argc, const char *argv[])
 
     mainCamera.AddComponent<CameraComponent>().isMain = true;
 
-    Entity sunLight = mainScene.CreateEntity();
-    sunLight.AddComponent<LightComponent>().color = glm::vec3(0.0f, 0.0f, 0.0f);
-    sunLight.GetComponent<LightComponent>().type = LightType::Directional;
-    sunLight.transform.position = glm::vec3(0, 5, 0);
-    sunLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
+    // Entity sunLight = mainScene.CreateEntity();
+    // sunLight.AddComponent<LightComponent>().color = glm::vec3(1.0f, 1.0f, 1.0f);
+    // sunLight.GetComponent<LightComponent>().type = LightType::Directional;
+    // sunLight.transform.position = glm::vec3(0, 5, 0);
+    // sunLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
 
     // Entity testLight = mainScene.CreateEntity();
     // testLight.AddComponent<LightComponent>().color = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -467,24 +468,37 @@ int main(int argc, const char *argv[])
     // testLight.transform.position = glm::vec3(0, 5.0f, 0);
     // testLight.transform.rotation = glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f));
 
-    int lightCount = 10;
+    int lightCount = 15;
     std::vector<Entity> lights;
-    std::default_random_engine e;
-    std::uniform_int_distribution<int> disInt(0, 3);
+    std::random_device r;
+    std::default_random_engine e(r());
+    std::uniform_int_distribution<int> disInt(0, 2);
     std::uniform_real_distribution<float> disFloat(0, 1.0f);
     for(int i = 0; i < lightCount; i++){
         Entity light = mainScene.CreateEntity();
         int lightChannel = disInt(e);
         glm::vec3 color;
         if(lightChannel == 0)
-            color = glm::vec3(1.0f, 0, 0);
+            color = glm::vec3(1.0f, disFloat(e)*0.1f + 0.1f, disFloat(e)*0.1f + 0.1f);
         else if(lightChannel == 1)
-            color = glm::vec3(0, 1.0f, 0);
+            color = glm::vec3(disFloat(e)*0.1f + 0.1f, 1.0f, disFloat(e)*0.1f + 0.1f);
         else if(lightChannel == 2)
-            color = glm::vec3(0, 0, 1.0f);
-        light.AddComponent<LightComponent>().color = glm::vec3(0.5f + disFloat(e), 0.5f + disFloat(e), 0.5f + disFloat(e));;
-        light.GetComponent<LightComponent>().range = 4.0f;
-        light.transform.position = glm::vec3(3*glm::cos(glm::radians((360.0f/lightCount)*i)), 3, 3*glm::sin(glm::radians((360.0f/lightCount)*i)));
+            color = glm::vec3(disFloat(e)*0.1f + 0.1f, disFloat(e)*0.1f + 0.1f, 1.0f);
+        else
+            color = glm::vec3(1.0f, 1.0f, 1.0f);
+        light.AddComponent<LightComponent>().color = color;
+        light.GetComponent<LightComponent>().range = 5.0f;
+        //light.transform.position = glm::vec3(3*glm::cos(glm::radians((360.0f/lightCount)*i)), 3, 3*glm::sin(glm::radians((360.0f/lightCount)*i)));
+        float maxX = 8.0f;
+        float minX = -8.0f;
+        float maxZ = 6.0f;
+        float minZ = -6.0f;
+        float maxY = 6.0f;
+        float minY = 1.0f;
+        float randomX = disFloat(e)*(maxX-minX) + minX;
+        float randomY = disFloat(e)*(maxY-minY) + minY;
+        float randomZ = disFloat(e)*(maxZ-minZ) + minZ;
+        light.transform.position = glm::vec3(randomX, randomY, randomZ);
         lights.push_back(light);
     }
 
@@ -591,13 +605,13 @@ int main(int argc, const char *argv[])
             isFreeCamera = !isFreeCamera;
         }
         //mainLight.transform.position = glm::vec3(1.5f*glm::cos(time), 3, 1.5f*glm::sin(time));
-        const float lightsSpeed = 60.0f;
-        const float lightsRadius = 3.0f;
         for(size_t i = 0; i < lights.size(); i++){
-            lights[i].transform.position = 
-            glm::vec3(lightsRadius*glm::cos(glm::radians((360.0f/lightCount)*i + lightsSpeed*time)), 
-            3, 
-            lightsRadius*glm::sin(glm::radians((360.0f/lightCount)*i + lightsSpeed*time)));
+            if(lights[i].transform.position.y > 15.0f){
+                lights[i].transform.position.y = 1.0f;
+            } else{
+                lights[i].transform.position.y += 7.5f*deltaTime;
+            }
+            
         }
         
         //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));

@@ -1414,6 +1414,7 @@ void Renderer::SetupDepthShader()
     "int objID = "+objIDString+";\n"
     "mat4 mvp = mvps[objID];\n"
     "gl_Position = mvp*vec4(aPosition, 1.0);\n"
+    //"gl_Position.z += 0.001;\n"
     );
     depthCode.SetMain(ShaderStage::Fragment, "");
     depthShader = depthCode.Generate();
@@ -1468,10 +1469,12 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
         if(light.type == LightType::Point && pointLightCounter < Constants::ShaderStandard::maxPointLights){
             PointLight pointLight;
             pointLight.position = glm::vec4(transform.position, 1.0f);
-            pointLight.color = glm::vec4(glm::max(light.color, glm::vec3(0.0f)), 1.0f);
+            pointLight.color = light.isHDR ?
+            glm::vec4(glm::max(light.color, glm::vec3(0.0f)), 1.0f) :
+            glm::vec4(glm::clamp(light.color, glm::vec3(0.0f), glm::vec3(1.0f)), 1.0f);
             pointLight.intensity = glm::max(light.intensity, 0.0f);
             pointLight.colorTemperature = light.colorTemperature;
-            pointLight.range = glm::max(light.range, 0.0f);
+            pointLight.range = glm::max(light.range, 0.0001f);
             pointLight.cutoff = glm::clamp(light.cutoff, 0.0f, 1.0f);
             if(pointLightCounter < pointLights.size()){
                 pointLights[pointLightCounter++] = pointLight;
@@ -1482,7 +1485,9 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
         } else if(light.type == LightType::Directional && directionalLightCounter < Constants::ShaderStandard::maxDirectionalLights){
             DirectionalLight directionalLight;
             directionalLight.direction = glm::vec4(transform.Forward(), 1.0f);
-            directionalLight.color = glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f);
+            directionalLight.color = light.isHDR ? 
+            glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f) :
+            glm::vec4(glm::max(light.intensity, 0.0f) * glm::clamp(light.color, glm::vec3(0.0f), glm::vec3(1.0f)), 1.0f);
             if(directionalLightCounter < directionalLights.size()){
                 directionalLights[directionalLightCounter++] = directionalLight;
             } else {
@@ -1494,8 +1499,10 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
             SpotLight spotLight;
             spotLight.position = glm::vec4(transform.position, 1.0f);
             spotLight.direction = glm::vec4(transform.Forward(), 1.0f);
-            spotLight.color = glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f);
-            spotLight.range = glm::max(light.range, 0.0f);
+            spotLight.color = light.isHDR ? 
+            glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f) :
+            glm::vec4(glm::max(light.intensity, 0.0f) * glm::clamp(light.color, glm::vec3(0.0f), glm::vec3(1.0f)), 1.0f);
+            spotLight.range = glm::max(light.range, 0.0001f);
             spotLight.cutoff = glm::clamp(light.cutoff, 0.0f, 1.0f);
             // Calculate cosine of the angles in CPU side
             spotLight.innerCutoff = glm::cos(glm::radians(glm::clamp(light.spotlightInnerCutoff, 0.0f, 90.0f)));
@@ -1550,11 +1557,13 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         BufferSubDataNormalMatrices(renderGroup); // Update normal matrices of objects
     }
 
+    // Clear color buffer of default framebuffer
+    glClearNamedFramebufferfv(0, GL_COLOR, 0, colorClearValue.data());
     // Clearing depth buffer from depth framebuffer
     glClearNamedFramebufferfv(0, GL_DEPTH, 0, depthClearValue.data());
-
+    
     if(depthPassFlag){
-        glColorMask(0,0,0,0);
+        glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
         glDepthFunc(GL_LESS);
         glDisable(GL_BLEND);
         depthShader->Use();
@@ -1570,11 +1579,9 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         }
     }
 
-    glColorMask(1,1,1,1); 
-    glDepthFunc(depthPassFlag ? GL_EQUAL : GL_LESS);
+    glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE); 
+    glDepthFunc(depthPassFlag ? GL_LEQUAL : GL_LESS);
     glEnable(GL_BLEND);
-    // Clear color buffer of default framebuffer
-    glClearNamedFramebufferfv(0, GL_COLOR, 0, colorClearValue.data());
 
     for(auto &&renderGroup : renderGroups){
         // Remember last shader program handle

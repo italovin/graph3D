@@ -40,6 +40,9 @@ enum class LightType{
 struct LightComponent{
     LightType type = LightType::Point;
     glm::vec3 color = glm::vec3(1.0f);
+    // If true use High Dynamic Range: this disables [0,1] clamping of values before passing to shader
+    bool isHDR = false;
+    // Representation of color in temperature scale (Kelvin)
     float colorTemperature = 6500.0f;
     // Intensity of positive light multiplier
     float intensity = 1.0f;

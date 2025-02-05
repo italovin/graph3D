@@ -183,9 +183,9 @@ private:
         glm::vec4 direction = glm::vec4(0.0f);
         glm::vec4 color = glm::vec4(1.0f);
         float range = 0.0f;
-        float cutoff = 0.0f;
         float innerCutoff = 0.0f;
         float outerCutoff = 0.0f;
+        float cutoff = 0.0f;
         // For alignment reasons, the intensity is multiplied directly by the color for passing to the shader
     };
     // Default binding point to bind vertex attributes when using interleaved mode

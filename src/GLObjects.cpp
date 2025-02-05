@@ -87,9 +87,9 @@ void GL::TextureGL::SetupStorage3D(GLsizei width, GLsizei height, int layers){
     this->width = width;
     this->height = height;
     // Test mipmaps levels later
-    //GLsizei levels = static_cast<int>(std::floor(std::log2(glm::max(width, height)))) + 1;
-    //this->levels = levels;
-    this->levels = 1;
+    GLsizei levels = static_cast<int>(std::floor(std::log2(glm::max(width, height)))) + 1;
+    this->levels = levels;
+    //this->levels = 1;
     glTextureStorage3D(this->handle, this->levels, this->internalFormat, width, height, layers);
 }
 
