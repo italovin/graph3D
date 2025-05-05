@@ -3,8 +3,7 @@
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
-#include <cmath>
-#include <fstream>
+
 #include "Base.hpp"
 #include "Renderer.hpp"
 #include "RenderCapabilities.hpp"
@@ -14,8 +13,6 @@
 #include "Model.hpp"
 #include <filesystem>
 #include <fmt/core.h>
-#include <sail-c++/sail-c++.h>
-#include <sail-common/log.h>
 #include <tbb/parallel_for.h>
 
 void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, GLchar const* message, void const* user_param);
@@ -23,7 +20,7 @@ void GLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLs
 int main(int argc, const char *argv[])
 {
     setlocale(LC_ALL, ".UTF-8");
-    
+
     //// SDL
     // Inicializa a SDL
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
@@ -38,8 +35,8 @@ int main(int argc, const char *argv[])
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     //SDL_SetRelativeMouseMode(SDL_TRUE);
 
-    const int WIDTH = 1366;
-    const int HEIGHT = 768;
+    const int WIDTH = 800;
+    const int HEIGHT = 600;
 
     /* Create a windowed mode window and its OpenGL context */
     Window window;
@@ -87,9 +84,6 @@ int main(int argc, const char *argv[])
             return -1;
         }
     }
-
-    /// SAIL
-    sail_set_log_barrier(SAIL_LOG_LEVEL_SILENCE);
 
     const int glslVersion = RenderCapabilities::GetGLSLVersion();
 
@@ -352,7 +346,6 @@ int main(int argc, const char *argv[])
     {
         int width = 256;
         int height = 256;
-        int channels = 3;
         int pixelsCount = width * height;
         std::vector<GLubyte> pixels;
         pixels.reserve(pixelsCount);
@@ -369,7 +362,7 @@ int main(int argc, const char *argv[])
         tex0 = CreateRef<Texture>();
         if(!tex0->Load(std::filesystem::path("../resources/images/need-for-speed-carbon.jpg").generic_string(), true, true)){
             tex0 = defaultTexture;
-        } 
+        }
     }
 
     shaderCodeTest->AddMaterialMapArray(ShaderStage::Fragment, "texArray", defaultTexture);
@@ -596,7 +589,7 @@ int main(int argc, const char *argv[])
 
             // Interpola suavemente da rotação atual para a nova rotação alvo
             freeCameraTransform.rotation = glm::slerp(freeCameraTransform.rotation, targetRotation, interpolationSpeed);
-            
+
             mainCamera.transform = freeCameraTransform;
         } else {
             mainCamera.transform = topDownCameraTransform;
@@ -611,9 +604,9 @@ int main(int argc, const char *argv[])
             } else{
                 lights[i].transform.position.y += 7.5f*deltaTime;
             }
-            
+
         }
-        
+
         //quad1.transform.eulerAngles(glm::vec3(0, 30*time, 0));
 
         graph.GetComponent<MeshRendererComponent>().material->SetGlobalParameterFloat(timeString, time);

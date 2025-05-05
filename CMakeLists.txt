@@ -72,6 +72,71 @@ if(MINGW)
     INTERFACE_INCLUDE_DIRECTORIES ${tbb_SOURCE_DIR}/ucrt64/include
     )
 
+    # Resolve SDL3 Dependency
+    FetchContent_Declare(
+    sdl3
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-sdl3-3.2.10-2-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(sdl3)
+    add_library(sdl3::sdl3 SHARED IMPORTED)
+    set_target_properties(sdl3::sdl3 PROPERTIES
+    IMPORTED_IMPLIB ${sdl3_SOURCE_DIR}/ucrt64/lib/libSDL3.dll.a
+    IMPORTED_LOCATION ${sdl3_SOURCE_DIR}/ucrt64/bin/SDL3.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${sdl3_SOURCE_DIR}/ucrt64/include
+    )
+
+    # Resolve fmt Dependency
+    FetchContent_Declare(
+    fmt
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-fmt-11.1.4-1-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(fmt)
+    add_library(fmt::fmt SHARED IMPORTED)
+    set_target_properties(fmt::fmt PROPERTIES
+    IMPORTED_IMPLIB ${fmt_SOURCE_DIR}/ucrt64/lib/libfmt.dll.a
+    IMPORTED_LOCATION ${fmt_SOURCE_DIR}/ucrt64/bin/libfmt-11.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${fmt_SOURCE_DIR}/ucrt64/include
+    )
+
+    # Resolve zlib Dependency
+    FetchContent_Declare(
+    zlib
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-zlib-1.3.1-1-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(zlib)
+    add_library(zlib::zlib SHARED IMPORTED)
+    set_target_properties(zlib::zlib PROPERTIES
+    IMPORTED_IMPLIB ${zlib_SOURCE_DIR}/ucrt64/lib/libz.dll.a
+    IMPORTED_LOCATION ${zlib_SOURCE_DIR}/ucrt64/bin/zlib1.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${zlib_SOURCE_DIR}/ucrt64/include
+    )
+
+    # Resolve minizip Dependency
+    FetchContent_Declare(
+    minizip
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-minizip-1.3.1-1-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(minizip)
+    add_library(minizip::minizip SHARED IMPORTED)
+    set_target_properties(minizip::minizip PROPERTIES
+    IMPORTED_IMPLIB ${minizip_SOURCE_DIR}/ucrt64/lib/libminizip.dll.a
+    IMPORTED_LOCATION ${minizip_SOURCE_DIR}/ucrt64/bin/libminizip-1.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${minizip_SOURCE_DIR}/ucrt64/include
+    )
+
+    # Resolve bzip Dependency
+    FetchContent_Declare(
+    bzip
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-bzip2-1.0.8-3-any.pkg.tar.zst
+    )
+    FetchContent_MakeAvailable(bzip)
+    add_library(bzip::bzip SHARED IMPORTED)
+    set_target_properties(bzip::bzip PROPERTIES
+    IMPORTED_IMPLIB ${bzip_SOURCE_DIR}/ucrt64/lib/libbz2.dll.a
+    IMPORTED_LOCATION ${bzip_SOURCE_DIR}/ucrt64/bin/libbz2-1.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${bzip_SOURCE_DIR}/ucrt64/include
+    )
+
     add_library(tbb::tbbmalloc SHARED IMPORTED)
     set_target_properties(tbb::tbbmalloc PROPERTIES
     IMPORTED_IMPLIB ${tbb_SOURCE_DIR}/ucrt64/lib/libtbbmalloc.dll.a
@@ -100,10 +165,14 @@ if(MINGW)
     set(SYS_BIN_PATH ${SYS_LIB_PATH}/../bin)
 
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS ${SYS_BIN_PATH}/libstdc++-6.dll
-    ${SYS_BIN_PATH}/libgcc_s_seh-1.dll ${SYS_BIN_PATH}/libwinpthread-1.dll)
+    ${SYS_BIN_PATH}/libgcc_s_seh-1.dll ${SYS_BIN_PATH}/libwinpthread-1.dll
+    ${SYS_BIN_PATH}/libssp-0.dll)
 
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         COMMAND ${CMAKE_COMMAND} -E copy
             ${glfw3_SOURCE_DIR}/lib-mingw-w64/glfw3.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
@@ -119,14 +188,35 @@ if(MINGW)
         COMMAND ${CMAKE_COMMAND} -E copy
             ${assimp_SOURCE_DIR}/ucrt64/bin/libassimp-5.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${sdl3_SOURCE_DIR}/ucrt64/bin/SDL3.dll
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${fmt_SOURCE_DIR}/ucrt64/bin/libfmt-11.dll
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${zlib_SOURCE_DIR}/ucrt64/bin/zlib1.dll
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${minizip_SOURCE_DIR}/ucrt64/bin/libminizip-1.dll
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${bzip_SOURCE_DIR}/ucrt64/bin/libbz2-1.dll
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
-    target_link_libraries(${PROJECT_NAME} PRIVATE glfw3::glfw3 glew::glew opengl32 tbb::tbb assimp::assimp z minizip)
+    target_link_libraries(${PROJECT_NAME} PRIVATE opengl32 glew::glew sdl3::sdl3 tbb::tbb assimp::assimp fmt::fmt zlib::zlib minizip::minizip bzip::bzip)
 
     # Install portable build
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/portable)
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
     install(IMPORTED_RUNTIME_ARTIFACTS glew::glew RUNTIME DESTINATION bin)
-    install(IMPORTED_RUNTIME_ARTIFACTS glfw3::glfw3 RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS sdl3::sdl3 RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS tbb::tbb RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS assimp::assimp RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS fmt::fmt RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS zlib::zlib RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS minizip::minizip RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS bzip::bzip RUNTIME DESTINATION bin)
     install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/resources/ DESTINATION resources)
 endif()

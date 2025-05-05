@@ -128,7 +128,7 @@ ShaderCode ShaderStandard::ProcessCode()
     int texCoord5Location = Constants::ShaderStandard::texCoord5AttribLocation;
     int texCoord6Location = Constants::ShaderStandard::texCoord6AttribLocation;
     int texCoord7Location = Constants::ShaderStandard::texCoord7AttribLocation;
-    
+
     bool positionEnabled = attributes[Constants::ShaderStandard::positionAttribName].first;
     bool normalEnabled = attributes[Constants::ShaderStandard::normalAttribName].first;
     bool tangentEnabled = attributes[Constants::ShaderStandard::tangentAttribName].first;
@@ -142,7 +142,7 @@ ShaderCode ShaderStandard::ProcessCode()
     bool texCoord5Enabled = attributes[Constants::ShaderStandard::texCoord5AttribName].first;
     bool texCoord6Enabled = attributes[Constants::ShaderStandard::texCoord6AttribName].first;
     bool texCoord7Enabled = attributes[Constants::ShaderStandard::texCoord7AttribName].first;
-    
+
     // Modules
     bool diffuseMapActivated = maps[Constants::ShaderStandard::diffuseMapName];
     bool specularMapActivated = maps[Constants::ShaderStandard::specularMapName];
@@ -150,8 +150,8 @@ ShaderCode ShaderStandard::ProcessCode()
     bool diffuseUniformUsed = (*GetUniform(Constants::ShaderStandard::diffuseUniformName)).second;
     bool specularUniformUsed = (*GetUniform(Constants::ShaderStandard::specularUniformName)).second;
     bool lightingActivated = flags[Constants::ShaderStandard::lightingName];
-    bool materialsUniformBlockToUse = 
-    diffuseUniformUsed | 
+    bool materialsUniformBlockToUse =
+    diffuseUniformUsed |
     specularUniformUsed;
     // Defined constant names
     std::string diffuseMapString = Constants::ShaderStandard::diffuseMapName; // Diffuse map variable name (sampler array in this case)
@@ -179,7 +179,9 @@ ShaderCode ShaderStandard::ProcessCode()
     // Light position - vertex shader (when used with tangent space version) or fragment shader
     // View position - vertex shader (when used with tangent space version) or fragment shader
     std::string maxObjectsGroupString = std::to_string(
-        glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::ShaderStandard::maxObjectsToGroup)
+        glm::min(
+            static_cast<std::size_t>(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4)),
+            static_cast<std::size_t>(Constants::ShaderStandard::maxObjectsToGroup))
     );
     code.SetVersion(RenderCapabilities::GetGLSLVersion());
     // Enable shader stages to pipeline
@@ -231,7 +233,7 @@ ShaderCode ShaderStandard::ProcessCode()
             } else { // Color Attrib + Diffuse Map
                 albedoString = "albedo = texture("+diffuseMapString+", vec3(aTexCoord0Out, diffuseMapIndices[objID].x))*aColorOut;\n";
             }
-            
+
         } else {
             if(diffuseUniformUsed){ // Color Attrib + Base Color
                 albedoString = "albedo = aColorOut*materials[objID].diffuseUniform;\n";
@@ -279,10 +281,10 @@ ShaderCode ShaderStandard::ProcessCode()
 
             code.CreateUniformBlock(ShaderStage::Vertex, "normalMatrixUBO", "mat4 normalMatrices[" + maxObjectsGroupString + "];");
             code.SetBindingPurpose(ShaderStage::Vertex, "normalMatrixUBO", Constants::ShaderStandard::normalMatricesBinding); // Transpose of inverse of model
-            
+
             code.CreateUniformBlock(ShaderStage::Vertex, "modelsUBO", "mat4 models[" + maxObjectsGroupString + "];"); // Models uniform block. Used to world space transformations only
             code.SetBindingPurpose(ShaderStage::Vertex, "modelsUBO", Constants::ShaderStandard::modelsBinding);
-            
+
             code.AddOutput(ShaderStage::Vertex, "fragPos", ShaderDataType::Float3);
             code.AddOutput(ShaderStage::Vertex, "TBN", ShaderDataType::Mat3);
             code.AddOutput(ShaderStage::Vertex, "aNormalOut", ShaderDataType::Float3);
@@ -318,7 +320,7 @@ ShaderCode ShaderStandard::ProcessCode()
             code.CreateStruct(ShaderStage::Fragment, directionalLightStruct);
             code.AddParameterToStruct(ShaderStage::Fragment, directionalLightStruct, "direction", ShaderDataType::Float4);
             code.AddParameterToStruct(ShaderStage::Fragment, directionalLightStruct, "color", ShaderDataType::Float4);
-            
+
             const std::string spotLightStruct = "SpotLight";
             // 64 bytes per light
             code.CreateStruct(ShaderStage::Fragment, spotLightStruct);
@@ -348,7 +350,7 @@ ShaderCode ShaderStandard::ProcessCode()
             code.AddUniform(ShaderStage::Fragment, directionalLightCountName, ShaderDataType::Int);
             code.AddUniform(ShaderStage::Fragment, spotLightCountName, ShaderDataType::Int);
             code.AddUniform(ShaderStage::Fragment, viewPosName, ShaderDataType::Float3); // Get World space view position
-            
+
             // Lighting
 
             if(normalMapActivated){ // Using a normal map to retrieve normals
@@ -378,7 +380,7 @@ ShaderCode ShaderStandard::ProcessCode()
             code.PushOutsideCode(ShaderStage::Fragment, "vec3 normal = vec3(0.0);");
             code.PushOutsideCode(ShaderStage::Fragment, "vec3 specularColor = vec3(0.0);");
 
-            code.PushOutsideCode(ShaderStage::Fragment, 
+            code.PushOutsideCode(ShaderStage::Fragment,
             "vec3 CalcPointLight("+pointLightStruct+" pointLight){\n"
             "  vec3 lightPos = pointLight.position.xyz;\n"
             "  vec3 lightDirNorm = normalize(lightPos - fragPos);\n" // Norm vector
@@ -400,7 +402,7 @@ ShaderCode ShaderStandard::ProcessCode()
             "  return (diffuse + specular) * lightColor * attenuation;\n" // Final color
             "}"
             );
-            code.PushOutsideCode(ShaderStage::Fragment, 
+            code.PushOutsideCode(ShaderStage::Fragment,
             "vec3 CalcDirectionalLight("+directionalLightStruct+" directionalLight){\n"
             "   vec3 lightDirNorm = normalize(-directionalLight.direction.xyz);\n"
             "   vec3 viewDirNorm = normalize("+viewPosName+" - fragPos);\n"
@@ -412,7 +414,7 @@ ShaderCode ShaderStandard::ProcessCode()
             "   vec3 specular = spec * specularColor;\n"
             "   return (diffuse + specular) * lightColor;\n"
             "}");
-            code.PushOutsideCode(ShaderStage::Fragment, 
+            code.PushOutsideCode(ShaderStage::Fragment,
             "vec3 CalcSpotLight("+spotLightStruct+" spotLight){\n"
             "  vec3 lightPos = spotLight.position.xyz;\n"
             "  vec3 lightDirNorm = normalize(lightPos - fragPos);\n"
@@ -437,7 +439,7 @@ ShaderCode ShaderStandard::ProcessCode()
             "  return (diffuse + specular) * attenuation * spotIntensity;\n" // Final color
             "}"
             );
-            fragColorString += 
+            fragColorString +=
             "vec3 finalColor = vec3(0.0);\n"
             "vec3 ambientLight = vec3(0.005, 0.005, 0.005);\n"
             "vec3 ambient = ambientLight * albedo.rgb;\n"

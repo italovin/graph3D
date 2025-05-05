@@ -261,7 +261,8 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
 
         const size_t maxTextureArrayLayers = RenderCapabilities::GetMaxTextureArrayLayers();  // Máximo de texturas
         const size_t maxUBOMatrices = glm::min(
-            RenderCapabilities::GetMaxUBOSize() / sizeof(glm::mat4), Constants::ShaderStandard::maxObjectsToGroup
+            static_cast<std::size_t>(RenderCapabilities::GetMaxUBOSize() / sizeof(glm::mat4)),
+            static_cast<std::size_t>(Constants::ShaderStandard::maxObjectsToGroup)
         );
         size_t mapTypeCount = x.second[0].first.get().material->GetActivatedMapParameters().size();
         std::vector<std::vector<Renderable>> shaderGeneratedGroups;
@@ -383,7 +384,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
             textureKey.formats.reserve(texParameters.size());
             for(auto &&map : texParameters){
                 const auto& tex = std::get<Ref<Texture>>(map.second.data);
-                
+
                 auto dimensions = tex->GetDimensions();
                 auto format = tex->GetFormat();
                 textureKey.dimensions.push_back(glm::ivec2(dimensions.x, dimensions.y));
@@ -468,7 +469,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         pointLightUniformBuffer.bufferSize = maxSize;
         pointLightUniformBuffer.stride = sizeof(PointLight);
         pointLightUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::pointLightsBinding];
-        
+
         glNamedBufferStorage(pointLightUniformBuffer.name, maxSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
     // Directional Light
@@ -480,7 +481,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         directionalLightUniformBuffer.bufferSize = maxSize;
         directionalLightUniformBuffer.stride = sizeof(DirectionalLight);
         directionalLightUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::directionalLightsBinding];
-        
+
         glNamedBufferStorage(directionalLightUniformBuffer.name, maxSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
     // Spot Light
@@ -492,7 +493,7 @@ void Renderer::PrepareRenderGroups(entt::registry &registry){
         spotLightUniformBuffer.bufferSize = sizeof(SpotLight)*spotLights.size();
         spotLightUniformBuffer.stride = sizeof(SpotLight);
         spotLightUniformBuffer.bindingPoint = uboBindingsPurposes[Constants::ShaderStandard::spotLightsBinding];
-        
+
         glNamedBufferStorage(spotLightUniformBuffer.name, maxSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
     glBindBufferBase(GL_UNIFORM_BUFFER, pointLightUniformBuffer.bindingPoint, pointLightUniformBuffer.name);
@@ -1143,9 +1144,9 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         texArray->GenerateMipmaps();
     }
     auto setupEnd = std::chrono::high_resolution_clock::now();
-    fmt::print("Time to setup textures data: {0} (μs)\n", 
+    fmt::print("Time to setup textures data: {0} (μs)\n",
     std::chrono::duration_cast<std::chrono::microseconds>(setupEnd-setupBegin).count());
-    
+
     auto bufferBegin = std::chrono::high_resolution_clock::now();
     renderGroup.objectsCount = objectsCount;
 
@@ -1157,7 +1158,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     int attributesBufferTotalSize = 0;
     std::vector<GLintptr> attributesOffsets(attributesCount);
     std::vector<GLsizei> attributesStrides(attributesCount);
-    
+
     // VBO
     if(!interleaveAttributesFlag)
     {
@@ -1197,7 +1198,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         meshesTotalSize += attributesBufferTotalSize;
     } else {
         int attributesOffset = 0;
-        
+
         std::vector<char> vboData;
         for(size_t i = 0; i < renderGroupBuffers.attributesData.size(); i++){
             attributesOffsets[i] = attributesOffset;
@@ -1213,7 +1214,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         size_t firstScalarsCount = renderGroupBuffers.attributesData[0].attribute.ScalarElementsCount();
         std::visit([&verticesCount, firstScalarsCount](auto&& vector){
             verticesCount = vector.size() / firstScalarsCount;
-        }, renderGroupBuffers.attributesData[0].data);      
+        }, renderGroupBuffers.attributesData[0].data);
         for(size_t i = 0; i < verticesCount; i++){
             for(size_t j = 0; j < renderGroupBuffers.attributesData.size(); j++){
                 size_t scalarsCount = renderGroupBuffers.attributesData[j].attribute.ScalarElementsCount();
@@ -1232,7 +1233,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         renderGroup.attributesBuffer.bindingPoint = vboBindingPoint;
         glNamedBufferStorage(renderGroup.attributesBuffer.name, renderGroup.attributesBuffer.bufferSize,
         vboData.data(), GL_DYNAMIC_STORAGE_BIT);
-                
+
         meshesTotalSize += attributesBufferTotalSize;
     }
     // EBO
@@ -1326,7 +1327,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
     }
 
     auto bufferEnd = std::chrono::high_resolution_clock::now();
-    fmt::print("Time to buffer data: {0} (μs)\n", 
+    fmt::print("Time to buffer data: {0} (μs)\n",
     std::chrono::duration_cast<std::chrono::microseconds>(bufferEnd-bufferBegin).count());
     float meshesTotalSizeInKB = (float)meshesTotalSize / 1024;
     float meshesTotalSizeInMB = (float)meshesTotalSize / (1024*1024);
@@ -1345,7 +1346,7 @@ void Renderer::BuildRenderGroup(RenderGroup &renderGroup, const RenderGroupBuffe
         for(auto& count : renderGroup.batchGroup.count){
             indicesCount += count;
         }
-        
+
         for(auto& instanceGroup : renderGroup.instancesGroups){
             indicesCount += instanceGroup.count;
         }
@@ -1406,11 +1407,13 @@ void Renderer::SetupDepthShader()
         objIDString = "gl_BaseInstance + gl_InstanceID";
     }
     std::string maxObjectsGroupString = std::to_string(
-        glm::min(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4), Constants::ShaderStandard::maxObjectsToGroup)
+        glm::min(
+            static_cast<std::size_t>(RenderCapabilities::GetMaxUBOSize()/sizeof(glm::mat4)),
+            static_cast<std::size_t>(Constants::ShaderStandard::maxObjectsToGroup))
     );
     depthCode.CreateUniformBlock(ShaderStage::Vertex, "mvpsUBO", "mat4 mvps[" + maxObjectsGroupString + "];"); // MVPs uniform block
     depthCode.SetBindingPurpose(ShaderStage::Vertex, "mvpsUBO", Constants::ShaderStandard::mvpsBinding);
-    depthCode.SetMain(ShaderStage::Vertex, 
+    depthCode.SetMain(ShaderStage::Vertex,
     "int objID = "+objIDString+";\n"
     "mat4 mvp = mvps[objID];\n"
     "gl_Position = mvp*vec4(aPosition, 1.0);\n"
@@ -1485,7 +1488,7 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
         } else if(light.type == LightType::Directional && directionalLightCounter < Constants::ShaderStandard::maxDirectionalLights){
             DirectionalLight directionalLight;
             directionalLight.direction = glm::vec4(transform.Forward(), 1.0f);
-            directionalLight.color = light.isHDR ? 
+            directionalLight.color = light.isHDR ?
             glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f) :
             glm::vec4(glm::max(light.intensity, 0.0f) * glm::clamp(light.color, glm::vec3(0.0f), glm::vec3(1.0f)), 1.0f);
             if(directionalLightCounter < directionalLights.size()){
@@ -1494,12 +1497,12 @@ void Renderer::Update(entt::registry &registry, float deltaTime){
                 directionalLights.push_back(directionalLight);
                 directionalLightCounter++;
             }
-                
+
         } else if(light.type == LightType::Spot && spotLightCounter < Constants::ShaderStandard::maxSpotLights){
             SpotLight spotLight;
             spotLight.position = glm::vec4(transform.position, 1.0f);
             spotLight.direction = glm::vec4(transform.Forward(), 1.0f);
-            spotLight.color = light.isHDR ? 
+            spotLight.color = light.isHDR ?
             glm::vec4(glm::max(light.intensity, 0.0f) * glm::max(light.color, glm::vec3(0.0f)), 1.0f) :
             glm::vec4(glm::max(light.intensity, 0.0f) * glm::clamp(light.color, glm::vec3(0.0f), glm::vec3(1.0f)), 1.0f);
             spotLight.range = glm::max(light.range, 0.0001f);
@@ -1561,7 +1564,7 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
     glClearNamedFramebufferfv(0, GL_COLOR, 0, colorClearValue.data());
     // Clearing depth buffer from depth framebuffer
     glClearNamedFramebufferfv(0, GL_DEPTH, 0, depthClearValue.data());
-    
+
     if(depthPassFlag){
         glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
         glDepthFunc(GL_LESS);
@@ -1571,7 +1574,7 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         for(auto &&renderGroup : renderGroups){
             // VAO Binding
             renderGroup.vao.Bind();
-            
+
             // Binding MVPs UBO
             glBindBufferBase(GL_UNIFORM_BUFFER, renderGroup.mvpsUniformBuffer.bindingPoint, renderGroup.mvpsUniformBuffer.name);
             // Render
@@ -1579,7 +1582,7 @@ void Renderer::Draw(const CameraComponent &mainCamera, const TransformComponent 
         }
     }
 
-    glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE); 
+    glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
     glDepthFunc(depthPassFlag ? GL_LEQUAL : GL_LESS);
     glEnable(GL_BLEND);
 

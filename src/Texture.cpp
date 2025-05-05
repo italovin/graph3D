@@ -1,44 +1,54 @@
 #include "Texture.hpp"
-#include <iostream>
-#include <sail-c++/sail-c++.h>
+#include <filesystem>
 #include <stb/stb_image.h>
 
 bool Texture::Load(const std::string &filePath, bool isSRGB, bool mirrorVertically)
 {
-    if(!sail::is_file(filePath))
+    if(!std::filesystem::exists(filePath) || !std::filesystem::is_regular_file(filePath))
         return false;
     // Try compressed formats (dds or ktx) first
     handle = gli::load(filePath);
 
     if(!handle.empty())
         return true;
-    
+
     //Using common image formats
-    sail::image image(filePath);
+    // sail::image image(filePath);
+    // if(!image.is_valid())
+    //     return false;
+    // // sail images stores pixels in Y = 0 = top orientation.
+    // if(mirrorVertically)
+    //     image.mirror(SailOrientation::SAIL_ORIENTATION_MIRRORED_VERTICALLY);
+    // glm::ivec2 dimensions = glm::ivec2(image.width(), image.height());
 
-    if(!image.is_valid())
-        return false;
-    // sail images stores pixels in Y = 0 = top orientation.
-    if(mirrorVertically)
-        image.mirror(SailOrientation::SAIL_ORIENTATION_MIRRORED_VERTICALLY);
-    glm::ivec2 dimensions = glm::ivec2(image.width(), image.height());
+    // gli::format format;
 
+    // switch(image.pixel_format()){
+    //     case SailPixelFormat::SAIL_PIXEL_FORMAT_BPP24_RGB:
+    //     format = isSRGB ? gli::format::FORMAT_RGB8_SRGB_PACK8 : gli::format::FORMAT_RGB8_UNORM_PACK8; break;
+    //     case SailPixelFormat::SAIL_PIXEL_FORMAT_BPP32_RGBA:
+    //     format = isSRGB ? gli::format::FORMAT_RGBA8_SRGB_PACK8 : gli::format::FORMAT_RGBA8_UNORM_PACK8; break;
+    //     case SailPixelFormat::SAIL_PIXEL_FORMAT_BPP64_RGBA:
+    //     format = gli::format::FORMAT_RGBA16_UNORM_PACK16; break;
+    //     default: format = gli::format::FORMAT_RGB8_SRGB_PACK8; break;
+    // }
+    stbi_set_flip_vertically_on_load(mirrorVertically ? 1 : 0);
+    glm::ivec2 dimensions;
+    int channels = 0;
+    unsigned char *image = stbi_load(filePath.c_str(), &dimensions.x, &dimensions.y, &channels, 0);
     gli::format format;
-
-    switch(image.pixel_format()){
-        case SailPixelFormat::SAIL_PIXEL_FORMAT_BPP24_RGB: 
+    switch(channels){
+        case 3:
         format = isSRGB ? gli::format::FORMAT_RGB8_SRGB_PACK8 : gli::format::FORMAT_RGB8_UNORM_PACK8; break;
-        case SailPixelFormat::SAIL_PIXEL_FORMAT_BPP32_RGBA: 
+        case 4:
         format = isSRGB ? gli::format::FORMAT_RGBA8_SRGB_PACK8 : gli::format::FORMAT_RGBA8_UNORM_PACK8; break;
-        case SailPixelFormat::SAIL_PIXEL_FORMAT_BPP64_RGBA: 
-        format = gli::format::FORMAT_RGBA16_UNORM_PACK16; break;
         default: format = gli::format::FORMAT_RGB8_SRGB_PACK8; break;
     }
-
     handle = gli::texture2d(format, dimensions);
-    
-    std::memcpy(handle.data(), image.pixels(), image.pixels_size());
-    
+
+    std::memcpy(handle.data(), image, channels*sizeof(unsigned char)*dimensions.x*dimensions.y);
+    stbi_image_free(image);
+
     return true;
 }
 

@@ -3,7 +3,6 @@
 #include <GL/glew.h>
 #include <gli/gli.hpp>
 #include <vector>
-#include <variant>
 
 class Texture{
 private:
@@ -18,7 +17,7 @@ public:
     static GLenum GliInternalFormatToGLenum(gli::format format, bool forceSRGB = false);
     static GLenum GliClientFormatToGLenum(gli::format format);
     static GLenum GliTypeToGLenum(gli::format format);
-    bool IsCompressed() const;;
+    bool IsCompressed() const;
     gli::texture::extent_type GetDimensions() const;
     int GetSize() const;
     const void* GetData() const;
