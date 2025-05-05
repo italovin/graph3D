@@ -33,30 +33,17 @@ endif()
 if(MINGW)
     include(FetchContent)
 
-    # Resolve GLFW dependency
-    FetchContent_Declare(
-    glfw3
-    URL https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip
-    )
-    FetchContent_MakeAvailable(glfw3)
-    add_library(glfw3::glfw3 SHARED IMPORTED)
-    set_target_properties(glfw3::glfw3 PROPERTIES
-    IMPORTED_IMPLIB ${glfw3_SOURCE_DIR}/lib-mingw-w64/libglfw3dll.a
-    IMPORTED_LOCATION ${glfw3_SOURCE_DIR}/lib-mingw-w64/glfw3.dll
-    INTERFACE_INCLUDE_DIRECTORIES ${glfw3_SOURCE_DIR}/include
-    )
-
     # Resolve GLEW dependency
     FetchContent_Declare(
     glew
-    URL https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-glew-2.2.0-3-any.pkg.tar.zst
+    URL https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-glew-2.2.0-3-any.pkg.tar.zst
     )
     FetchContent_MakeAvailable(glew)
     add_library(glew::glew SHARED IMPORTED)
     set_target_properties(glew::glew PROPERTIES
-    IMPORTED_IMPLIB ${glew_SOURCE_DIR}/mingw64/lib/libglew32.dll.a
-    IMPORTED_LOCATION ${glew_SOURCE_DIR}/mingw64/bin/glew32.dll
-    INTERFACE_INCLUDE_DIRECTORIES ${glew_SOURCE_DIR}/mingw64/include
+    IMPORTED_IMPLIB ${glew_SOURCE_DIR}/ucrt64/lib/libglew32.dll.a
+    IMPORTED_LOCATION ${glew_SOURCE_DIR}/ucrt64/bin/glew32.dll
+    INTERFACE_INCLUDE_DIRECTORIES ${glew_SOURCE_DIR}/ucrt64/include
     )
 
     # Resolve onetbb dependency
@@ -174,10 +161,7 @@ if(MINGW)
             ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         COMMAND ${CMAKE_COMMAND} -E copy
-            ${glfw3_SOURCE_DIR}/lib-mingw-w64/glfw3.dll
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${glew_SOURCE_DIR}/mingw64/bin/glew32.dll
+            ${glew_SOURCE_DIR}/ucrt64/bin/glew32.dll
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         COMMAND ${CMAKE_COMMAND} -E copy
             ${tbb_SOURCE_DIR}/ucrt64/bin/libtbb12.dll
@@ -219,6 +203,15 @@ if(MINGW)
     install(IMPORTED_RUNTIME_ARTIFACTS bzip::bzip RUNTIME DESTINATION bin)
     install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/resources/ DESTINATION resources)
+    install(FILES ${glew_SOURCE_DIR}/ucrt64/share/licenses/glew/LICENSE DESTINATION licenses/glew)
+    install(FILES ${tbb_SOURCE_DIR}/ucrt64/share/licenses/oneTBB/LICENSE DESTINATION licenses/tbb)
+    install(FILES ${assimp_SOURCE_DIR}/ucrt64/share/licenses/assimp/LICENSE DESTINATION licenses/assimp)
+    install(FILES ${sdl3_SOURCE_DIR}/ucrt64/share/licenses/SDL3/LICENSE.txt DESTINATION licenses/sdl3)
+    install(FILES ${fmt_SOURCE_DIR}/ucrt64/share/licenses/fmt/LICENSE DESTINATION licenses/fmt)
+    install(FILES ${zlib_SOURCE_DIR}/ucrt64/share/licenses/zlib/LICENSE DESTINATION licenses/zlib)
+    install(FILES ${minizip_SOURCE_DIR}/ucrt64/share/licenses/minizip/LICENSE DESTINATION licenses/minizip)
+    install(FILES ${bzip_SOURCE_DIR}/ucrt64/share/licenses/bzip2/LICENSE DESTINATION licenses/bzip2)
+
 endif()
 
 if(MSVC)
